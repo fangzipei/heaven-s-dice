@@ -19,6 +19,7 @@ import {
   BOSSES, LEVEL_CURVE,
 } from '../src/content/index.ts';
 import { dieSkinStyle, dieMotifSvg } from '../src/render/dice-skins.ts';
+import { pipPoints } from '../src/render/pip-layout.ts';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const OUT = join(ROOT, 'docs', 'codex.html');
@@ -53,15 +54,6 @@ function inlineSvg(rel, prefix) {
   return out;
 }
 
-const PIPS = {
-  1: [[50, 50]],
-  2: [[31, 31], [69, 69]],
-  3: [[29, 29], [50, 50], [71, 71]],
-  4: [[32, 32], [68, 32], [32, 68], [68, 68]],
-  5: [[30, 30], [70, 30], [50, 50], [30, 70], [70, 70]],
-  6: [[32, 26], [32, 50], [32, 74], [68, 26], [68, 50], [68, 74]],
-};
-
 const motifInner = (die) => (dieMotifSvg(die) || '')
   .replace(/^<svg[^>]*>/, '')
   .replace(/<\/svg>\s*$/, '');
@@ -72,7 +64,7 @@ function faceSvg(die, face, { big = false } = {}) {
   const label = wild ? '恶魔赖子' : `${face} 点`;
   const pips = wild
     ? '<text class="wild-glyph" x="50" y="51" text-anchor="middle" dominant-baseline="central">魔</text>'
-    : (PIPS[face] || []).map(([x, y]) => `<circle class="pip" cx="${x}" cy="${y}" r="${big ? 10 : 9.5}"/>`).join('');
+    : pipPoints(face).map(([x, y]) => `<circle class="pip" cx="${x}" cy="${y}" r="${big ? 10 : 9.5}"/>`).join('');
   return `<svg class="face-svg" viewBox="0 0 100 100" role="img" aria-label="${esc(die.name)} ${label}">`
     + `<g class="die-motif"${big ? ' opacity=".38"' : ''}>${motifInner(die)}</g>${pips}</svg>`;
 }
