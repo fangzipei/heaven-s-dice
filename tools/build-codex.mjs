@@ -4,9 +4,10 @@
  *
  *   node tools/build-codex.mjs
  *
- * Dice faces are rendered from the live skins in src/dice-skins.js (material
- * ramp + carved motif + pips), cup/item art is inlined from assets/, and every
- * number comes straight from src/data.js. Re-run after any content change.
+ * Dice faces are rendered from the live skins in src/render/dice-skins.ts
+ * (material ramp + carved motif + pips), cup/item art is inlined from assets/,
+ * and every number comes straight from src/content/. Re-run after any content
+ * change.
  */
 import { readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -17,7 +18,7 @@ import {
   RARITIES, SHOP_RARITY_WEIGHTS, REROLL_REFUND, OVERSHOOT_TIERS,
   BOSSES, LEVEL_CURVE,
 } from '../src/content/index.ts';
-import { dieSkinStyle, dieMotifSvg } from '../src/legacy/dice-skins.js';
+import { dieSkinStyle, dieMotifSvg } from '../src/render/dice-skins.ts';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const OUT = join(ROOT, 'docs', 'codex.html');
@@ -572,7 +573,7 @@ footer code{color:#93836b;font-family:Consolas,monospace;font-size:9.5px}
 </section>
 
 <footer>
-  <span>数据：src/data.js · 皮肤：src/dice-skins.js · 插画：assets/cups、assets/items · 本页由 tools/build-codex.mjs 生成 · ${stamp}</span>
+  <span>数据：src/content/ · 皮肤：src/render/dice-skins.ts · 插画：assets/cups、assets/items · 本页由 tools/build-codex.mjs 生成 · ${stamp}</span>
   <span>天国骰局 · 骰子落下之前，命运只是一句空话。</span>
 </footer>
 

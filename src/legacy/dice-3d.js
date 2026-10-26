@@ -7,10 +7,11 @@
  * hidden a11y layer, so tapping a die costs one raycast instead of a
  * full preserve-3d subtree rebuild.
  *
- * All face art still comes from dice-skins.js — nothing is hardcoded here.
+ * All face art still comes from render/dice-skins.ts — nothing is hardcoded here.
  */
 import * as THREE from '../vendor/three.module.js';
-import { dieSkin, dieFamily, dieMotifBody } from './dice-skins.js';
+import { dieSkin, dieFamily, dieMotifBody } from '../render/dice-skins.ts';
+import { pipCells } from '../render/pip-layout.ts';
 
 const FACE_SIZE = 192;
 const DIE_SIZE = 1;
@@ -19,15 +20,6 @@ const REST_X = -11 * (Math.PI / 180); // matches the old CSS resting pose
 
 /* BoxGeometry material-group order: +X, -X, +Y, -Y, +Z, -Z */
 const GROUP_ORDER = ['right', 'left', 'top', 'bottom', 'front', 'back'];
-
-const PIP_LAYOUT = {
-  1: [[1, 1]],
-  2: [[0, 0], [2, 2]],
-  3: [[0, 0], [1, 1], [2, 2]],
-  4: [[0, 0], [0, 2], [2, 0], [2, 2]],
-  5: [[0, 0], [0, 2], [1, 1], [2, 0], [2, 2]],
-  6: [[0, 0], [0, 1], [0, 2], [2, 0], [2, 1], [2, 2]],
-};
 
 /* ── colour helpers ──────────────────────────────────────────────────────
    The skins ship CSS gradients; pull the stops out so the same palette can
@@ -219,7 +211,7 @@ function paintFace(value, skin, family, emphasis) {
     const pad = s * 0.26;
     const cell = (s - pad * 2) / 2;
     const radius = s * 0.085;
-    (PIP_LAYOUT[value] || []).forEach(([row, col]) => {
+    pipCells(value).forEach(([row, col]) => {
       const cx = pad + col * cell;
       const cy = pad + row * cell;
       ctx.beginPath();

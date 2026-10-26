@@ -7,7 +7,8 @@ import {
 } from '../compat/content.ts';
 import * as Engine from '../core/engine.ts';
 import { SCORING_ROWS, analyzeSelection } from '../core/scoring.ts';
-import { dieMotifSvg, dieSkinStyle } from './dice-skins.js';
+import { dieMotifSvg, dieSkinStyle } from '../render/dice-skins.ts';
+import { pipIndexes } from '../render/pip-layout.ts';
 import { motion } from './motion.js';
 import { sound } from '../platform/sound.ts';
 import {
@@ -44,11 +45,6 @@ const clamp = (n, min, max) => Math.max(min, Math.min(max, n));
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const setCss = (el, name, value) => el?.style?.setProperty(name, value);
 const rarityOf = (item) => RARITIES[item?.rarity] || RARITIES.common;
-
-const PIP_MAP = {
-  1: [4], 2: [0, 8], 3: [0, 4, 8], 4: [0, 2, 6, 8],
-  5: [0, 2, 4, 6, 8], 6: [0, 2, 3, 5, 6, 8],
-};
 
 const codexDice = () => DICE.filter((die) => !die.isStandard);
 
@@ -827,7 +823,7 @@ function peakFace(spec) {
 function pipsHtml(value) {
   // Explicit grid cells matter: CSS Grid auto-placement would collapse a
   // diagonal 3 into three pips in the first row. Place each pip by row/column.
-  const positions = PIP_MAP[value] || [];
+  const positions = pipIndexes(value);
   return `<div class="pip-grid">${Array.from({ length: 9 }, (_, i) => positions.includes(i)
     ? `<span class="pip" style="grid-row:${Math.floor(i / 3) + 1};grid-column:${(i % 3) + 1}"></span>` : '').join('')}</div>`;
 }
@@ -2565,7 +2561,7 @@ function artDieHtml(spec) {
   const probs = spec.probs || STANDARD_DIE.probs;
   const bestFace = probs.indexOf(Math.max(...probs)) + 1;
   const weighted = favoredFaces(spec).length > 0;
-  const positions = PIP_MAP[bestFace] || [4];
+  const positions = pipIndexes(bestFace);
   const classes = ['art-die', `rarity-${rarity}`, demon ? 'is-demon' : '', weighted ? 'is-weighted' : '']
     .filter(Boolean).join(' ');
   return `<div class="${classes}" role="img" aria-label="${h(spec.name)}，${bestFace} 点" style="${dieSkinStyle(spec)}">
@@ -2937,7 +2933,7 @@ function starSequenceValid(seq) {
    Tutorial / first-run briefing
    ═══════════════════════════════════════════════════════════════════ */
 function tutorialDieHtml(value) {
-  const positions = PIP_MAP[value] || [];
+  const positions = pipIndexes(value);
   return `<span class="tut-die" role="img" aria-label="${value} 点">${Array.from({ length: 9 }, (_, i) => positions.includes(i)
     ? `<i class="tut-pip" style="grid-row:${Math.floor(i / 3) + 1};grid-column:${(i % 3) + 1}"></i>` : '').join('')}</span>`;
 }
