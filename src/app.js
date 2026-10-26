@@ -216,12 +216,20 @@ document.addEventListener('DOMContentLoaded', () => {
   sound.setEnabled(app.soundEnabled);
   updateSoundButtons();
   bindViewportHeight();
+  mountCupZone();
   bindGlobalEvents();
   bindCupDrag();
   bindTooltip();
   bindSceneParallax();
   renderStartDecor();
 });
+
+function mountCupZone() {
+  const cupZone = $('#cup-zone');
+  const game = $('#game-screen');
+  if (!cupZone || !game) return;
+  if (cupZone.parentElement !== game) game.append(cupZone);
+}
 
 function bindViewportHeight() {
   const root = document.documentElement;
@@ -654,9 +662,12 @@ function renderGame() {
   renderDiceTray();
   renderComboPreview();
   renderActionDock();
-  renderAutoButton();
   renderDangerStrip();
   renderOpponentPlate();
+  const canManuallyThrow = !app.busy && !app.introOpen
+    && (run.phase === 'ready' || run.phase === 'hot' || run.phase === 'reroll-pending'
+      || (run.phase === 'dead' && run.rerolls > 0));
+  $('#cup')?.classList.toggle('is-breathing', canManuallyThrow);
 }
 
 function renderTopbar() {
@@ -792,7 +803,7 @@ function renderRollHint() {
   const run = app.run;
   const hint = $('#roll-hint');
   if (run.phase === 'ready') {
-    hint.innerHTML = '<strong>首掷免费。</strong>按住左侧骰桶摇动，2 秒倒计时后落骰；仪式桶沿桌面轨迹描画。也可点击右侧自动摇骰。';
+    hint.innerHTML = '<strong>首掷免费。</strong>按住骰桶摇动，2 秒倒计时后落骰；仪式桶沿桌面轨迹描画。也可点下方自动投掷。';
   } else if (run.phase === 'hot') {
     hint.innerHTML = '<strong>全骰！</strong>六颗骰子全部归位，可免费重投全部骰子。';
   } else if (run.phase === 'dead') {
@@ -1004,7 +1015,7 @@ function renderDiceTray() {
         : run.phase === 'selecting'
           ? '选择骰子'
           : run.phase === 'reroll-pending'
-            ? '选择重投方式'
+            ? '准备续投'
             : run.phase === 'cleared'
               ? '目标达成'
               : '本关结束';
@@ -1037,7 +1048,7 @@ function renderComboPreview() {
     return;
   }
   if (run.phase === 'reroll-pending') {
-    preview.innerHTML = '<span class="combo-label">准备重投</span><span class="combo-total">选择自己摇桶，或让系统重投 <em>等待操作</em></span>';
+    preview.innerHTML = '<span class="combo-label">准备续投</span><span class="combo-total">拖动骰桶自己摇，或自动投掷 <em>等待操作</em></span>';
     return;
   }
   if (run.phase === 'cleared') {
@@ -1121,16 +1132,12 @@ function renderActionDock() {
     const remaining = run.dice.filter((die) => !die.scored).length;
     dock.innerHTML = `
       <div class="action-dock-inner">
-        <div class="action-hint">已计分 · ${all ? '全部骰子已归位' : `剩余 ${remaining} 颗骰子待重投`} · 自己摇桶或系统重投</div>
+        <div class="action-hint">已计分 · ${all ? '全部骰子已归位' : `剩余 ${remaining} 颗骰子待重投`} · 拖动骰桶自己摇，或自动投掷</div>
         <div class="action-buttons">
-          <button class="score-action primary" data-action="cue-cup">
-            <span class="action-icon"><svg><use href="#i-cup"></use></svg></span>
-            <span class="action-copy"><b>自己摇骰桶</b><em>按住拖动 · 2 秒倒计时 · 仪式桶沿轨迹画</em></span>
-          </button>
-          <button class="score-action" data-action="auto-roll">
-            <span class="action-icon"><svg><use href="#i-die"></use></svg></span>
-            <span class="action-copy"><b>${all ? '系统全骰重投' : '系统重投'}</b><em>命令骰桶自己摇 · 消耗 1 次（剩 ${run.rerolls}）</em></span>
-            <span class="action-points">−1<small>重投</small></span>
+          <button class="score-action primary single-action" data-action="auto-roll">
+            <span class="action-icon"><svg><use href="#i-spark"></use></svg></span>
+            <span class="action-copy"><b>自动投掷</b><em>系统摇骰，直接投出${all ? '全部六颗' : '剩余'}骰子</em></span>
+            <span class="action-points">→</span>
           </button>
         </div>
       </div>`;
@@ -1139,11 +1146,11 @@ function renderActionDock() {
   if (phase === 'ready') {
     dock.innerHTML = `
       <div class="action-dock-inner">
-        <div class="action-hint">首掷免费 · 按住骰桶摇动，2 秒后落骰</div>
+        <div class="action-hint">首掷免费 · 按住骰桶摇动，或直接自动投掷</div>
         <div class="action-buttons">
           <button class="score-action primary single-action" data-action="manual-roll">
-            <span class="action-icon"><svg><use href="#i-cup"></use></svg></span>
-            <span class="action-copy"><b>摇动骰桶</b><em>六颗骰子已经就位</em></span>
+            <span class="action-icon"><svg><use href="#i-spark"></use></svg></span>
+            <span class="action-copy"><b>自动投掷</b><em>六颗骰子已经就位 · 也可以拖动骰桶自己摇</em></span>
           </button>
         </div>
       </div>`;
@@ -1218,28 +1225,6 @@ function renderActionDock() {
         </div>
       </div>`;
   }
-}
-
-function renderAutoButton() {
-  const run = app.run;
-  const button = $('#auto-roll');
-  if (!run) return;
-  const can = !app.busy && (run.phase === 'ready' || run.phase === 'hot' || run.phase === 'reroll-pending'
-    || (run.phase === 'dead' && run.rerolls > 0));
-  button.disabled = !can;
-  let label = '自动摇骰';
-  let sub = '点击或按空格';
-  if (run.phase === 'hot') { label = '全骰重投'; sub = '本次免费'; }
-  else if (run.phase === 'cleared') { label = '目标达成'; sub = '点击下一关'; }
-  else if (run.phase === 'reroll-pending') {
-    label = run.flags.rerollAll ? '系统全骰重投' : '系统重投';
-    sub = `消耗 1 次 · 剩 ${run.rerolls}`;
-  } else if (run.phase === 'dead') { label = '自动重投'; sub = `消耗 1 次 · 剩 ${run.rerolls}`; }
-  else if (run.phase === 'ready') { sub = '首掷免费 · 空格'; }
-  else if (run.phase === 'selecting') { sub = '先选择骰子'; }
-  $('b', button).textContent = label;
-  $('em', button).textContent = sub;
-  button.classList.toggle('is-pulsing', run.phase === 'ready' && !app.busy);
 }
 
 function renderDangerStrip() {
@@ -1723,8 +1708,8 @@ function handleScore(action) {
     } else if (run.phase === 'lost') {
       showDefeat();
     } else if (result.reroll) {
-      // Do not auto-roll here. The score has been applied, but the player
-      // chooses the next throw: cup by hand or the right-side auto button.
+      // The score is banked; the player can drag the cup manually or use the
+      // single "自动投掷" button in the dock.
       pulseCup();
     } else if (run.phase === 'dead') {
       speakRandomTaunt(0.35);
@@ -1828,7 +1813,7 @@ function forfeitRun() {
 }
 
 /* ═══════════════════════════════════════════════════════════════════
-   Cup drag — horizontal only, exactly as the brief asks
+   Cup drag — the whole interface is the play surface
    ═══════════════════════════════════════════════════════════════════ */
 function bindCupDrag() {
   const cup = $('#cup');
@@ -1839,12 +1824,13 @@ function bindCupDrag() {
   let startY = 0;
   let dx = 0;
   let dy = 0;
-  let allowVertical = false;
   let traceRadius = 86;
   let traceCenter = { x: 0, y: 0 };
   let cupCenter = { x: 0, y: 0 };
   let dragMin = -138;
   let dragMax = 138;
+  let dragMinY = -138;
+  let dragMaxY = 138;
 
   const canDrag = () => app.run && !app.busy && !app.introOpen
     && (app.run.phase === 'ready' || app.run.phase === 'hot' || app.run.phase === 'reroll-pending'
@@ -1861,27 +1847,31 @@ function bindCupDrag() {
     startY = event.clientY;
     dx = 0;
     dy = 0;
-    const scene = $('#scene');
     const cupRect = cup.getBoundingClientRect();
-    const sceneRect = scene?.getBoundingClientRect();
-    const gestureInfo = cupGestureInfo(app.run);
-    allowVertical = Boolean(gestureInfo);
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+    const margin = 8;
     cupCenter = { x: cupRect.left + cupRect.width / 2, y: cupRect.top + cupRect.height / 2 };
     traceCenter = { ...cupCenter };
-    traceRadius = sceneRect ? clamp(sceneRect.width * .1, 64, 108) : 86;
-    if (sceneRect) {
-      const margin = Math.max(12, sceneRect.width * .018);
-      dragMin = sceneRect.left + margin - cupRect.left;
-      dragMax = sceneRect.right - margin - cupRect.right;
-      if (dragMax < dragMin) { dragMin = 0; dragMax = 0; }
-    }
-    // Keep the whole ritual path inside the cup's reachable strip. The cup
-    // starts near the left edge; centering a star on it would make the left
-    // point unreachable, so shift the target toward the table center.
-    const minCenter = traceCenter.x + dragMin;
-    const maxCenter = traceCenter.x + dragMax;
-    traceRadius = Math.min(traceRadius, Math.max(36, (maxCenter - minCenter) / 2));
-    traceCenter.x = clamp(traceCenter.x, minCenter + traceRadius, maxCenter - traceRadius);
+    traceRadius = clamp(viewportWidth * .1, 64, 108);
+    dragMin = margin - cupRect.left;
+    dragMax = viewportWidth - margin - cupRect.right;
+    dragMinY = margin - cupRect.top;
+    dragMaxY = viewportHeight - margin - cupRect.bottom;
+    if (dragMax < dragMin) { dragMin = 0; dragMax = 0; }
+    if (dragMaxY < dragMinY) { dragMinY = 0; dragMaxY = 0; }
+    // Keep the whole ritual path inside the reachable viewport strip.
+    const minCenterX = cupCenter.x + dragMin;
+    const maxCenterX = cupCenter.x + dragMax;
+    const minCenterY = cupCenter.y + dragMinY;
+    const maxCenterY = cupCenter.y + dragMaxY;
+    traceRadius = Math.min(
+      traceRadius,
+      Math.max(36, (maxCenterX - minCenterX) / 2),
+      Math.max(36, (maxCenterY - minCenterY) / 2),
+    );
+    traceCenter.x = clamp(traceCenter.x, minCenterX + traceRadius, maxCenterX - traceRadius);
+    traceCenter.y = clamp(traceCenter.y, minCenterY + traceRadius, maxCenterY - traceRadius);
     try { cup.setPointerCapture(pointerId); } catch { /* pointerup fallback below */ }
     cup.classList.add('is-dragging');
   });
@@ -1889,7 +1879,7 @@ function bindCupDrag() {
   const onCupMove = (event) => {
     if (!dragging || event.pointerId !== pointerId) return;
     dx = clamp(event.clientX - startX, dragMin, dragMax);
-    dy = allowVertical ? clamp(event.clientY - startY, -traceRadius * 1.65, traceRadius * 1.65) : 0;
+    dy = clamp(event.clientY - startY, dragMinY, dragMaxY);
     const tilt = clamp(dx * .02, -9, 9);
     cup.style.transform = `translate(${dx}px, ${dy}px) rotate(${tilt}deg)`;
     if (Math.abs(dx) > 8 || Math.abs(dy) > 8) {
@@ -2951,7 +2941,7 @@ function tutorialHtml() {
         <div class="tut-bosses">${bosses}</div>
         <div class="tut-callout">
           <b>操作速记</b>
-          <p>按住骰桶拖动会开始 2 秒倒计时，倒计时结束自动落骰；仪式桶会显示桌面轨迹，需要沿着轨迹描画，偏差过大会失败。也可以点击右侧自动摇骰；空格自动摇；数字键 1 / 2 是「计分并继续」「计分并重投」。</p>
+          <p>按住骰桶拖动会开始 2 秒倒计时，倒计时结束自动落骰；PC 和手机都能把骰桶拖遍整个界面。仪式桶会显示桌面轨迹，需要沿着轨迹描画，偏差过大会失败。也可以点下方「自动投掷」；空格自动摇；数字键 1 / 2 是「计分并继续」「计分并重投」。</p>
         </div>
       </section>
 
@@ -3025,7 +3015,7 @@ function openRules() {
           <table class="scoring-table">${rows}</table>
           <div class="rules-note">一次计分必须把所选骰子全部纳入合法组合。1 和 5 可以单颗计分；其他点数至少三颗才能计分。所有组合取最高合法分值。</div>
           <h3 style="margin-top:18px">一掷的流程</h3>
-          <p>1. 按住骰桶摇动，2 秒倒计时后落骰；或点击自动摇骰。<br>2. 点击选择要计分的骰子。<br>3. 选择「计分并继续」，计分后把选中骰放一边、重投剩余骰子；或「计分并重投」，计分后把全部六颗骰子重新投。两者各消耗 1 次重投。<br>4. 六颗骰子全部计分会触发「全骰」，免费重投全部骰子。<br>5. 没有重投次数时，按钮变为「计分并结算」，得分后本关结束。</p>
+          <p>1. 按住骰桶摇动，2 秒倒计时后落骰；或点击下方「自动投掷」。<br>2. 点击选择要计分的骰子。<br>3. 选择「计分并继续」，计分后把选中骰放一边、重投剩余骰子；或「计分并重投」，计分后把全部六颗骰子重新投。两者各消耗 1 次重投。<br>4. 六颗骰子全部计分会触发「全骰」，免费重投全部骰子。<br>5. 没有重投次数时，按钮变为「计分并结算」，得分后本关结束。</p>
           <div class="rules-note">开局有 5 次重投。每击败一位庄家，你会夺下他的徽记：后续关卡重投上限 +1。门房还会送你一枚每关都能使用的幸运币。</div>
         </div>
         <div class="rules-section">
