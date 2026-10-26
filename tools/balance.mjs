@@ -3,17 +3,19 @@ import {
   createRun, rollDice, applyScore, getScorePreview, availableDice,
   initLevel, createShop, buyDie, buyBarrel, buyItem, leaveShop,
   getDiceCapacity, useItem, canUseItem, getBarrel, shopPrice, advanceLevel,
+  isBossDieBlocked,
 } from '../src/engine.js';
 import { bestSelection } from '../src/scoring.js';
 import {
-  LEVELS, DICE_BY_ID, ITEM_BY_ID, BARREL_BY_ID, STANDARD_DIE,
+  LEVELS, DICE_BY_ID, ITEM_BY_ID, BARREL_BY_ID, STANDARD_DIE, DICE_SETS,
 } from '../src/data.js';
+import { getDieSpec } from '../src/engine.js';
 
 const RUNS = Number(process.argv[2] || 500);
 const RARITY = { common: 0, rare: 1, epic: 2, legendary: 3 };
 const ITEM_PRIORITY = [
   'dice_bag', 'charm', 'hunter_mark', 'courage', 'hourglass',
-  'lucky_coin', 'blood_contract', 'smoke', 'gold_cuff', 'glove',
+  'lucky_coin', 'blood_contract', 'smoke', 'gold_cuff', 'glove', 'cracked_pouch',
 ];
 
 function dieRank(dieId) {
@@ -59,7 +61,7 @@ function playLevel(run) {
       continue;
     }
     if (run.phase === 'selecting') {
-      const best = bestSelection(availableDice(run));
+      const best = bestSelection(availableDice(run).filter((die) => !isBossDieBlocked(run, die)));
       if (!best) { run.phase = 'dead'; continue; }
       run.selected = best.dice.map((d) => d.uid);
       let preview = getScorePreview(run);
@@ -119,7 +121,15 @@ function shop(run) {
     const idx = run.shop.barrel.indexOf(barrelOffer);
     const barrel = BARREL_BY_ID[barrelOffer.id];
     const current = getBarrel(run);
-    const scoreBarrel = (b) => (b.type === 'gesture' ? 2 : b.type === 'probability' ? 1 : 0);
+    const scoreBarrel = (b) => {
+      if (b.type === 'gesture') return 2;
+      if (b.type === 'setScore') {
+        return DICE_SETS[b.setId]
+          ? 1.5 + Math.min(1, run.bag.filter((entry) => getDieSpec(entry.dieId).setId === b.setId).length * 0.25)
+          : 1;
+      }
+      return b.type === 'probability' ? 1 : 0;
+    };
     if (run.coins >= shopPrice(run, barrel.price) && scoreBarrel(barrel) >= scoreBarrel(current)) {
       buyBarrel(run, idx);
     }

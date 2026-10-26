@@ -5,6 +5,7 @@ import {
 } from './data.js';
 import * as Engine from './engine.js';
 import { SCORING_ROWS, analyzeSelection } from './scoring.js';
+import { dieMotifSvg, dieSkinStyle } from './dice-skins.js';
 
 /* ═══════════════════════════════════════════════════════════════════
    Tiny helpers
@@ -527,7 +528,8 @@ function setupLevelScene(force = false) {
   if (isBoss) {
     $('#boss-effect-name').textContent = opponent.effectName;
     $('#boss-effect-title').textContent = opponent.effectName;
-    $('#boss-effect-desc').textContent = opponent.effectDesc;
+    const status = Engine.bossStatusText(app.run);
+    $('#boss-effect-desc').textContent = `${opponent.effectDesc}${status ? ` · ${status}` : ''}`;
   }
   const cup = Engine.getBarrel(app.run);
   $('#cup-image').src = `assets/cups/${cup.art}.svg`;
@@ -726,7 +728,8 @@ function renderOpponentPlate() {
   if (isBoss) {
     $('#boss-effect-name').textContent = opponent.effectName;
     $('#boss-effect-title').textContent = opponent.effectName;
-    $('#boss-effect-desc').textContent = opponent.effectDesc;
+    const status = Engine.bossStatusText(run);
+    $('#boss-effect-desc').textContent = `${opponent.effectDesc}${status ? ` · ${status}` : ''}`;
   }
 }
 
@@ -876,6 +879,31 @@ function dieMark(spec) {
 
 const FACE_ORDER = ['front', 'back', 'right', 'left', 'top', 'bottom'];
 
+/*
+ * Weighted-face carving. A face is "favoured" when its literal weight sits
+ * clearly above a fair 1/6 (~.167); those faces get an engraved ornament so
+ * the tilt is legible on the die itself, not only in the shop tooltip.
+ * A die may override the derived set with an explicit `favored` array.
+ */
+const FAVORED_MIN_WEIGHT = 0.2;
+
+function favoredFaces(spec) {
+  if (Array.isArray(spec?.favored)) return spec.favored;
+  const probs = spec?.probs || [];
+  if (!probs.length || spec?.id === 'standard') return [];
+  return probs.map((weight, index) => (weight >= FAVORED_MIN_WEIGHT ? index + 1 : 0)).filter(Boolean);
+}
+
+function peakFace(spec) {
+  const probs = spec?.probs || [];
+  if (!probs.length || spec?.id === 'standard') return 0;
+  return probs.indexOf(Math.max(...probs)) + 1;
+}
+
+/* Weighted faces no longer wear a shared ornament: each die carries its own
+   motif (see dice-skins.js) as a watermark on every face, and the weighted
+   faces light theirs up so the tilt is still readable at a glance. */
+
 function pipsHtml(value) {
   // Explicit grid cells matter: CSS Grid auto-placement would collapse a
   // diagonal 3 into three pips in the first row. Place each pip by row/column.
@@ -901,12 +929,22 @@ function faceValuesFor(value) {
   };
 }
 
-function dieFacesHtml(value, concealed = false) {
-  const values = faceValuesFor(value || 1);
-  return FACE_ORDER.map((face) => `
-    <div class="die-face face-${face}">
-      ${concealed ? '<span class="die-rune">✦</span>' : pipsHtml(values[face])}
-    </div>`).join('');
+function dieFacesHtml(value, spec = STANDARD_DIE, concealed = false, blank = false) {
+  const values = blank ? { front: 0, back: 0, top: 0, bottom: 0, right: 0, left: 0 } : faceValuesFor(value || 1);
+  const favored = favoredFaces(spec);
+  const peak = peakFace(spec);
+  return FACE_ORDER.map((face) => {
+    const faceValue = values[face];
+    const isFavored = !concealed && !blank && favored.includes(faceValue);
+    const isPeak = isFavored && faceValue === peak;
+    const classes = ['die-face', `face-${face}`, isFavored ? 'is-favored' : '', isPeak ? 'is-peak' : '', blank ? 'is-blank' : '']
+      .filter(Boolean).join(' ');
+    return `
+    <div class="${classes}" data-face="${face}">
+      <span class="die-sheen"></span>
+      ${concealed ? '<span class="die-rune">✦</span>' : blank ? '' : `${dieMotifSvg(spec)}${pipsHtml(faceValue)}`}
+    </div>`;
+  }).join('');
 }
 
 function renderDiceTray() {
@@ -919,22 +957,29 @@ function renderDiceTray() {
   tray.innerHTML = run.dice.map((die, index) => {
     const spec = dieSpecFor(die);
     const hidden = die.value == null;
+    const blank = Boolean(die.blank);
+    const blocked = !hidden && !blank && Engine.isBossDieBlocked(run, die);
     const selected = run.selected.includes(die.uid);
     const scored = die.scored;
     const classes = [
       'die', `rarity-${spec.rarity || 'common'}`,
       hidden ? 'is-hidden' : '', selected ? 'is-selected' : '',
       scored ? 'is-scored' : '', spec.demon ? 'is-demon' : '',
+      blank ? 'is-blank' : '', blocked ? 'is-boss-blocked' : '',
       app.rolling && !hidden && !scored ? 'is-rolling' : '',
     ].filter(Boolean).join(' ');
-    const disabled = scored || app.busy || run.phase !== 'selecting';
-    const label = hidden ? '未掷出的骰子' : `${spec.name}，${die.value} 点`;
+    const disabled = scored || blank || blocked || app.busy || run.phase !== 'selecting';
+    const label = hidden ? '未掷出的骰子' : blank ? '白骰，无法计分' : blocked ? '六点被庄家禁用' : `${spec.name}，${die.value} 点`;
     return `
       <button class="${classes}" data-die-uid="${h(die.uid)}" data-die-tip="${h(spec.id)}"
         ${disabled ? 'disabled' : ''} aria-pressed="${selected}" aria-label="${h(label)}"
-        style="animation-delay:${app.rolling ? index * 45 : 0}ms;">
-        <span class="die-roller"><span class="die-cube">${dieFacesHtml(die.value, hidden)}</span></span>
-        ${hidden ? '<span class="die-mark" style="left:50%;top:50%;transform:translate(-50%,-50%);font-size:12px;color:rgba(231,190,104,.7)">✦</span>' : `
+        style="animation-delay:${app.rolling ? index * 45 : 0}ms;${dieSkinStyle(spec)}">
+        <span class="die-roller"><span class="die-cube">${dieFacesHtml(die.value, spec, hidden, blank)}</span></span>
+        ${hidden ? '<span class="die-mark" style="left:50%;top:50%;transform:translate(-50%,-50%);font-size:12px;color:rgba(231,190,104,.7)">✦</span>' : blank ? `
+          <span class="die-mark" style="left:50%;top:50%;transform:translate(-50%,-50%);font-size:11px;color:#6f6253">白</span>
+        ` : blocked ? `
+          <span class="die-mark" style="left:50%;top:50%;transform:translate(-50%,-50%);font-size:12px;color:#c47768">禁</span>
+        ` : `
           <span class="die-mark">${h(dieMark(spec))}</span>
           <span class="die-check">${scored ? '◆' : '✓'}</span>
         `}
@@ -1007,7 +1052,15 @@ function renderComboPreview() {
     preview.innerHTML = `<span class="combo-warning">${h(result.error)}</span>`;
     return;
   }
-  const combos = result.analysis.combos.map((combo) => `<span class="combo-pill">${h(combo.label)}<b>+${num(combo.points)}</b></span>`).join('');
+  const boss = Engine.activeBoss(run);
+  const shownCombos = boss?.effectKey === 'minTripleScore'
+    ? result.analysis.combos.filter((combo) => combo.type === 'straight' || (combo.type === 'nkind' && combo.count >= 3))
+    : result.analysis.combos;
+  if (!result.total) {
+    preview.innerHTML = `<span class="combo-warning">${h(result.bossNote || '本手不计分')}</span><span class="combo-total">+0<em>不计分</em></span>`;
+    return;
+  }
+  const combos = shownCombos.map((combo) => `<span class="combo-pill">${h(combo.label)}<b>+${num(combo.points)}</b></span>`).join('');
   const breakdown = result.breakdown;
   const extras = [];
   if (breakdown.flatAdd) extras.push(`加算 +${num(breakdown.flatAdd)}`);
@@ -1242,7 +1295,8 @@ async function gatherDiceToCup(run) {
   if (!cupImage) return;
   const cupRect = cupImage.getBoundingClientRect();
   const mouthX = cupRect.left + cupRect.width / 2;
-  const mouthY = cupRect.top + cupRect.height * .15;
+  // The cup parks mouth-down, so dice are swept under the rim at its base.
+  const mouthY = cupRect.top + cupRect.height * .88;
   const elements = cupDiceToGather(run)
     .map((die) => dieElement(die.uid))
     .filter(Boolean);
@@ -1254,8 +1308,8 @@ async function gatherDiceToCup(run) {
     element.style.pointerEvents = 'none';
     const animation = element.animate([
       { transform: 'translate(0, 0) scale(1) rotate(0deg)', opacity: 1 },
-      { transform: `translate(${dx * .55}px, ${dy * .35 - 24}px) scale(.72) rotate(110deg)`, opacity: 1, offset: .55 },
-      { transform: `translate(${dx}px, ${dy}px) scale(.12) rotate(240deg)`, opacity: 0 },
+      { transform: `translate(${dx * .55}px, ${dy * .4 - 18}px) scale(.66) rotate(90deg)`, opacity: .9, offset: .5 },
+      { transform: `translate(${dx}px, ${dy}px) scale(.14) rotate(150deg)`, opacity: 0 },
     ], {
       duration: 340,
       delay: index * 18,
@@ -1289,7 +1343,9 @@ async function invertCup() {
   stopCupShake();
   cup.classList.add('is-ritual', 'is-inverted');
   app.cupInverted = true;
-  vessel.style.transform = 'rotate(180deg) translateY(-7px)';
+  // The cup already rests mouth-down; lifting it clear of the table is the
+  // "ready to pour" pose, so no flip is needed.
+  vessel.style.transform = 'translateY(-15px) rotate(-2.4deg)';
   await sleep(prefersReducedMotion() ? 30 : 300);
 }
 
@@ -1299,7 +1355,7 @@ function rightCup() {
   if (!cup || !vessel) return;
   app.cupInverted = false;
   cup.classList.remove('is-inverted', 'is-shaking');
-  vessel.style.transform = 'rotate(0deg) translateY(0px)';
+  vessel.style.transform = 'translateY(0px) rotate(0deg)';
   setTimeout(() => cup.classList.remove('is-ritual'), 380);
 }
 
@@ -1780,14 +1836,22 @@ function setTooltip(setId) {
   `;
 }
 
+function barrelTypeLabel(barrel) {
+  if (barrel.type === 'gesture') return '仪式';
+  if (barrel.type === 'probability') return '概率';
+  if (barrel.type === 'setScore') return '骰型加成';
+  return '普通';
+}
+
 function barrelTooltip(barrelId) {
   const barrel = BARREL_BY_ID[barrelId];
   if (!barrel) return '';
   return `
     <h5>${h(barrel.name)}</h5>
-    <div class="tip-sub">${h(rarityOf(barrel).name)} · ${barrel.type === 'gesture' ? '仪式骰桶' : barrel.type === 'probability' ? '概率骰桶' : '普通骰桶'}</div>
+    <div class="tip-sub">${h(rarityOf(barrel).name)} · ${barrelTypeLabel(barrel)}骰桶</div>
     <p>${h(barrel.desc)}</p>
     ${barrel.type === 'probability' ? `<p class="tip-bonus">偏向：${h(barrel.short)}</p>` : ''}
+    ${barrel.type === 'setScore' ? `<p class="tip-bonus">指定骰型：${h(barrel.short)}</p>` : ''}
     ${barrel.gesture ? '<p class="tip-bonus">完成仪式后，本次投掷获得加成。</p>' : ''}
   `;
 }
@@ -1986,7 +2050,8 @@ function renderShopScreen() {
         <span class="loadout-label">当前骰袋</span>
         <div class="loadout-dice">${run.bag.map((entry) => {
           const spec = Engine.getDieSpec(entry.dieId);
-          return `<span class="mini-die rarity-${spec.rarity} ${spec.demon ? 'is-demon' : ''}" data-pips="${spec.demon ? '魔' : (spec.setId ? spec.name[0] : '骰')}" title="${h(spec.name)}"></span>`;
+          const weighted = favoredFaces(spec).length > 0;
+          return `<span class="mini-die rarity-${spec.rarity} ${spec.demon ? 'is-demon' : ''} ${weighted ? 'is-weighted' : ''}" style="${dieSkinStyle(spec)}" data-pips="${spec.demon ? '魔' : (spec.setId ? spec.name[0] : '骰')}" title="${h(spec.name)}"></span>`;
         }).join('')}</div>
         <span class="loadout-label" style="margin-left:8px">骰桶</span>
         <div class="barrel-thumb" style="width:25px;height:32px"><img src="assets/cups/${Engine.getBarrel(run).art}.svg" alt=""></div>
@@ -2054,7 +2119,7 @@ function renderBarrelShopCard(entry, index) {
   const affordable = app.run.coins >= price;
   return `
     <article class="shop-card ${entry.sold ? 'is-sold' : ''}" style="--rarity:${rarity.color};--glow:${rarity.glow};min-height:306px" data-barrel-tip="${h(barrel.id)}">
-      <div class="card-topline"><span class="rarity-tag">${rarity.name}</span><span class="set-tag">${barrel.type === 'gesture' ? '仪式' : barrel.type === 'probability' ? '概率' : '普通'}</span></div>
+      <div class="card-topline"><span class="rarity-tag">${rarity.name}</span><span class="set-tag">${barrelTypeLabel(barrel)}</span></div>
       <div class="card-art"><img class="art-cup" src="assets/cups/${barrel.art}.svg" alt="${h(barrel.name)}"></div>
       <h4>${h(barrel.name)}</h4>
       <div class="card-sub">${h(barrel.short)}</div>
@@ -2096,20 +2161,18 @@ function emptyShopCard() {
 
 function artDieHtml(spec) {
   const demon = spec.demon;
+  const rarity = spec.rarity || 'common';
   const probs = spec.probs || STANDARD_DIE.probs;
   const bestFace = probs.indexOf(Math.max(...probs)) + 1;
+  const weighted = favoredFaces(spec).length > 0;
   const positions = PIP_MAP[bestFace] || [4];
-  return `<div class="art-die ${demon ? 'is-demon' : ''}" style="background:${demoDieGradient(spec)};border-color:${demon ? 'rgba(212,94,79,.72)' : 'rgba(255,255,255,.4)'}">
-    <div class="mini-pips">${Array.from({ length: 9 }, (_, i) => positions.includes(i) ? `<span class="mini-pip" style="grid-row:${Math.floor(i / 3) + 1};grid-column:${(i % 3) + 1};${demon ? 'background:#b95c50' : ''}"></span>` : '').join('')}</div>
+  const classes = ['art-die', `rarity-${rarity}`, demon ? 'is-demon' : '', weighted ? 'is-weighted' : '']
+    .filter(Boolean).join(' ');
+  return `<div class="${classes}" role="img" aria-label="${h(spec.name)}，${bestFace} 点" style="${dieSkinStyle(spec)}">
+    <span class="die-sheen"></span>
+    ${dieMotifSvg(spec)}
+    <div class="mini-pips">${Array.from({ length: 9 }, (_, i) => positions.includes(i) ? `<span class="mini-pip" style="grid-row:${Math.floor(i / 3) + 1};grid-column:${(i % 3) + 1}"></span>` : '').join('')}</div>
   </div>`;
-}
-
-function demoDieGradient(spec) {
-  if (spec.demon) return 'linear-gradient(145deg,#5b2323,#1b0c0d)';
-  if (spec.rarity === 'legendary') return 'linear-gradient(145deg,#f7e4ad,#a9792e)';
-  if (spec.rarity === 'epic') return 'linear-gradient(145deg,#e4d2eb,#83649d)';
-  if (spec.rarity === 'rare') return 'linear-gradient(145deg,#d6e7ed,#6d95a6)';
-  return 'linear-gradient(145deg,#ead7b3,#b99b6f)';
 }
 
 function probabilityBars(probs, rarity) {
@@ -2171,7 +2234,7 @@ function showReplaceModal() {
     const rarity = rarityOf(spec);
     return `
       <button class="replace-option" data-action="confirm-replace" data-bag-uid="${h(entry.uid)}">
-        <div class="art-die" style="background:${demoDieGradient(spec)};width:45px;height:45px;margin:5px auto 7px;border-radius:8px"></div>
+        ${artDieHtml(spec)}
         <b>${h(spec.name)}</b><span>${rarity.name}${spec.setId ? ` · ${DICE_SETS[spec.setId].name}` : ''}</span>
       </button>`;
   }).join('');
@@ -2517,7 +2580,7 @@ function tutorialHtml() {
         <div class="tut-section-head"><span>01</span><div><p>THE SHAPE OF A RUN</p><h3>先看目标：一关一关把分数堆上去</h3></div></div>
         <p class="tut-lede">你坐在长桌这一侧，用六颗骰子去够每关的目标分。达到目标后不会自动结束，可以继续加注；准备好了，再亲自点击「下一关」。</p>
         <div class="tut-cards three">
-          <div class="tut-card"><b>15 关 · 5 位庄家</b><p>每 3 关遇到一位庄家。庄家有自己的桌规，击败他会拿到永久重投上限。</p></div>
+          <div class="tut-card"><b>15 关 · 7 位庄家</b><p>第 3、5、7…15 关各有一位庄家。庄家有自己的桌规，击败他会拿到永久重投上限。</p></div>
           <div class="tut-card"><b>6 颗骰子 · 5 次重投</b><p>每关第一掷免费；之后每掷一次消耗 1 次重投。骰子、骰桶、物品会改变你能走多远。</p></div>
           <div class="tut-card"><b>目标分</b><p>目标会随关卡提高。分数在左上角：大字是“已得”，本轮挂账单独显示。</p></div>
         </div>
@@ -2611,11 +2674,11 @@ function tutorialHtml() {
         <div class="tut-cards">
           <div class="tut-card"><b>骰桶 · 6 只</b><p>初始橡木桶之外，3 只概率桶偏向某些点数，2 只仪式桶需要画阵。五芒星要依次穿过五个星点；旋涡要顺时针画满约 288°。拖动骰桶的横向范围覆盖整张桌面。</p></div>
           <div class="tut-card"><b>骰子 · 20 枚</b><p>2 普通、10 稀有、5 史诗、3 传说。每枚骰子有自己的六面概率与套组；悬停可查看真实概率。同套组 2 / 4 件会触发套组奖励。</p></div>
-          <div class="tut-card"><b>物品 · 10 件</b><p>8 主动、2 被动。主动物品每关恢复一次；被动物品永久生效。幸运币开局自带，每关可用一次，立即 +150 分。</p></div>
+          <div class="tut-card"><b>物品 · 11 件</b><p>8 主动、3 被动。主动物品每关恢复一次；被动物品永久生效。丰饶骰袋 +1 骰、裂痕骰袋 -1 骰但计分 +25%，这两件整局各只能获取一次。幸运币开局自带，每关可用一次，立即 +150 分。</p></div>
           <div class="tut-card"><b>市集</b><p>每关之后进入：骰子 2 件、骰桶 1 件、物品 3 件。每次刷新都消耗银币，购买前先看构筑。</p></div>
-          <div class="tut-card"><b>赌桌 · 5 张</b><p>木头、青石、黑铁、黄金、钻石。每三关换一个章节和桌规，同一个对手会从打手换成庄家。</p></div>
+          <div class="tut-card"><b>赌桌 · 5 张</b><p>木头、青石、黑铁、黄金、钻石。每三关换一张桌子；从第 3 关起，庄家隔关落座。</p></div>
         </div>
-        <h4 class="tut-subtitle">五位庄家的桌规</h4>
+        <h4 class="tut-subtitle">七位庄家的桌规</h4>
         <div class="tut-bosses">${bosses}</div>
         <div class="tut-callout">
           <b>操作速记</b>
@@ -2697,7 +2760,7 @@ function openRules() {
           <div class="rules-note">开局有 5 次重投。每击败一位庄家，你会夺下他的徽记：后续关卡重投上限 +1。门房还会送你一枚每关都能使用的幸运币。</div>
         </div>
         <div class="rules-section">
-          <h3>五位庄家</h3>
+          <h3>七位庄家</h3>
           ${BOSSES.map((boss) => `
             <div class="rule-boss">
               <b>${h(boss.name)}<span>${h(boss.title)} · 第 ${boss.level} 关</span></b>
@@ -2728,7 +2791,7 @@ function openCompendium(tab = app.compendiumTab) {
   }
   app.compendiumTab = tab;
   const tabs = [
-    ['dice', '秘骰 20'], ['barrels', '骰桶 6'], ['items', '物品 10'], ['tables', '赌桌 5'], ['bosses', '庄家与小兵'],
+    ['dice', '秘骰 20'], ['barrels', '骰桶 8'], ['items', '物品 11'], ['tables', '赌桌 5'], ['bosses', '庄家与小兵'],
   ];
   openOverlay(`
     <div class="modal compendium-modal">
@@ -2782,12 +2845,12 @@ function compendiumBody(tab) {
       }).join('')}</div>`;
   }
   if (tab === 'barrels') {
-    return `<p class="compendium-intro">骰桶决定骰子怎样离手。三只偏向特定点数，两只要求你先在桌上画出一个仪式。默认的旧橡木桶不偏不倚。${compendiumProgress('barrels', BARRELS.length)}</p>
+    return `<p class="compendium-intro">骰桶决定骰子怎样离手。三只偏向特定点数，两只奖励指定骰型，两只要求你先在桌上画出一个仪式。默认的旧橡木桶不偏不倚。${compendiumProgress('barrels', BARRELS.length)}</p>
       <div class="compendium-grid">${BARRELS.map((barrel) => {
         if (!isDiscovered('barrels', barrel.id)) return compendiumLockedCard('这只骰桶');
         const rarity = rarityOf(barrel);
         return `<article class="compendium-card barrel-compendium" style="--rarity:${rarity.color};--glow:${rarity.glow}" data-barrel-tip="${h(barrel.id)}">
-          <div class="card-topline"><span class="rarity-tag">${rarity.name}</span><span class="set-tag">${barrel.type === 'gesture' ? '仪式' : barrel.type === 'probability' ? '概率' : '普通'}</span></div>
+          <div class="card-topline"><span class="rarity-tag">${rarity.name}</span><span class="set-tag">${barrelTypeLabel(barrel)}</span></div>
           <div class="comp-art"><img src="assets/cups/${barrel.art}.svg" alt="${h(barrel.name)}"></div>
           <h4>${h(barrel.name)}</h4>
           <div class="comp-sub">${h(barrel.short)}</div>
@@ -2796,7 +2859,7 @@ function compendiumBody(tab) {
       }).join('')}</div>`;
   }
   if (tab === 'items') {
-    return `<p class="compendium-intro">八件主动物品，两件被动物品。主动物品每关恢复一次，不占用骰子，但会占用你的判断力。${compendiumProgress('items', ITEMS.length)}</p>
+    return `<p class="compendium-intro">八件主动物品，三件被动物品。主动物品每关恢复一次，不占用骰子，但会占用你的判断力。丰饶骰袋与裂痕骰袋整局各只能获取一次。${compendiumProgress('items', ITEMS.length)}</p>
       <div class="compendium-grid">${ITEMS.map((item) => {
         if (!isDiscovered('items', item.id)) return compendiumLockedCard('这件物品');
         const rarity = rarityOf(item);
@@ -2824,8 +2887,8 @@ function compendiumBody(tab) {
       </div>`;
   }
   if (tab === 'bosses') {
-    return `<p class="compendium-intro">每一位庄家都有一句自己的规矩。前两关由小兵看守，第三关庄家亲自落座。击败他们，桌子就会换成下一种材质。</p>
-      <h3 style="font-family:var(--serif);font-weight:400;font-size:18px;color:#e4cd9f;margin:8px 0 12px;letter-spacing:.1em">五位庄家</h3>
+    return `<p class="compendium-intro">每一位庄家都有一句自己的规矩。第 3、5、7…15 关，庄家亲自落座；击败他们，桌子会随章节换成下一种材质。</p>
+      <h3 style="font-family:var(--serif);font-weight:400;font-size:18px;color:#e4cd9f;margin:8px 0 12px;letter-spacing:.1em">七位庄家</h3>
       <div class="compendium-grid bosses-grid">
         ${BOSSES.map((boss) => `<article class="compendium-card boss-compendium-card" style="--rarity:${boss.accent};--glow:${boss.accent}33">
           <img class="comp-portrait" src="assets/portraits/${boss.art}.svg" alt="${h(boss.name)}">

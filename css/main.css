@@ -259,11 +259,22 @@ svg { width: 1em; height: 1em; display: block; }
 .home-halo::before, .home-halo::after { content: ""; position: absolute; inset: 8%; border: 1px solid rgba(217,180,106,.08); border-radius: 50%; }
 .home-halo::after { inset: 23%; border-color: rgba(217,180,106,.1); }
 .home-cup { position: absolute; left: 5.5%; bottom: 8%; width: clamp(100px, 12vw, 205px); opacity: .72; filter: drop-shadow(0 20px 26px rgba(0,0,0,.7)) saturate(.8); transform: rotate(-7deg); }
-.home-dice { position: absolute; right: 6.5%; bottom: 12%; display: flex; gap: clamp(6px, .8vw, 13px); transform: rotate(-7deg); opacity: .7; }
-.home-die { width: clamp(34px, 3.6vw, 58px); aspect-ratio: 1; display: grid; grid-template-columns: repeat(3,1fr); grid-template-rows: repeat(3,1fr); gap: 2px; padding: 16%; border: 1px solid rgba(255,238,199,.48); border-radius: 16%; background: linear-gradient(145deg, #f6e8c9, #c8ad79 62%, #8e7145); box-shadow: inset 0 1px 0 rgba(255,255,255,.45), 0 14px 24px rgba(0,0,0,.42); }
+.home-dice { position: absolute; right: 6.5%; bottom: 12%; display: flex; gap: clamp(7px, .9vw, 15px); transform: rotate(-7deg); opacity: .82; }
+.home-die {
+  --die-face-bg: linear-gradient(145deg, #fff4da, #dfc394 52%, #a17c48);
+  --die-pip: #291d12;
+  --die-pip-rim: #8c7150;
+  position: relative; width: clamp(34px, 3.6vw, 58px); aspect-ratio: 1;
+  display: grid; grid-template-columns: repeat(3,1fr); grid-template-rows: repeat(3,1fr);
+  gap: 2px; padding: 17%; border: 1px solid rgba(255,244,216,.7); border-radius: 20%;
+  background: radial-gradient(circle at 20% 14%, rgba(255,255,255,.32), transparent 38%), var(--die-face-bg);
+  box-shadow: inset 1px 1px 0 rgba(255,255,255,.55), inset -3px -3px 6px rgba(66,40,16,.22), 0 2px 0 #785a34, 0 16px 26px rgba(0,0,0,.5);
+}
+.home-die::before { content: ""; position: absolute; inset: 8%; border: 1px solid rgba(67,42,18,.16); border-radius: 13%; box-shadow: 0 1px 0 rgba(255,255,255,.16); }
+.home-die::after { content: ""; position: absolute; inset: 1px; border-radius: inherit; background: linear-gradient(135deg, rgba(255,255,255,.15), transparent 34% 70%, rgba(49,28,10,.1)); pointer-events: none; }
 .home-die:nth-child(2) { transform: translateY(-12px) rotate(8deg); }
 .home-die:nth-child(3) { transform: translateY(4px) rotate(-4deg); }
-.home-die i { display: block; width: clamp(4px, .45vw, 7px); height: clamp(4px, .45vw, 7px); align-self: center; justify-self: center; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #6f5b3d, #221a10 70%); }
+.home-die i { position: relative; z-index: 1; display: block; width: clamp(4px, .45vw, 7px); height: clamp(4px, .45vw, 7px); align-self: center; justify-self: center; border-radius: 50%; background: radial-gradient(circle at 61% 66%, #100c08 0 34%, var(--die-pip) 60%, var(--die-pip-rim) 100%); box-shadow: inset 1px 1px 2px rgba(0,0,0,.75), 0 1px 0 rgba(255,246,220,.4); }
 .home-main { position: relative; z-index: 4; flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 24px 24px 10px; }
 .home-logo { display: flex; flex-direction: column; align-items: center; margin-bottom: clamp(26px, 4.6vh, 48px); text-align: center; }
 .home-crest { width: clamp(38px, 4vw, 52px); height: clamp(38px, 4vw, 52px); display: grid; place-items: center; margin-bottom: 15px; border: 1px solid rgba(217,180,106,.5); color: #f1cf8e; background: radial-gradient(circle at 40% 30%, rgba(236,196,112,.18), rgba(0,0,0,.5)); transform: rotate(45deg); box-shadow: 0 0 32px rgba(217,180,106,.13); }
@@ -663,18 +674,19 @@ svg { width: 1em; height: 1em; display: block; }
 
 /* table stuff */
 .table-line { position: absolute; left: 0; right: 0; top: 41.4%; height: 1px; background: linear-gradient(90deg, transparent, rgba(225,189,115,.1), transparent); pointer-events: none; }
-.cup-zone { position: absolute; z-index: 8; left: 5.2%; bottom: 16.5%; width: 138px; transform: translate(var(--shift-x, 0px), var(--shift-y, 0px)) translateZ(30px); transition: transform .35s var(--ease); }
+.cup-zone { position: absolute; z-index: 8; left: 4.2%; bottom: 15%; width: clamp(150px, 13.5vw, 208px); transform: translate(var(--shift-x, 0px), var(--shift-y, 0px)) translateZ(30px); transition: transform .35s var(--ease); }
 .cup-drag { position: relative; cursor: grab; touch-action: none; transition: transform .25s var(--ease); will-change: transform; }
 .cup-drag:active { cursor: grabbing; }
-.cup-drag::after { content: ""; position: absolute; z-index: -1; left: 4%; right: 4%; bottom: 0; height: 15%; border-radius: 50%; background: radial-gradient(ellipse, rgba(0,0,0,.62), transparent 72%); filter: blur(6px); pointer-events: none; }
+.cup-drag::after { content: ""; position: absolute; z-index: -1; left: 5%; right: 5%; bottom: -3px; height: 12%; border-radius: 50%; background: radial-gradient(ellipse at 50% 45%, rgba(0,0,0,.8), rgba(0,0,0,.45) 52%, transparent 76%); filter: blur(4px); pointer-events: none; }
 .cup-vessel { position: relative; width: 100%; transform-origin: 50% 54%; transition: transform .32s cubic-bezier(.22,.8,.24,1); will-change: transform; }
-.cup-drag img { width: 100%; filter: drop-shadow(0 20px 22px rgba(0,0,0,.55)); pointer-events: none; transform: perspective(620px) rotateY(-5deg) rotateX(1.5deg); transform-origin: 50% 100%; }
+.cup-drag img { width: 100%; filter: drop-shadow(0 16px 18px rgba(0,0,0,.6)); pointer-events: none; image-rendering: auto; }
 .cup-drag.is-ritual .cup-hint, .cup-drag.is-ritual .cup-badge { opacity: .25; }
 .cup-drag.is-ritual .cup-hint span { font-size: 0; }
 .cup-drag.is-ritual .cup-hint span::after { content: "骰桶摇动中…"; font-size: 9px; }
-.cup-drag.is-inverted .cup-hint span::after { content: "倒扣骰桶 · 松手落骰"; }
-.cup-drag.is-inverted .cup-vessel { filter: drop-shadow(0 12px 18px rgba(0,0,0,.5)) brightness(.86); }
-.cup-glow { position: absolute; left: 50%; top: 64%; width: 88%; height: 34%; transform: translate(-50%,-50%); background: radial-gradient(ellipse, rgba(219,173,88,.22), transparent 68%); filter: blur(15px); }
+.cup-drag.is-inverted .cup-hint span::after { content: "已握骰桶 · 松手落骰"; }
+.cup-drag.is-inverted .cup-vessel { filter: drop-shadow(0 18px 20px rgba(0,0,0,.55)) brightness(.94); }
+.cup-drag.is-inverted::after { left: 10%; right: 10%; height: 9%; opacity: .55; }
+.cup-glow { position: absolute; left: 50%; bottom: -4%; width: 96%; height: 30%; transform: translateX(-50%); background: radial-gradient(ellipse, rgba(219,173,88,.2), transparent 68%); filter: blur(15px); }
 .cup-hint { display: flex; align-items: center; justify-content: center; gap: 4px; margin-top: -5px; color: #a69881; font-size: 9px; letter-spacing: .06em; opacity: .8; white-space: nowrap; text-shadow: 0 1px 5px #000; transition: color .2s, opacity .2s; }
 .cup-hint svg { width: 13px; height: 13px; }
 .cup-drag:hover .cup-hint { color: var(--gold-bright); opacity: 1; }
@@ -688,11 +700,13 @@ svg { width: 1em; height: 1em; display: block; }
   70% { transform: rotate(-2deg) scale(1.015); }
 }
 .cup-drag.is-shaking .cup-vessel { animation: cup-rattle .16s linear infinite; }
-.cup-drag.is-inverted.is-shaking .cup-vessel { animation: cup-rattle-inverted .2s linear infinite; }
+.cup-drag.is-inverted.is-shaking .cup-vessel { animation: cup-rattle-lifted .2s linear infinite; }
 @keyframes cup-rattle { 0%,100% { transform: rotate(-2.3deg) translateY(0); } 50% { transform: rotate(2.3deg) translateY(-2px); } }
-@keyframes cup-rattle-inverted {
-  0%,100% { transform: rotate(176deg) translateY(-7px); }
-  50% { transform: rotate(184deg) translateY(-10px); }
+/* The cup is parked mouth-down; "inverted" means lifted clear of the table,
+   ready to pour - never a 180-degree flip. */
+@keyframes cup-rattle-lifted {
+  0%,100% { transform: translateY(-15px) rotate(-2.6deg); }
+  50% { transform: translateY(-19px) rotate(2.6deg); }
 }
 
 .dice-zone { position: absolute; z-index: 9; left: 50%; bottom: 116px; width: min(62%, 720px); transform: translateX(calc(-50% + var(--shift-x, 0px))) translateY(var(--shift-y, 0px)) translateZ(52px); transition: transform .35s var(--ease); }
@@ -705,26 +719,47 @@ svg { width: 1em; height: 1em; display: block; }
   perspective: 940px; perspective-origin: 50% 30%;
   transform-style: preserve-3d;
 }
-.dice-tray::before { content: ""; position: absolute; left: 4%; right: 4%; bottom: -4px; height: 28px; background: radial-gradient(ellipse, rgba(0,0,0,.62), transparent 72%); filter: blur(6px); }
+.dice-tray::before {
+  content: ""; position: absolute; z-index: -2; left: -2%; right: -2%; bottom: -10px; height: 56px;
+  background:
+    radial-gradient(ellipse at 50% 118%, rgba(255,199,116,.11), transparent 62%),
+    radial-gradient(ellipse at 50% 132%, rgba(0,0,0,.66), transparent 74%);
+  filter: blur(7px); pointer-events: none;
+}
 .die {
   --die-size: clamp(49px, 4.75vw, 64px);
   --die-half: calc(var(--die-size) / 2);
-  --die-face-bg: linear-gradient(145deg, #f5e7c9 0%, #ddc59d 48%, #b49565 100%);
-  --die-pip: #2b2115;
-  --die-edge: rgba(255,244,218,.72);
+  --die-face-bg: linear-gradient(160deg, #e6d5ae 0%, #d2ba8c 40%, #b3945f 74%, #8a6b3f 100%);
+  --die-pip: #191209;
+  --die-pip-rim: #6d5636;
+  --die-edge: rgba(238,222,184,.55);
+  --die-radius: 4%;
+  --die-seam: rgba(255,246,220,.2);
+  --die-rest-x: -11deg;
+  --die-rest-y: 0deg;
+  --die-rest-z: 0deg;
+  /* Material overlay sits between the base colour and the lighting pass.
+     Each rarity swaps this layer to change grain, facets or gilt. */
+  --die-material:
+    repeating-linear-gradient(96deg, rgba(255,255,255,.05) 0 1px, rgba(90,60,26,.03) 1px 3px, rgba(255,255,255,0) 3px 10px);
+  --die-glyph-color: rgba(224,193,121,.58);
+  --die-peak-glow: rgba(255,203,110,.5);
   position: relative; flex: 0 0 auto; width: var(--die-size); height: var(--die-size);
   border: 0; background: transparent; padding: 0;
   transform-style: preserve-3d;
   transition: transform .26s var(--ease), filter .26s, opacity .26s;
   cursor: pointer;
 }
+/* Resting pose: every die settles into the same squared-up presentation —
+   face dead-on to the camera, top edge barely tipped so the cube reads as
+   sitting on the table. No per-die corkscrew angles. */
+.die.is-hidden { --die-rest-x: -13deg; --die-rest-y: 34deg; --die-rest-z: 2deg; }
 .die-roller { position: absolute; inset: 0; transform-style: preserve-3d; }
 .die-cube {
   position: absolute; inset: 0; transform-style: preserve-3d;
-  transform: rotateX(-5deg) rotateY(8deg);
+  transform: rotateX(var(--die-rest-x)) rotateY(var(--die-rest-y)) rotateZ(var(--die-rest-z));
   transition: transform .42s var(--ease);
 }
-.die.is-hidden .die-cube { transform: rotateX(-16deg) rotateY(24deg); }
 .die::before {
   content: ""; position: absolute; z-index: -2; inset: -18%; border-radius: 50%;
   background: radial-gradient(circle, rgba(255,214,125,.62), rgba(255,157,45,.17) 46%, transparent 70%);
@@ -732,40 +767,124 @@ svg { width: 1em; height: 1em; display: block; }
   transition: opacity .22s var(--ease), transform .22s var(--ease);
 }
 .die::after {
-  content: ""; position: absolute; z-index: -1; left: 8%; right: 8%; bottom: -10px; height: 14px;
-  border-radius: 50%; background: radial-gradient(ellipse, rgba(0,0,0,.6), transparent 70%);
-  filter: blur(5px); pointer-events: none;
+  /* contact shadow: tight dark core hugging the base + fainter spill */
+  content: ""; position: absolute; z-index: -1; left: 8%; right: 8%; bottom: -7px; height: 11px;
+  border-radius: 50%;
+  background:
+    radial-gradient(ellipse at 50% 42%, rgba(0,0,0,.85), rgba(0,0,0,.55) 46%, transparent 72%),
+    radial-gradient(ellipse, rgba(0,0,0,.38), transparent 74%);
+  filter: blur(2.5px); pointer-events: none;
   transition: background .2s, border-color .2s, left .2s, right .2s, bottom .2s, height .2s;
 }
 .die-face {
-  position: absolute; inset: 0; display: block;
-  border-radius: 13%;
+  --die-light: rgba(255,255,255,0);
+  position: absolute; inset: -.5px; display: block;
+  border-radius: var(--die-radius);
   border: 1px solid var(--die-edge);
-  background: var(--die-face-bg);
+  background:
+    var(--die-peak, linear-gradient(rgba(0,0,0,0), rgba(0,0,0,0))),
+    linear-gradient(var(--die-light), var(--die-light)),
+    linear-gradient(180deg, rgba(255,248,228,.12), transparent 20% 80%, rgba(38,22,8,.24)),
+    linear-gradient(90deg, rgba(255,244,214,.08), transparent 18% 82%, rgba(38,22,8,.18)),
+    var(--die-material, linear-gradient(rgba(0,0,0,0), rgba(0,0,0,0))),
+    radial-gradient(circle at 22% 12%, rgba(255,246,220,.14), transparent 42%),
+    repeating-linear-gradient(118deg, transparent 0 7px, rgba(66,40,16,.03) 8px, transparent 9px 14px),
+    var(--die-face-bg);
   box-shadow:
-    inset 0 0 0 2px rgba(255,255,255,.13),
-    inset 0 -8px 18px rgba(58,37,16,.24),
-    inset 0 7px 15px rgba(255,255,255,.12);
+    0 0 0 .55px var(--die-seam),
+    0 0 0 1px rgba(30,17,6,.16),
+    inset 1px 1px 0 rgba(255,246,220,.28),
+    inset -2px -3px 6px rgba(52,30,10,.34),
+    inset 0 0 0 3px rgba(255,246,220,.04),
+    inset 0 0 18px rgba(58,34,12,.2);
   backface-visibility: hidden;
   overflow: hidden;
 }
+.die-face::before {
+  content: ""; position: absolute; inset: 1px; border-radius: inherit; pointer-events: none;
+  background: linear-gradient(135deg, rgba(255,248,224,.1), transparent 32% 66%, rgba(40,23,8,.14));
+}
 .die-face::after {
-  content: ""; position: absolute; inset: 8% 8% 8% 8%; border-radius: 9%;
-  border: 1px solid rgba(48,30,10,.13); pointer-events: none;
+  content: ""; position: absolute; inset: 8%; border-radius: 12%;
+  border: 1px solid rgba(63,40,17,.16);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.14), 0 1px 0 rgba(255,255,255,.16);
+  pointer-events: none;
 }
 .face-front { transform: rotateY(0deg) translateZ(var(--die-half)); }
-.face-back { transform: rotateY(180deg) translateZ(var(--die-half)); }
-.face-right { transform: rotateY(90deg) translateZ(var(--die-half)); }
-.face-left { transform: rotateY(-90deg) translateZ(var(--die-half)); }
-.face-top { transform: rotateX(90deg) translateZ(var(--die-half)); }
-.face-bottom { transform: rotateX(-90deg) translateZ(var(--die-half)); }
-.die-face .pip-grid { position: absolute; inset: 14%; display: grid; grid-template-columns: repeat(3,1fr); grid-template-rows: repeat(3,1fr); }
+.face-back { --die-light: rgba(28,16,7,.3); transform: rotateY(180deg) translateZ(var(--die-half)); }
+.face-right { --die-light: rgba(37,21,8,.17); transform: rotateY(90deg) translateZ(var(--die-half)); }
+.face-left { --die-light: rgba(29,16,7,.28); transform: rotateY(-90deg) translateZ(var(--die-half)); }
+.face-top { --die-light: rgba(255,246,222,.07); transform: rotateX(90deg) translateZ(var(--die-half)); }
+.face-bottom { --die-light: rgba(24,13,6,.34); transform: rotateX(-90deg) translateZ(var(--die-half)); }
+.die-face .pip-grid { position: absolute; z-index: 1; inset: 15%; display: grid; grid-template-columns: repeat(3,1fr); grid-template-rows: repeat(3,1fr); }
 .die-face .pip {
-  width: calc(var(--die-size) * .115); height: calc(var(--die-size) * .115);
-  border-radius: 50%; background: radial-gradient(circle at 34% 28%, #735f43, var(--die-pip) 72%);
+  width: calc(var(--die-size) * .12); height: calc(var(--die-size) * .12);
+  border-radius: 50%;
+  background: radial-gradient(circle at 61% 66%, #100c08 0 34%, var(--die-pip) 60%, var(--die-pip-rim) 100%);
   align-self: center; justify-self: center;
-  box-shadow: inset 0 -1px 1px rgba(255,255,255,.16), 0 1px 1px rgba(255,255,255,.15);
+  box-shadow:
+    inset 1px 1px 2px rgba(0,0,0,.78),
+    inset -1px -1px 1px rgba(255,244,214,.15),
+    0 1px 0 rgba(255,246,220,.46);
 }
+
+/* ── per-die motif (see src/dice-skins.js) ────────────────────────────────
+   Every face carries the die's own carved emblem as a faint watermark behind
+   the pips, so two dice of the same rarity never look alike. Weighted faces
+   light their emblem up, which keeps the tilt readable without a shared
+   ornament. */
+.die-motif {
+  position: absolute; inset: 6%; z-index: 0;
+  width: 88%; height: 88%;
+  color: var(--die-accent, rgba(224,193,121,.5));
+  pointer-events: none;
+  opacity: .16;
+  filter: drop-shadow(0 1px 0 rgba(255,248,222,.14));
+}
+.die-face.is-favored .die-motif {
+  opacity: .5;
+  filter: drop-shadow(0 1px 0 rgba(255,248,222,.24));
+}
+.die-face.is-peak {
+  --die-peak: radial-gradient(circle at 50% 50%, rgba(255,214,130,.2), rgba(255,214,130,0) 64%);
+}
+.die-face.is-peak .die-motif {
+  opacity: .72;
+  filter: drop-shadow(0 0 3px var(--die-peak-glow)) drop-shadow(0 1px 0 rgba(255,248,222,.3));
+}
+.die-face.is-peak .pip {
+  box-shadow:
+    inset 1px 1px 2px rgba(0,0,0,.8),
+    inset -1px -1px 1px rgba(255,246,214,.3),
+    0 0 7px var(--die-peak-glow),
+    0 1px 0 rgba(255,246,220,.5);
+}
+
+/* Light sweep only on the premium materials. */
+.die-sheen { display: none; position: absolute; inset: -35%; z-index: 2; pointer-events: none; }
+.die.rarity-epic .die-sheen,
+.die.rarity-legendary .die-sheen { display: block; }
+.die.rarity-legendary .die-sheen {
+  background: linear-gradient(104deg, rgba(255,255,255,0) 34%, rgba(255,248,214,.3) 45%, rgba(255,255,255,.55) 50%, rgba(255,240,190,.26) 55%, rgba(255,255,255,0) 67%);
+  background-size: 240% 240%; background-repeat: no-repeat;
+  animation: die-sheen-sweep 5.2s ease-in-out infinite;
+}
+.die.rarity-epic .die-sheen {
+  background: linear-gradient(104deg, rgba(255,255,255,0) 36%, rgba(238,220,255,.24) 46%, rgba(255,255,255,.4) 50%, rgba(226,200,255,.2) 55%, rgba(255,255,255,0) 66%);
+  background-size: 240% 240%; background-repeat: no-repeat;
+  animation: die-sheen-sweep 6.6s ease-in-out infinite;
+}
+.die.rarity-legendary .face-top .die-sheen,
+.die.rarity-epic .face-top .die-sheen { animation-delay: -1.6s; }
+.die.rarity-legendary .face-right .die-sheen,
+.die.rarity-epic .face-right .die-sheen { animation-delay: -3.1s; }
+@keyframes die-sheen-sweep {
+  0% { background-position: 155% -55%; opacity: 0; }
+  16% { opacity: 1; }
+  48% { background-position: -65% 145%; opacity: 1; }
+  62%, 100% { background-position: -65% 145%; opacity: 0; }
+}
+
 .die-face .die-rune { position: absolute; inset: 0; display: grid; place-items: center; color: rgba(234,198,126,.75); font-size: calc(var(--die-size) * .34); font-family: var(--serif); text-shadow: 0 0 12px rgba(231,190,104,.25); }
 .die .die-mark {
   position: absolute; z-index: 6; left: 5px; top: 3px; pointer-events: none;
@@ -788,9 +907,12 @@ svg { width: 1em; height: 1em; display: block; }
   animation: die-selected-aura 1.55s ease-in-out infinite;
 }
 .die.is-selected::after {
-  left: -9%; right: -9%; bottom: -17px; height: 20px;
-  background: radial-gradient(ellipse, rgba(255,210,113,.68), rgba(255,143,36,.2) 46%, transparent 72%);
-  border: 1px solid rgba(255,218,137,.5);
+  /* lifted off the table: contact shadow loosens and picks up the gold rim light */
+  left: -6%; right: -6%; bottom: -14px; height: 16px;
+  background:
+    radial-gradient(ellipse at 50% 42%, rgba(0,0,0,.6), rgba(0,0,0,.3) 48%, transparent 74%),
+    radial-gradient(ellipse, rgba(255,190,90,.34), transparent 70%);
+  border: 1px solid rgba(255,218,137,.4);
 }
 .die.is-selected .die-face {
   border-width: 2px;
@@ -829,15 +951,113 @@ svg { width: 1em; height: 1em; display: block; }
 .die.is-rerolling.is-scored { opacity: 1; transform: none; }
 .die.is-rerolling.is-scored .die-face { filter: none; }
 .die.is-scored .die-check { inset: 50% auto auto 50%; width: 27px; height: 27px; opacity: 1; color: #cfb888; background: rgba(25,18,10,.76); transform: translate(-50%,-50%); font-size: 11px; }
-.die.rarity-rare { --die-face-bg: linear-gradient(145deg, #e3f0f3, #aacbda 48%, #668fa1); --die-pip: #1b303a; --die-edge: rgba(226,249,255,.75); }
-.die.rarity-epic { --die-face-bg: linear-gradient(145deg, #efe2f3, #c3a5d6 48%, #84669e); --die-pip: #2a1b35; --die-edge: rgba(243,227,250,.72); }
-.die.rarity-legendary { --die-face-bg: linear-gradient(145deg, #fff0c6, #e6c26d 46%, #a97a2d); --die-pip: #312107; --die-edge: rgba(255,244,204,.86); }
-.die.is-demon { --die-face-bg: linear-gradient(145deg, #6a2b2c, #351416 50%, #150708); --die-pip: #e8a49b; --die-edge: rgba(220,110,96,.68); }
-.die.is-demon .die-face { box-shadow: inset 0 0 24px rgba(124,30,25,.32), inset 0 0 0 1px rgba(255,145,125,.08); }
-.die.is-demon .die-face .pip { background: radial-gradient(circle at 34% 28%, #e08a79, #4d120f 72%); }
+/* Rarity materials: each tier swaps the `--die-material` overlay plus the
+   base colour ramp, so the shading/highlight pass stays identical. */
+.die.rarity-rare {
+  --die-face-bg: linear-gradient(148deg, #dfe6e0 0%, #bcc9c1 24%, #93a79b 50%, #66796e 76%, #414f46 100%);
+  --die-pip: #101c17;
+  --die-pip-rim: #7c9184;
+  --die-edge: rgba(228,238,229,.5);
+  --die-glyph-color: rgba(216,232,220,.5);
+  --die-peak-glow: rgba(150,196,176,.4);
+  --die-material:
+    repeating-linear-gradient(72deg, rgba(255,255,255,.03) 0 1px, rgba(22,48,38,.05) 1px 3px, rgba(255,255,255,0) 3px 9px);
+}
+.die.rarity-epic {
+  --die-face-bg: linear-gradient(148deg, #d9cde2 0%, #b49ec4 22%, #8d70a2 46%, #654b80 68%, #3c2b52 88%, #271c38 100%);
+  --die-pip: #150b20;
+  --die-pip-rim: #9d82b5;
+  --die-edge: rgba(233,219,244,.5);
+  --die-glyph-color: rgba(226,208,242,.55);
+  --die-peak-glyph: rgba(240,228,255,.9);
+  --die-peak-glow: rgba(178,130,224,.42);
+  --die-material:
+    repeating-linear-gradient(57deg, rgba(255,255,255,.035) 0 2px, rgba(52,28,80,.06) 2px 4px, rgba(255,255,255,0) 4px 11px),
+    repeating-linear-gradient(-53deg, rgba(255,255,255,.02) 0 2px, rgba(42,20,68,.05) 2px 5px, rgba(255,255,255,0) 5px 13px),
+    radial-gradient(ellipse at 74% 16%, rgba(206,178,236,.16), rgba(206,178,236,0) 56%);
+}
+.die.rarity-epic .die-face {
+  border-width: 1px;
+  box-shadow:
+    0 0 0 .55px var(--die-seam),
+    0 0 0 1px rgba(40,24,62,.34),
+    inset 1px 1px 0 rgba(240,228,252,.24),
+    inset -2px -2px 6px rgba(40,22,64,.4),
+    inset 0 0 0 3px rgba(216,192,244,.08),
+    inset 0 0 16px rgba(56,32,86,.24),
+    0 0 11px rgba(148,100,206,.16);
+}
+.die.rarity-epic .die-face::before {
+  background:
+    repeating-linear-gradient(57deg, rgba(255,255,255,.04) 0 2px, rgba(52,28,80,.05) 2px 4px, rgba(255,255,255,0) 4px 11px),
+    linear-gradient(135deg, rgba(255,250,255,.08), transparent 30% 68%, rgba(30,16,50,.16));
+}
+.die.rarity-legendary {
+  --die-face-bg: linear-gradient(148deg, #e9d6a4 0%, #d2ae66 20%, #ab7f3a 44%, #8a6326 58%, #c19a52 72%, #6f4f1d 90%, #452f0e 100%);
+  --die-pip: #170e02;
+  --die-pip-rim: #cfa85e;
+  --die-edge: rgba(244,226,172,.6);
+  --die-glyph-color: rgba(240,214,148,.62);
+  --die-peak-glyph: rgba(250,236,196,.94);
+  --die-peak-glow: rgba(240,192,100,.5);
+  --die-material:
+    conic-gradient(from 198deg at 30% 16%,
+      rgba(255,246,214,.2), rgba(255,238,190,.05) 15%,
+      rgba(255,255,255,0) 32%, rgba(255,255,255,0) 64%,
+      rgba(238,206,138,.08) 78%, rgba(255,244,206,.16) 100%),
+    repeating-linear-gradient(44deg, rgba(255,255,255,.03) 0 1px, rgba(92,60,14,.05) 1px 2px, rgba(255,255,255,0) 2px 8px),
+    radial-gradient(ellipse at 76% 86%, rgba(214,150,52,.16), rgba(214,150,52,0) 54%);
+}
+.die.rarity-legendary .die-face {
+  border-width: 1px;
+  box-shadow:
+    0 0 0 .55px var(--die-seam),
+    0 0 0 1px rgba(70,44,10,.46),
+    inset 1px 1px 0 rgba(250,236,196,.34),
+    inset -2px -2px 6px rgba(62,38,8,.44),
+    inset 0 0 0 3px rgba(238,212,150,.12),
+    inset 0 0 20px rgba(96,62,12,.26),
+    0 0 15px rgba(226,178,84,.2);
+}
+/* Gilt inner frame + corner rivets: the visual signature of the top tier. */
+.die.rarity-legendary:not(.is-hidden):not(.is-selected) .die-face::after {
+  border-color: rgba(146,100,24,.52);
+  box-shadow: inset 0 1px 0 rgba(255,250,222,.42), 0 1px 0 rgba(255,242,196,.34);
+}
+.die.rarity-legendary .die-face::before {
+  background:
+    radial-gradient(circle at 7px 7px, rgba(255,242,198,.95) 0 1.15px, rgba(255,242,198,0) 1.8px),
+    radial-gradient(circle at calc(100% - 7px) 7px, rgba(255,242,198,.95) 0 1.15px, rgba(255,242,198,0) 1.8px),
+    radial-gradient(circle at 7px calc(100% - 7px), rgba(255,242,198,.95) 0 1.15px, rgba(255,242,198,0) 1.8px),
+    radial-gradient(circle at calc(100% - 7px) calc(100% - 7px), rgba(255,242,198,.95) 0 1.15px, rgba(255,242,198,0) 1.8px),
+    linear-gradient(135deg, rgba(255,255,255,.2), transparent 30% 68%, rgba(48,28,10,.12));
+}
+.die.is-demon {
+  --die-face-bg: linear-gradient(148deg, #7d3436 0%, #4d191a 38%, #2a0e0f 72%, #150708 100%);
+  --die-pip: #4d120f;
+  --die-pip-rim: #e08b79;
+  --die-edge: rgba(230,124,108,.78);
+  --die-glyph-color: rgba(255,172,142,.72);
+  --die-peak-glyph: rgba(255,196,170,.95);
+  --die-peak-glow: rgba(255,112,60,.62);
+  --die-material:
+    radial-gradient(ellipse at 50% 112%, rgba(255,116,52,.34), rgba(255,60,20,0) 56%),
+    repeating-linear-gradient(64deg, rgba(255,170,120,.05) 0 1px, rgba(0,0,0,.07) 1px 3px, rgba(0,0,0,0) 3px 9px);
+}
+.die.is-demon .die-face { box-shadow: inset 1px 1px 0 rgba(255,181,158,.18), inset 0 0 24px rgba(124,30,25,.4), inset 0 0 0 3px rgba(255,145,125,.05); }
+.die.is-demon .die-face .pip { background: radial-gradient(circle at 61% 66%, #240807 0 30%, #6e1c17 56%, #d48372 100%); box-shadow: inset 1px 1px 2px rgba(20,0,0,.8), 0 0 5px rgba(218,91,70,.26); }
 .die.is-demon .die-mark { color: rgba(255,172,150,.8); }
-.die.is-hidden { --die-face-bg: linear-gradient(145deg, #3e3223, #21180e 55%, #100b07); --die-edge: rgba(217,180,106,.32); pointer-events: none; }
+.die.is-hidden { --die-face-bg: linear-gradient(145deg, #453725, #21180e 55%, #100b07); --die-edge: rgba(217,180,106,.38); pointer-events: none; }
 .die.is-hidden .die-face::after { border-color: rgba(217,180,106,.08); }
+.die.is-blank { --die-face-bg: linear-gradient(145deg, #fffdf4, #eee8d8 55%, #d6ccb5); --die-edge: rgba(255,250,232,.7); pointer-events: none; opacity: .88; }
+.die.is-blank .die-face { box-shadow: inset 1px 1px 0 rgba(255,255,255,.7), inset 0 0 18px rgba(255,250,232,.3), 0 0 16px rgba(255,248,220,.08); }
+.die.is-blank .die-face::before { opacity: .2; }
+.die.is-blank .die-face::after { border-color: rgba(110,96,72,.16); }
+.die.is-blank .die-mark { color: #7e705c; }
+.die.is-boss-blocked { --die-face-bg: linear-gradient(145deg, #4b3230, #241817 58%, #130c0c); --die-edge: rgba(196,119,104,.35); pointer-events: none; opacity: .62; }
+.die.is-boss-blocked .die-face { filter: grayscale(.8) brightness(.65); box-shadow: inset 0 0 16px rgba(130,45,35,.24); }
+.die.is-boss-blocked .die-face::after { border-color: rgba(196,119,104,.22); }
+.die.is-boss-blocked .die-mark { color: rgba(219,142,124,.85); }
 .die.is-rolling .die-roller { animation: die-roller-tumble .68s cubic-bezier(.26,.1,.36,1) both; }
 @keyframes die-roller-tumble {
   0% { transform: translateY(-34px) rotateX(-190deg) rotateY(-140deg) scale(.82); opacity: .35; }
@@ -847,9 +1067,51 @@ svg { width: 1em; height: 1em; display: block; }
 }
 .die.is-new { animation: die-land .4s var(--ease) both; }
 @keyframes die-land { 0% { transform: translateY(-12px) scale(.94); } 60% { transform: translateY(2px) scale(1.02); } 100% { transform: translateY(0) scale(1); } }
-.die.is-bonus .die-cube { filter: drop-shadow(0 16px 16px rgba(0,0,0,.45)) drop-shadow(0 0 17px rgba(240,185,95,.25)); }
+.die.is-bonus { z-index: 4; }
 .die:disabled { cursor: default; }
 .die:disabled:hover { transform: none; }
+
+/* Premium pips are carved deeper and rimmed in the tier's metal. */
+.die.rarity-legendary .die-face .pip {
+  background: radial-gradient(circle at 61% 66%, #140d02 0 30%, #3d2708 56%, #d9b264 100%);
+  box-shadow:
+    inset 1px 1px 2px rgba(0,0,0,.85),
+    inset -1px -1px 1px rgba(255,244,206,.32),
+    0 1px 0 rgba(255,248,224,.55);
+}
+.die.rarity-epic .die-face .pip {
+  background: radial-gradient(circle at 61% 66%, #120a1a 0 30%, #331c46 56%, #b693d8 100%);
+  box-shadow:
+    inset 1px 1px 2px rgba(0,0,0,.82),
+    inset -1px -1px 1px rgba(238,224,255,.28),
+    0 1px 0 rgba(246,238,255,.5);
+}
+.die.rarity-legendary:not(.is-selected)::before {
+  background: radial-gradient(circle, rgba(255,206,110,.5), rgba(255,157,45,.16) 46%, transparent 70%);
+  opacity: .75;
+  animation: die-selected-aura 2.8s ease-in-out infinite;
+}
+.die.is-bonus::before { opacity: 1; animation-duration: 1.9s; }
+
+/* Selection and hidden states must outrank the rarity material frames. */
+.die.is-selected .die-face,
+.die.is-selected.rarity-rare .die-face,
+.die.is-selected.rarity-epic .die-face,
+.die.is-selected.rarity-legendary .die-face,
+.die.is-selected.is-demon .die-face {
+  border-width: 2px;
+  border-color: #ffdc96;
+  box-shadow:
+    inset 0 0 0 2px rgba(255,242,198,.55),
+    inset 0 0 26px rgba(255,182,62,.2),
+    0 0 18px rgba(255,181,62,.55);
+}
+.die.is-hidden .die-face,
+.die.is-hidden.rarity-epic .die-face,
+.die.is-hidden.rarity-legendary .die-face,
+.die.is-hidden.is-demon .die-face {
+  box-shadow: 0 0 0 .55px var(--die-seam), inset 0 0 0 3px rgba(255,255,255,.05);
+}
 
 .combo-preview { min-height: 36px; display: flex; justify-content: center; align-items: center; gap: 10px; flex-wrap: wrap; padding: 4px 0 0; text-align: center; text-shadow: 0 1px 5px #000; }
 .combo-placeholder { color: #8d7f6a; font-size: 10px; letter-spacing: .13em; }
@@ -1118,9 +1380,85 @@ svg { width: 1em; height: 1em; display: block; }
 .set-tag { color: #756855; font-size: 7px; letter-spacing: .06em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .card-art { height: 78px; display: grid; place-items: center; position: relative; margin: 2px 0 6px; }
 .card-art::before { content: ""; position: absolute; width: 76px; height: 76px; border-radius: 50%; background: radial-gradient(circle, var(--glow, rgba(217,180,106,.14)), transparent 68%); }
-.card-art .art-die { width: 54px; height: 54px; border-radius: 10px; transform: rotate(-8deg); box-shadow: 0 13px 20px rgba(0,0,0,.45), inset 0 1px 1px rgba(255,255,255,.5); border: 1px solid rgba(255,255,255,.45); position: relative; background: linear-gradient(145deg, #ead7b3, #c3a77b); }
-.card-art .art-die .mini-pips { position: absolute; inset: 13%; display: grid; grid-template-columns: repeat(3,1fr); grid-template-rows: repeat(3,1fr); }
-.card-art .art-die .mini-pip { width: 6px; height: 6px; border-radius: 50%; background: #362918; align-self: center; justify-self: center; }
+.art-die {
+  --die-face-bg: linear-gradient(150deg, #e6d5ae, #d2ba8c 48%, #b3945f 76%, #8a6b3f 100%);
+  --die-pip: #191209;
+  --die-pip-rim: #6d5636;
+  --die-edge: rgba(238,222,184,.55);
+  --die-glyph-color: rgba(224,193,121,.5);
+  --die-material:
+    repeating-linear-gradient(96deg, rgba(255,255,255,.03) 0 1px, rgba(90,60,26,.04) 1px 3px, rgba(255,255,255,0) 3px 10px);
+  position: relative; border: 1px solid var(--die-edge); border-radius: 18%;
+  background:
+    var(--die-material, linear-gradient(rgba(0,0,0,0), rgba(0,0,0,0))),
+    radial-gradient(circle at 20% 14%, rgba(255,246,220,.16), transparent 38%),
+    var(--die-face-bg);
+  box-shadow: inset 1px 1px 0 rgba(255,246,220,.26), inset -3px -3px 6px rgba(56,32,10,.28), 0 2px 0 rgba(70,46,22,.9), 0 13px 20px rgba(0,0,0,.45);
+  overflow: hidden;
+}
+.art-die::before { content: ""; position: absolute; inset: 8%; border: 1px solid rgba(67,42,18,.16); border-radius: 12%; box-shadow: 0 1px 0 rgba(255,255,255,.16); }
+.art-die::after { content: ""; position: absolute; inset: 1px; border-radius: inherit; background: linear-gradient(135deg, rgba(255,255,255,.15), transparent 34% 70%, rgba(49,28,10,.1)); pointer-events: none; }
+.art-die .mini-pips { position: absolute; z-index: 1; inset: 15%; display: grid; grid-template-columns: repeat(3,1fr); grid-template-rows: repeat(3,1fr); }
+.art-die .mini-pip { width: 6px; height: 6px; border-radius: 50%; background: radial-gradient(circle at 61% 66%, #100c08 0 34%, var(--die-pip) 60%, var(--die-pip-rim) 100%); box-shadow: inset 1px 1px 2px rgba(0,0,0,.75), 0 1px 0 rgba(255,246,220,.4); align-self: center; justify-self: center; }
+.art-die.rarity-rare {
+  --die-face-bg: linear-gradient(148deg, #dfe6e0 0%, #bcc9c1 26%, #93a79b 54%, #66796e 78%, #414f46 100%);
+  --die-pip: #101c17;
+  --die-pip-rim: #7c9184;
+  --die-edge: rgba(228,238,229,.5);
+  --die-glyph-color: rgba(216,232,220,.5);
+  --die-material:
+    repeating-linear-gradient(72deg, rgba(255,255,255,.03) 0 1px, rgba(22,48,38,.05) 1px 3px, rgba(255,255,255,0) 3px 9px);
+}
+.art-die.rarity-epic {
+  --die-face-bg: linear-gradient(148deg, #d9cde2 0%, #b49ec4 24%, #8d70a2 50%, #654b80 72%, #3c2b52 90%, #271c38 100%);
+  --die-pip: #150b20;
+  --die-pip-rim: #9d82b5;
+  --die-edge: rgba(233,219,244,.5);
+  --die-glyph-color: rgba(226,208,242,.55);
+  --die-material:
+    repeating-linear-gradient(57deg, rgba(255,255,255,.04) 0 2px, rgba(52,28,80,.06) 2px 4px, rgba(255,255,255,0) 4px 11px),
+    repeating-linear-gradient(-53deg, rgba(255,255,255,.02) 0 2px, rgba(42,20,68,.05) 2px 5px, rgba(255,255,255,0) 5px 13px),
+    radial-gradient(ellipse at 74% 16%, rgba(206,178,236,.16), rgba(206,178,236,0) 56%);
+}
+.art-die.rarity-epic { box-shadow: inset 1px 1px 0 rgba(240,228,252,.26), inset -3px -3px 6px rgba(38,20,62,.42), 0 2px 0 rgba(52,32,82,.9), 0 14px 22px rgba(0,0,0,.5), 0 0 20px rgba(148,100,206,.16); }
+.art-die.rarity-epic::before { border-color: rgba(58,34,92,.36); box-shadow: 0 1px 0 rgba(240,230,252,.18); }
+.art-die.rarity-legendary {
+  --die-face-bg: linear-gradient(148deg, #e9d6a4 0%, #d2ae66 20%, #ab7f3a 44%, #8a6326 58%, #c19a52 72%, #6f4f1d 90%, #452f0e 100%);
+  --die-pip: #170e02;
+  --die-pip-rim: #cfa85e;
+  --die-edge: rgba(244,226,172,.6);
+  --die-glyph-color: rgba(240,214,148,.62);
+  --die-material:
+    conic-gradient(from 198deg at 30% 16%,
+      rgba(255,246,214,.2), rgba(255,238,190,.05) 15%,
+      rgba(255,255,255,0) 32%, rgba(255,255,255,0) 64%,
+      rgba(238,206,138,.08) 78%, rgba(255,244,206,.16) 100%),
+    repeating-linear-gradient(44deg, rgba(255,255,255,.03) 0 1px, rgba(92,60,14,.05) 1px 2px, rgba(255,255,255,0) 2px 8px),
+    radial-gradient(ellipse at 76% 86%, rgba(214,150,52,.16), rgba(214,150,52,0) 54%);
+}
+.art-die.rarity-legendary {
+  border-width: 2px;
+  box-shadow: inset 1px 1px 0 rgba(250,236,196,.34), inset -3px -3px 7px rgba(58,34,8,.46), 0 2px 0 rgba(66,42,10,.92), 0 15px 24px rgba(0,0,0,.52), 0 0 26px rgba(226,178,84,.2);
+}
+.art-die.rarity-legendary::before { border-color: rgba(134,92,22,.58); box-shadow: 0 1px 0 rgba(248,236,200,.24); }
+.art-die.is-demon { --die-face-bg: linear-gradient(148deg, #7d3436 0%, #4d191a 38%, #2a0e0f 72%, #150708 100%); --die-pip: #4d120f; --die-pip-rim: #e08b79; --die-edge: rgba(230,124,108,.78); --die-glyph-color: rgba(255,172,142,.7); --die-material: radial-gradient(ellipse at 50% 112%, rgba(255,116,52,.34), rgba(255,60,20,0) 56%), repeating-linear-gradient(64deg, rgba(255,170,120,.05) 0 1px, rgba(0,0,0,.07) 1px 3px, rgba(0,0,0,0) 3px 9px); }
+.art-die.is-demon .mini-pip { background: radial-gradient(circle at 61% 66%, #240807 0 30%, #6e1c17 56%, #d48372 100%); }
+/* Flat icons echo the 3D carving: ornament is drawn behind the pips. */
+.art-die .die-motif { inset: 4%; width: 92%; height: 92%; opacity: .34; }
+.art-die.is-weighted .die-motif { opacity: .62; }
+.art-die.is-weighted::before { border-style: solid; }
+.art-die.rarity-legendary .die-sheen, .art-die.rarity-epic .die-sheen { display: block; }
+.art-die.rarity-legendary .die-sheen {
+  background: linear-gradient(104deg, rgba(255,255,255,0) 36%, rgba(255,248,214,.28) 46%, rgba(255,255,255,.5) 50%, rgba(255,240,190,.22) 55%, rgba(255,255,255,0) 66%);
+  background-size: 240% 240%; background-repeat: no-repeat;
+  animation: die-sheen-sweep 5.2s ease-in-out infinite;
+}
+.art-die.rarity-epic .die-sheen {
+  background: linear-gradient(104deg, rgba(255,255,255,0) 38%, rgba(238,220,255,.22) 46%, rgba(255,255,255,.36) 50%, rgba(226,200,255,.18) 55%, rgba(255,255,255,0) 65%);
+  background-size: 240% 240%; background-repeat: no-repeat;
+  animation: die-sheen-sweep 6.6s ease-in-out infinite;
+}
+.card-art .art-die { width: 56px; height: 56px; transform: rotate(-8deg); }
 .card-art .art-cup { width: 58px; filter: drop-shadow(0 12px 14px rgba(0,0,0,.5)); }
 .shop-card h4 { font-family: var(--serif); font-size: 15px; font-weight: 400; letter-spacing: .06em; color: #eadbc0; line-height: 1.35; }
 .shop-card .card-sub { color: #7f705c; font-size: 8px; line-height: 1.5; margin-top: 1px; }
@@ -1145,12 +1483,28 @@ svg { width: 1em; height: 1em; display: block; }
 .loadout-strip { display: flex; align-items: center; gap: 14px; min-width: 0; overflow: hidden; }
 .loadout-label { flex: 0 0 auto; color: #706250; font-size: 7px; letter-spacing: .16em; }
 .loadout-dice { display: flex; gap: 4px; }
-.mini-die { width: 21px; height: 21px; border-radius: 4px; border: 1px solid rgba(255,255,255,.22); background: linear-gradient(145deg, #d8c29d, #987b51); box-shadow: inset 0 1px 0 rgba(255,255,255,.22); position: relative; }
-.mini-die::after { content: attr(data-pips); position: absolute; inset: 0; display: grid; place-items: center; color: #2b2012; font-size: 7px; font-family: var(--serif); }
-.mini-die.rarity-rare { background: linear-gradient(145deg, #b8d2de, #62899b); }
-.mini-die.rarity-epic { background: linear-gradient(145deg, #d6c1e2, #7f6597); }
-.mini-die.rarity-legendary { background: linear-gradient(145deg, #f1d996, #a8772b); }
-.mini-die.is-demon { background: linear-gradient(145deg, #6c2728, #241010); color: #e2a093; }
+.mini-die {
+  --die-face-bg: linear-gradient(150deg, #e6d5ae, #d2ba8c 52%, #8a6b3f);
+  --die-edge: rgba(238,222,184,.5);
+  --die-material:
+    repeating-linear-gradient(96deg, rgba(255,255,255,.05) 0 1px, rgba(90,60,26,.03) 1px 3px, rgba(255,255,255,0) 3px 10px);
+  width: 21px; height: 21px; border-radius: 20%; border: 1px solid var(--die-edge);
+  background:
+    var(--die-material, linear-gradient(rgba(0,0,0,0), rgba(0,0,0,0))),
+    radial-gradient(circle at 20% 14%, rgba(255,255,255,.3), transparent 40%),
+    var(--die-face-bg);
+  box-shadow: inset 1px 1px 0 rgba(255,255,255,.45), inset -2px -2px 3px rgba(66,40,16,.2), 0 1px 0 rgba(91,64,32,.8);
+  position: relative;
+}
+.mini-die::before { content: ""; position: absolute; inset: 3px; border: 1px solid rgba(67,42,18,.14); border-radius: 16%; }
+.mini-die::after { content: attr(data-pips); position: absolute; inset: 0; display: grid; place-items: center; color: #2b2012; font-size: 7px; font-family: var(--serif); text-shadow: 0 1px 0 rgba(255,255,255,.2); }
+.mini-die.rarity-rare { --die-face-bg: linear-gradient(148deg, #dfe6e0, #bcc9c1 30%, #93a79b 62%, #414f46 100%); --die-edge: rgba(228,238,229,.5); }
+.mini-die.rarity-epic { --die-face-bg: linear-gradient(148deg, #d9cde2, #b49ec4 22%, #8d70a2 46%, #654b80 72%, #271c38 100%); --die-edge: rgba(233,219,244,.5); --die-material: repeating-linear-gradient(57deg, rgba(255,255,255,.04) 0 1px, rgba(52,28,80,.06) 1px 2px, rgba(255,255,255,0) 2px 6px); }
+.mini-die.rarity-legendary { --die-face-bg: linear-gradient(148deg, #e9d6a4, #d2ae66 18%, #ab7f3a 38%, #8a6326 56%, #c19a52 74%, #452f0e 100%); --die-edge: rgba(244,226,172,.6); --die-material: conic-gradient(from 198deg at 30% 16%, rgba(255,246,214,.2), rgba(255,238,190,.05) 15%, rgba(255,255,255,0) 34%, rgba(255,255,255,0) 66%, rgba(238,206,138,.08) 80%, rgba(255,244,206,.16) 100%); }
+.mini-die.is-demon { --die-face-bg: linear-gradient(148deg, #7d3436, #4d191a 42%, #150708 100%); --die-edge: rgba(230,124,108,.74); }
+.mini-die.is-demon::after { color: #e2a093; }
+/* Weighted dice keep a gilt inner frame so the bias reads at 21px. */
+.mini-die.is-weighted::before { border-color: rgba(255,226,158,.7); }
 .loadout-items { display: flex; gap: 4px; }
 .loadout-items img { width: 23px; height: 23px; }
 .shop-continue { flex: 0 0 auto; }
@@ -1160,7 +1514,7 @@ svg { width: 1em; height: 1em; display: block; }
 .replace-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 20px 0 24px; }
 .replace-option { padding: 9px; border: 1px solid rgba(217,180,106,.16); background: rgba(255,255,255,.02); text-align: center; transition: .2s; }
 .replace-option:hover { border-color: var(--gold); background: rgba(217,180,106,.08); transform: translateY(-2px); }
-.replace-option .art-die { width: 45px; height: 45px; margin: 5px auto 7px; border-radius: 8px; box-shadow: inset 0 1px 0 rgba(255,255,255,.4); background: linear-gradient(145deg,#e5d2af,#b99b6f); }
+.replace-option .art-die { width: 45px; height: 45px; margin: 5px auto 9px; transform: rotate(-5deg); }
 .replace-option b { display: block; font-family: var(--serif); font-size: 11px; font-weight: 400; color: #dfcfb2; }
 .replace-option span { display: block; color: #786b58; font-size: 7px; margin-top: 1px; }
 
@@ -1255,8 +1609,10 @@ svg { width: 1em; height: 1em; display: block; }
 .tut-combo-head strong small { font: 7px var(--sans); color: #9e8053; margin-left: 2px; }
 .tut-combo p { margin-top: 6px; color: #90806a; font-size: 8px; line-height: 1.6; }
 .tut-dice { display: flex; flex-wrap: wrap; gap: 4px; min-height: 34px; align-items: center; }
-.tut-die { width: 34px; height: 34px; flex: 0 0 34px; display: grid; grid-template-columns: repeat(3,1fr); grid-template-rows: repeat(3,1fr); gap: 2px; padding: 6px; border: 1px solid rgba(255,244,218,.75); border-radius: 8px; background: linear-gradient(145deg, #f5e7c9, #d9c098 55%, #ae9060); box-shadow: inset 0 0 0 1px rgba(255,255,255,.2), 0 2px 4px rgba(0,0,0,.25); }
-.tut-pip { width: 5px; height: 5px; align-self: center; justify-self: center; border-radius: 50%; background: radial-gradient(circle at 34% 28%, #735f43, #2b2115 72%); }
+.tut-die { position: relative; width: 34px; height: 34px; flex: 0 0 34px; display: grid; grid-template-columns: repeat(3,1fr); grid-template-rows: repeat(3,1fr); gap: 2px; padding: 6px; border: 1px solid rgba(255,244,218,.78); border-radius: 20%; background: radial-gradient(circle at 20% 14%, rgba(255,255,255,.3), transparent 38%), linear-gradient(145deg, #fff4da, #dfc394 52%, #a17c48); box-shadow: inset 1px 1px 0 rgba(255,255,255,.5), inset -2px -2px 4px rgba(66,40,16,.2), 0 2px 0 #785a34, 0 4px 7px rgba(0,0,0,.28); overflow: hidden; }
+.tut-die::before { content: ""; position: absolute; inset: 8%; border: 1px solid rgba(67,42,18,.15); border-radius: 13%; }
+.tut-die::after { content: ""; position: absolute; inset: 1px; border-radius: inherit; background: linear-gradient(135deg, rgba(255,255,255,.14), transparent 36% 70%, rgba(49,28,10,.1)); pointer-events: none; }
+.tut-pip { position: relative; z-index: 1; width: 5px; height: 5px; align-self: center; justify-self: center; border-radius: 50%; background: radial-gradient(circle at 61% 66%, #100c08 0 34%, #291d12 60%, #8c7150 100%); box-shadow: inset 1px 1px 1px rgba(0,0,0,.75), 0 1px 0 rgba(255,246,220,.4); }
 .tut-formula { display: inline-block; margin-top: 6px; padding: 2px 6px; border: 1px solid rgba(217,180,106,.15); color: #c1a46e; font: 8px var(--sans); letter-spacing: .04em; }
 .tut-triple-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 7px; margin: 9px 0 12px; }
 .tut-triple-grid .tut-combo:last-child:nth-child(3n+1) { grid-column: span 1; }

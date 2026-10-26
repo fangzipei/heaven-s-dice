@@ -5,6 +5,8 @@ import {
   effectiveProbs, useItem, canUseItem, createShop, buyDie,
   buyBarrel, buyItem, leaveShop, applyGesture, getDiceCapacity,
   openShop, refreshSection, getBarrel, BASE_REROLLS, advanceLevel,
+  buildScore, syncBag, getScorePreview, hasItemEverBeenTaken,
+  activeBoss, isBossDieBlocked, handTypeOf,
 } from '../src/engine.js';
 import { makeRng } from '../src/engine.js';
 
@@ -271,7 +273,7 @@ test('defeating a boss grants a permanent reroll boon', () => {
   assert.equal(state.phase, 'won');
   assert.equal(state.roundScore, 0);
   assert.equal(state.bossBoons, 1);
-  assert.equal(state.levelReward.total, 80);
+  assert.equal(state.levelReward.total, 85);
   openShop(state);
   leaveShop(state);
   assert.equal(state.level, 4);
@@ -308,4 +310,153 @@ test('target uses astral two-piece discount', () => {
   state.bag[1].dieId = 'astral_comet';
   const discounted = targetForLevel(state, 8);
   assert.equal(discounted, Math.ceil(base * 0.9));
+});
+
+test('set-score barrel pays per selected die of its set', () => {
+  const state = fresh();
+  state.barrelId = 'wolf_totem';
+  forceRoll(state, [1, 1, 2, 3, 4, 6]);
+  // Single 1s score 100 each; only the two wolf dice should get the bonus.
+  state.bag[0].dieId = 'wolf_whelp';
+  state.bag[1].dieId = 'wolf_bloodmoon';
+  syncBag(state);
+  initLevel(state);
+  forceRoll(state, [1, 1, 2, 3, 4, 6]);
+  state.selected = state.dice
+    .filter((d) => d.dieId === 'wolf_whelp' || d.dieId === 'wolf_bloodmoon')
+    .map((d) => d.uid);
+  const score = buildScore(state, 'reroll');
+  assert.equal(score.valid, true);
+  assert.equal(score.breakdown.base, 200);
+  assert.ok(score.breakdown.flats.some((flat) => flat.label.includes('狼图腾桶') && flat.value === 60));
+  assert.equal(score.total, 260);
+});
+
+test('once-only dice items cannot be taken twice, even if re-offered', () => {
+  const state = fresh();
+  state.coins = 500;
+  state.phase = 'won';
+  state.shop = null;
+  createShop(state);
+  state.shop.item = [{ kind: 'item', id: 'dice_bag', sold: false }];
+  assert.equal(buyItem(state, 0).ok, true);
+  assert.equal(state.passiveItems.includes('dice_bag'), true);
+  assert.equal(hasItemEverBeenTaken(state, 'dice_bag'), true);
+  assert.equal(getDiceCapacity(state), 7);
+  // Simulate a stock reshuffle that puts the same unique item back on the shelf.
+  state.coins = 500;
+  state.shop.item = [{ kind: 'item', id: 'dice_bag', sold: false }];
+  const second = buyItem(state, 0);
+  assert.equal(second.ok, false);
+  assert.match(second.error, /只能获取一次/);
+  assert.equal(state.passiveItems.filter((id) => id === 'dice_bag').length, 1);
+  assert.equal(getDiceCapacity(state), 7);
+});
+
+test('cracked pouch trades a die for a permanent score multiplier', () => {
+  const state = fresh();
+  state.coins = 500;
+  state.phase = 'won';
+  state.shop = null;
+  createShop(state);
+  state.shop.item = [{ kind: 'item', id: 'cracked_pouch', sold: false }];
+  assert.equal(buyItem(state, 0).ok, true);
+  assert.equal(getDiceCapacity(state), 5);
+  assert.equal(state.bag.length, 5);
+  syncBag(state);
+  initLevel(state);
+  forceRoll(state, [1, 2, 3, 4, 6, 6]);
+  const one = state.dice.find((d) => d.value === 1);
+  state.selected = [one.uid];
+  const preview = getScorePreview(state);
+  assert.equal(preview.reroll.breakdown.base, 100);
+  assert.equal(preview.reroll.total, 125);
+  state.shop.item = [{ kind: 'item', id: 'cracked_pouch', sold: false }];
+  state.coins = 500;
+  const second = buyItem(state, 0);
+  assert.equal(second.ok, false);
+});
+
+test('boss roster covers seven levels and seven effects', () => {
+  const state = fresh();
+  assert.deepEqual([3, 5, 7, 9, 11, 13, 15].map((level) => activeBoss({ ...state, level }).id),
+    ['rotfang', 'judge', 'soulsmith', 'ashclerk', 'gildedking', 'startax', 'seraph']);
+});
+
+test('the rat blanks every ninth rolled die', () => {
+  const state = fresh();
+  state.level = 3;
+  initLevel(state);
+  const first = rollDice(state, { rng: () => 0 });
+  assert.equal(first.ok, true);
+  const second = rollDice(state, { rng: () => 0 });
+  assert.equal(second.ok, true);
+  const blanks = state.dice.filter((die) => die.blank);
+  assert.equal(blanks.length, 1);
+  assert.equal(blanks[0].value, 0);
+  assert.equal(isBossDieBlocked(state, blanks[0]), true);
+});
+
+test('the judge only lets three-die combinations score', () => {
+  const state = fresh();
+  state.level = 5;
+  initLevel(state);
+  forceRoll(state, [5, 2, 3, 4, 6, 6]);
+  state.selected = [state.dice[0].uid];
+  const low = buildScore(state, 'reroll');
+  assert.equal(low.valid, true);
+  assert.equal(low.total, 0);
+  forceRoll(state, [3, 3, 3, 2, 4, 6]);
+  state.selected = state.dice.slice(0, 3).map((die) => die.uid);
+  const triple = buildScore(state, 'reroll');
+  assert.equal(triple.total, 300);
+});
+
+test('the forge disables all sixes', () => {
+  const state = fresh();
+  state.level = 7;
+  initLevel(state);
+  forceRoll(state, [6, 6, 1, 2, 3, 4]);
+  assert.equal(isBossDieBlocked(state, state.dice[0]), true);
+  state.selected = [state.dice[0].uid];
+  assert.equal(buildScore(state, 'reroll').valid, false);
+});
+
+test('the ash clerk rejects repeating the previous hand type', () => {
+  const state = fresh();
+  state.level = 9;
+  initLevel(state);
+  forceRoll(state, [3, 3, 3, 2, 4, 6]);
+  state.selected = state.dice.slice(0, 3).map((die) => die.uid);
+  const first = buildScore(state, 'reroll');
+  assert.equal(handTypeOf(first.analysis), 'triple');
+  state.flags.bossLastType = 'triple';
+  const repeated = buildScore(state, 'reroll');
+  assert.equal(repeated.valid, true);
+  assert.equal(repeated.total, 0);
+});
+
+test('the gilded king locks the first hand type for the level', () => {
+  const state = fresh();
+  state.level = 11;
+  initLevel(state);
+  state.flags.bossLockedType = 'triple';
+  forceRoll(state, [1, 2, 3, 4, 5, 6]);
+  state.selected = [state.dice[0].uid, state.dice[1].uid, state.dice[2].uid, state.dice[3].uid, state.dice[4].uid];
+  const straight = buildScore(state, 'reroll');
+  assert.equal(straight.total, 0);
+});
+
+test('the star tax collector removes a reroll, the seraph taxes score and adds one', () => {
+  const collector = fresh();
+  collector.level = 13;
+  initLevel(collector);
+  assert.equal(collector.rerolls, BASE_REROLLS - 1);
+  const seraph = fresh();
+  seraph.level = 15;
+  initLevel(seraph);
+  assert.equal(seraph.rerolls, BASE_REROLLS + 1);
+  forceRoll(seraph, [3, 3, 3, 2, 4, 6]);
+  seraph.selected = seraph.dice.slice(0, 3).map((die) => die.uid);
+  assert.equal(buildScore(seraph, 'reroll').total, 180);
 });

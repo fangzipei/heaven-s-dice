@@ -48,8 +48,9 @@ for (let level = 1; level <= 15; level += 1) {
   const won = await state();
   const expectPhase = level === 15 ? 'run-won' : 'won';
   if (won.phase !== expectPhase) throw new Error(`Level ${level} expected ${expectPhase}, got ${won.phase}`);
-  if (level % 3 === 0 && level < 15) {
-    if (won.boons !== level / 3) throw new Error(`Boss boon missing at level ${level}: ${won.boons}`);
+  const expectedBoons = { 3: 1, 5: 2, 7: 3, 9: 4, 11: 5, 13: 6 }[level];
+  if (expectedBoons && level < 15 && won.boons !== expectedBoons) {
+    throw new Error(`Boss boon missing at level ${level}: ${won.boons} vs ${expectedBoons}`);
   }
   report.levels.push({ level, phase: won.phase, boons: won.boons, coins: won.coins, result: won.result });
   if (level === 15) {
@@ -63,8 +64,9 @@ for (let level = 1; level <= 15; level += 1) {
   const intro = await state();
   if (intro.level !== level + 1) throw new Error(`Did not advance to level ${level + 1}`);
   if (!intro.overlay) throw new Error(`Level intro missing for level ${level + 1}`);
-  // 5 base, +1 per dealer sigil, and the Stone Judge's -1 at level 6.
-  const expectedRerolls = [5, 5, 5, 6, 6, 5, 7, 7, 7, 8, 8, 8, 9, 9, 9][intro.level - 1];
+  // 5 base, +1 per defeated dealer, the star collector's -1 at 13, and the
+  // seraph's +1 at 15.
+  const expectedRerolls = [5, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 9, 11, 12][intro.level - 1];
   if (intro.rerolls !== expectedRerolls) {
     report.errors.push(`Reroll count mismatch at level ${intro.level}: ${intro.rerolls} vs ${expectedRerolls}`);
   }

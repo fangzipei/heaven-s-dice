@@ -1,0 +1,88 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="240" height="300" viewBox="0 0 240 300">
+  <defs>
+    <linearGradient id="cupBody" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#0d0803"/>
+      <stop offset=".07" stop-color="#150c04"/>
+      <stop offset=".2" stop-color="#6b4022"/>
+      <stop offset=".33" stop-color="#977964"/>
+      <stop offset=".52" stop-color="#6b4022"/>
+      <stop offset=".78" stop-color="#221407"/>
+      <stop offset=".93" stop-color="#150c04"/>
+      <stop offset="1" stop-color="#0d0803"/>
+    </linearGradient>
+    <linearGradient id="cupVert" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fff" stop-opacity=".14"/>
+      <stop offset=".28" stop-color="#fff" stop-opacity=".02"/>
+      <stop offset=".62" stop-color="#000" stop-opacity=".08"/>
+      <stop offset=".88" stop-color="#000" stop-opacity=".26"/>
+      <stop offset="1" stop-color="#000" stop-opacity=".42"/>
+    </linearGradient>
+    <linearGradient id="cupRim" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#150c04"/>
+      <stop offset=".24" stop-color="#e8a768"/>
+      <stop offset=".44" stop-color="#f8bf84"/>
+      <stop offset=".72" stop-color="#e8a768"/>
+      <stop offset="1" stop-color="#150c04"/>
+    </linearGradient>
+    <linearGradient id="cupBand" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#000" stop-opacity=".55"/>
+      <stop offset=".3" stop-color="#e8a768" stop-opacity=".55"/>
+      <stop offset=".5" stop-color="#f8bf84" stop-opacity=".5"/>
+      <stop offset=".8" stop-color="#000" stop-opacity=".45"/>
+      <stop offset="1" stop-color="#000" stop-opacity=".7"/>
+    </linearGradient>
+    <radialGradient id="cupCap" cx=".36" cy=".28" r=".85">
+      <stop offset="0" stop-color="#a38976"/>
+      <stop offset=".52" stop-color="#6b4022"/>
+      <stop offset="1" stop-color="#221407"/>
+    </radialGradient>
+    <radialGradient id="cupShadow" cx=".5" cy=".5" r=".5">
+      <stop offset="0" stop-color="#000" stop-opacity=".7"/><stop offset="1" stop-color="#000" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="softGlow" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="7"/></filter>
+    <filter id="contact" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="5"/></filter>
+    <filter id="streak" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="3.4"/></filter>
+    <clipPath id="cupBodyClip"><path d="M56 240 C58 202 62 140 74 92 L166 92 C178 140 182 202 184 240 A64 18 0 0 1 56 240 Z"/></clipPath>
+  </defs>
+
+  <!-- table contact -->
+  <ellipse cx="121" cy="259" rx="82" ry="20" fill="url(#cupShadow)"/>
+  <ellipse cx="120" cy="250" rx="66" ry="14" fill="#000" opacity=".6" filter="url(#contact)"/>
+
+  <!-- wall -->
+  <path d="M56 240 C58 202 62 140 74 92 L166 92 C178 140 182 202 184 240 A64 18 0 0 1 56 240 Z" fill="url(#cupBody)"/>
+  <g clip-path="url(#cupBodyClip)">
+    <g transform="translate(120 166)"><path d="M-42 -52 L-26 -62 L-32 -46 L-16 -54 L-22 -38 L-6 -44 L-12 -28 L4 -32 L-2 -16 L14 -20 L8 -4 L24 -8 L18 8 L34 4" fill="none" stroke="#1a0d04" stroke-opacity=".62" stroke-width="2.2"/><path d="M42 -50 L28 -38 L38 -26 L24 -14 L34 -2 L20 10 L30 22 L16 34 L26 46" fill="none" stroke="#f8bf84" stroke-opacity=".24" stroke-width="2"/></g>
+    <path d="M56 240 C58 202 62 140 74 92 L166 92 C178 140 182 202 184 240 A64 18 0 0 1 56 240 Z" fill="url(#cupVert)"/>
+    <path d="M83 98 C86 152 88 202 90 248" fill="none" stroke="#fff" stroke-opacity=".14" stroke-width="8" filter="url(#streak)"/>
+    <path d="M172 96 C169 152 167 202 165 250" fill="none" stroke="#000" stroke-opacity=".42" stroke-width="13" filter="url(#streak)"/>
+    <path d="M62 228 Q120 250 178 228" fill="none" stroke="#f8bf84" stroke-opacity=".18" stroke-width="11" filter="url(#streak)"/>
+    <path d="M71 138 Q120 152 169 138" fill="none" stroke="#2b1a0f" stroke-width="11"/>
+    <path d="M71 138 Q120 152 169 138" fill="none" stroke="url(#cupBand)" stroke-width="11"/>
+    <path d="M71 132.5 Q120 146.5 169 132.5" fill="none" stroke="#f8bf84" stroke-opacity=".34" stroke-width="1.3"/>
+    <path d="M71 143.5 Q120 157.5 169 143.5" fill="none" stroke="#000" stroke-opacity=".42" stroke-width="1.5"/>
+    <path d="M58 216 Q120 232 182 216" fill="none" stroke="#2b1a0f" stroke-width="13"/>
+    <path d="M58 216 Q120 232 182 216" fill="none" stroke="url(#cupBand)" stroke-width="13"/>
+    <path d="M58 209.5 Q120 225.5 182 209.5" fill="none" stroke="#f8bf84" stroke-opacity=".3" stroke-width="1.3"/>
+    <path d="M58 222.5 Q120 238.5 182 222.5" fill="none" stroke="#000" stroke-opacity=".46" stroke-width="1.7"/>
+    <path d="M76 106 Q120 120 164 106" fill="none" stroke="#f8bf84" stroke-opacity=".3" stroke-width="1.2" stroke-dasharray="3 6"/><path d="M60 230 Q120 246 180 230" fill="none" stroke="#f8bf84" stroke-opacity=".22" stroke-width="1.2" stroke-dasharray="3 6"/>
+    <g transform="translate(120 176)"><g fill="none" stroke="#f8bf84" stroke-width="2.4" opacity=".8">
+          <path d="M-18 12 L-22 -18 L-7 -7 L0 -24 L7 -7 L22 -18 L18 12 Q0 26 -18 12Z"/>
+          <path d="M-9 2 L-3 6 M9 2 L3 6"/><path d="M-6 12 L0 8 L6 12"/>
+        </g></g>
+    <circle cx="120" cy="176" r="31" fill="#f8bf84" opacity=".07" filter="url(#softGlow)"/>
+  </g>
+
+  <!-- rolled mouth resting on the table -->
+  <path d="M56 240 A64 18 0 0 0 184 240" fill="none" stroke="url(#cupRim)" stroke-width="7" stroke-linecap="round"/>
+  <path d="M58 238 A60 16 0 0 0 182 238" fill="none" stroke="#f8bf84" stroke-opacity=".4" stroke-width="1.3"/>
+  <path d="M60 234 A56 14 0 0 0 180 234" fill="none" stroke="#000" stroke-opacity=".46" stroke-width="3"/>
+  <ellipse cx="120" cy="252" rx="54" ry="8" fill="#0a0602" opacity=".55" filter="url(#contact)"/>
+
+  <!-- closed end -->
+  <ellipse cx="120" cy="92" rx="46" ry="13" fill="url(#cupCap)"/>
+  <ellipse cx="120" cy="92" rx="46" ry="13" fill="none" stroke="#0d0803" stroke-width="2"/>
+  <ellipse cx="120" cy="92" rx="36" ry="9" fill="none" stroke="#f8bf84" stroke-opacity=".24" stroke-width="1.3"/>
+  <ellipse cx="106" cy="86" rx="20" ry="5.5" fill="#fff" opacity=".1" transform="rotate(-6 106 86)"/>
+  <path d="M74 92 A46 13 0 0 0 166 92" fill="none" stroke="#9d816d" stroke-opacity=".34" stroke-width="1.8"/>
+</svg>

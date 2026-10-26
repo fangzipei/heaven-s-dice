@@ -1,0 +1,139 @@
+/*
+ * Per-die skins.
+ *
+ * Every die in the set has its own material ramp, surface grain, accent and
+ * carved motif, so two dice of the same rarity still read as different objects.
+ * The skin is consumed as CSS custom properties (inline on the die element,
+ * which beats the rarity defaults in main.css) plus one watermark SVG drawn
+ * behind the pips on every face.
+ */
+
+/* ── carved motifs ─────────────────────────────────────────────────────────
+   Each returns inner markup for a 0 0 100 100 viewBox and paints with
+   currentColor, so the accent tint comes from CSS. */
+const MOTIFS = {
+  /* wolf */
+  paw: `<g fill="currentColor"><ellipse cx="31" cy="34" rx="7.5" ry="10" transform="rotate(-24 31 34)"/><ellipse cx="45" cy="26" rx="7.5" ry="11"/><ellipse cx="61" cy="28" rx="7.5" ry="11"/><ellipse cx="74" cy="38" rx="7" ry="9.5" transform="rotate(22 74 38)"/><path d="M50 44c13 0 23 10 23 21 0 8-7 13-15 13-5 0-8-2-8-2s-3 2-8 2c-8 0-15-5-15-13 0-11 10-21 23-21z"/></g>`,
+  claw: `<g fill="none" stroke="currentColor" stroke-width="6" stroke-linecap="round"><path d="M22 78C34 62 44 46 50 20"/><path d="M44 82C54 62 62 44 66 22"/><path d="M66 84C74 66 80 50 82 30"/></g><g fill="currentColor" opacity=".45"><path d="M20 82c4 6 10 8 14 4-6-2-10-5-14-4z"/></g>`,
+  moon: `<path fill="currentColor" d="M62 12a44 44 0 1 0 26 66A40 40 0 0 1 62 12z"/><g fill="currentColor" opacity=".7"><circle cx="26" cy="24" r="3.4"/><circle cx="18" cy="58" r="2.4"/></g>`,
+  fangs: `<g fill="currentColor"><path d="M30 22c8 4 12 14 12 26 0 10-4 18-10 22-3-12-4-34-2-48z"/><path d="M70 22c-8 4-12 14-12 26 0 10 4 18 10 22 3-12 4-34 2-48z"/></g><path fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round" d="M32 82h36"/>`,
+  /* raven */
+  feather: `<path fill="currentColor" d="M74 14c-8 16-26 34-44 42-6 3-12 4-16 2 6-2 10-6 12-12-6 4-12 6-16 4 20-10 34-24 44-42 4-8 8-12 12-14 3-1 5 1 5 4 0 6-1 12 3 16z"/><path fill="none" stroke="currentColor" stroke-width="2.6" opacity=".55" d="M74 16C58 34 38 52 18 60"/>`,
+  eye: `<path fill="none" stroke="currentColor" stroke-width="5" d="M10 50C24 28 76 28 90 50 76 72 24 72 10 50z"/><circle cx="50" cy="50" r="11" fill="currentColor"/><circle cx="46" cy="46" r="3.4" fill="#fff" opacity=".55"/>`,
+  skull: `<path fill="currentColor" d="M50 12c22 0 34 15 34 33 0 10-5 15-11 17 1 6 2 9 4 12 1 2-1 3-4 3-8 0-13-4-15-9h-16c-2 5-7 9-15 9-3 0-5-1-4-3 2-3 3-6 4-12-6-2-11-7-11-17 0-18 12-33 34-33z"/><g fill="#000" opacity=".55"><circle cx="38" cy="44" r="8"/><circle cx="62" cy="44" r="8"/><path d="M47 58h6l-3 7z"/></g>`,
+  trieye: `<g fill="none" stroke="currentColor" stroke-width="4"><path d="M14 40C24 26 44 26 54 40 44 54 24 54 14 40z"/><path d="M46 40C56 26 76 26 86 40 76 54 56 54 46 40z"/><path d="M28 68C38 56 62 56 72 68 62 80 38 80 28 68z"/></g><g fill="currentColor"><circle cx="34" cy="40" r="5"/><circle cx="66" cy="40" r="5"/><circle cx="50" cy="68" r="5"/></g>`,
+  /* serpent */
+  scales: `<g fill="none" stroke="currentColor" stroke-width="3.4"><path d="M18 34a16 16 0 0 0 32 0a16 16 0 0 0 32 0"/><path d="M18 50a16 16 0 0 0 32 0a16 16 0 0 0 32 0"/><path d="M18 66a16 16 0 0 0 32 0a16 16 0 0 0 32 0"/></g>`,
+  fang: `<path fill="currentColor" d="M50 14c9 6 14 18 14 34 0 16-5 30-12 38-2-14-4-30-4-44 0-10-1-20 2-28z"/><path fill="none" stroke="currentColor" stroke-width="3" opacity=".6" d="M38 16c4 10 6 24 6 40"/>`,
+  hydra: `<g fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round"><path d="M50 92V60"/><path d="M50 60C40 50 30 44 22 30"/><path d="M50 60c10-10 20-16 28-30"/></g><g fill="currentColor"><path d="M22 30l-8-10 16-2z"/><path d="M78 30l8-10-16-2z"/><path d="M50 60l-9-11 18 0z"/></g>`,
+  ouroboros: `<path fill="none" stroke="currentColor" stroke-width="6" d="M50 14a36 36 0 1 1-32 20"/><path fill="currentColor" d="M14 40c8-6 16-6 22 0-6 6-14 6-22 0z"/><g fill="currentColor"><path d="M50 36l3.4 7 7.6 1-5.5 5.3 1.3 7.6-6.8-3.6-6.8 3.6 1.3-7.6L39 44.5l7.6-1z"/></g>`,
+  /* crown */
+  crown: `<path fill="currentColor" d="M14 74h72l-6-14-16 10-14-22-14 22-16-10z"/><g fill="currentColor"><circle cx="50" cy="30" r="4.6"/><circle cx="22" cy="46" r="3.4"/><circle cx="78" cy="46" r="3.4"/></g><path fill="none" stroke="currentColor" stroke-width="4" d="M16 84h68"/>`,
+  coin: `<g fill="none" stroke="currentColor" stroke-width="5"><circle cx="50" cy="42" r="24"/><path d="M38 34h24M38 50h24M50 26v32"/></g><path fill="none" stroke="currentColor" stroke-width="5" d="M20 78h60"/>`,
+  seal: `<path fill="none" stroke="currentColor" stroke-width="5" d="M32 20h36l12 12v36l-12 12H32L20 68V32z"/><path fill="currentColor" d="M50 34l4 9 10 1-7.5 6.6 2.2 9.8L50 55.6 41.3 60.4l2.2-9.8L36 44l10-1z"/>`,
+  brokencrown: `<path fill="currentColor" d="M14 74h72l-6-14-13 8-9-16-11 18-13-8z"/><path fill="none" stroke="currentColor" stroke-width="4" stroke-dasharray="6 5" d="M50 34v-6"/><path fill="none" stroke="currentColor" stroke-width="4" d="M16 84h68"/>`,
+  /* astral */
+  constellation: `<g fill="currentColor"><circle cx="22" cy="30" r="4"/><circle cx="50" cy="20" r="3"/><circle cx="74" cy="38" r="4"/><circle cx="36" cy="58" r="3.4"/><circle cx="66" cy="70" r="4"/><circle cx="26" cy="80" r="3"/></g><g fill="none" stroke="currentColor" stroke-width="2.2" opacity=".7"><path d="M22 30L50 20 74 38 66 70M22 30 36 58 26 80M36 58l30 12"/></g>`,
+  comet: `<circle cx="66" cy="34" r="12" fill="currentColor"/><path fill="currentColor" opacity=".55" d="M66 22C52 26 38 40 26 60c-4 7-6 13-6 18 12-6 24-18 34-32 6-9 10-18 12-24z"/><g fill="currentColor" opacity=".6"><circle cx="20" cy="26" r="2.6"/><circle cx="34" cy="14" r="2"/></g>`,
+  star: `<path fill="currentColor" d="M50 10l11 23 25 3-18 17 4.5 25L50 65.5 27.5 78 32 53 14 36l25-3z"/><circle cx="50" cy="44" r="6" fill="#fff" opacity=".5"/>`,
+  fateeye: `<path fill="none" stroke="currentColor" stroke-width="4.5" d="M12 50C26 30 74 30 88 50 74 70 26 70 12 50z"/><circle cx="50" cy="50" r="10" fill="currentColor"/><g fill="none" stroke="currentColor" stroke-width="2.6" opacity=".75"><path d="M50 14v10M50 76v10M14 50h10M76 50h10M24 24l7 7M69 69l7 7M76 24l-7 7M31 69l-7 7"/></g>`,
+  /* standard */
+  cracks: `<g fill="none" stroke="currentColor" stroke-width="2.4" opacity=".8"><path d="M24 18l10 14-8 10 12 12-6 16"/><path d="M74 22l-12 12 8 12-14 8 4 18"/><path d="M40 84l8-12"/></g>`,
+};
+
+const ramp = (...stops) => `linear-gradient(150deg, ${stops.join(', ')})`;
+
+/* Grain overlays: each family gets its own surface so the dice don't share
+   one plastic sheen. */
+const grain = {
+  bone: (tint = '90,60,26') => `repeating-linear-gradient(96deg, rgba(255,255,255,.03) 0 1px, rgba(${tint},.05) 1px 3px, rgba(255,255,255,0) 3px 11px)`,
+  hair: (tint) => `repeating-linear-gradient(74deg, rgba(255,255,255,.05) 0 1px, rgba(${tint},.09) 1px 2px, rgba(255,255,255,0) 2px 5px)`,
+  scale: (tint) => `repeating-linear-gradient(48deg, rgba(255,255,255,.035) 0 3px, rgba(${tint},.07) 3px 6px, rgba(255,255,255,0) 6px 12px), repeating-linear-gradient(-48deg, rgba(255,255,255,.03) 0 3px, rgba(${tint},.06) 3px 6px, rgba(255,255,255,0) 6px 12px)`,
+  metal: (tint) => `conic-gradient(from 198deg at 30% 16%, rgba(255,246,214,.14), rgba(255,238,190,.04) 15%, rgba(255,255,255,0) 34%, rgba(255,255,255,0) 66%, rgba(238,206,138,.06) 80%, rgba(255,244,206,.12) 100%), repeating-linear-gradient(44deg, rgba(255,255,255,.03) 0 1px, rgba(${tint},.05) 1px 2px, rgba(255,255,255,0) 2px 8px)`,
+  night: (tint) => `radial-gradient(circle at 76% 20%, rgba(206,224,255,.12), rgba(206,224,255,0) 52%), repeating-linear-gradient(112deg, rgba(255,255,255,.02) 0 1px, rgba(${tint},.05) 1px 4px, rgba(255,255,255,0) 4px 12px)`,
+  ember: (tint) => `radial-gradient(ellipse at 50% 112%, rgba(255,116,52,.24), rgba(255,60,20,0) 56%), repeating-linear-gradient(64deg, rgba(255,170,120,.04) 0 1px, rgba(${tint},.08) 1px 3px, rgba(0,0,0,0) 3px 9px)`,
+};
+
+const S = (face, pip, pipRim, edge, accent, motif, material, glow) => ({
+  face, pip, pipRim, edge, accent, motif, material, glow,
+});
+
+export const DIE_SKINS = {
+  standard: S(ramp('#e6d5ae', '#d2ba8c 48%', '#b3945f 76%', '#8a6b3f'), '#191209', '#6d5636',
+    'rgba(238,222,184,.55)', 'rgba(224,193,121,.5)', 'cracks', grain.bone(), 'rgba(224,193,121,.4)'),
+
+  /* ── wolf: aged bone, warm browns ─────────────────────────────────── */
+  wolf_whelp: S(ramp('#f0e2c2', '#dcc59a 46%', '#b9995f 78%', '#8d6c3c'), '#241708', '#7a5f38',
+    'rgba(244,228,192,.6)', 'rgba(226,180,118,.55)', 'paw', grain.bone('104,68,28'), 'rgba(226,180,118,.45)'),
+  wolf_hunter: S(ramp('#dfe0d2', '#c0bfa4 44%', '#8d8f70 76%', '#5c6047'), '#171a10', '#7c8062',
+    'rgba(232,238,214,.5)', 'rgba(196,206,150,.55)', 'claw', grain.hair('60,66,40'), 'rgba(196,206,150,.45)'),
+  wolf_bloodmoon: S(ramp('#e8cdb4', '#cf9f83 42%', '#a3675a 74%', '#6b3b33'), '#210d09', '#8a5145',
+    'rgba(246,214,194,.55)', 'rgba(232,142,112,.58)', 'moon', grain.bone('92,40,32'), 'rgba(232,142,112,.5)'),
+  wolf_alpha: S(ramp('#eef1f2', '#cfd6d6 40%', '#9aa6a6 74%', '#65706f'), '#14191a', '#78838a',
+    'rgba(240,248,250,.6)', 'rgba(202,224,232,.6)', 'fangs', grain.hair('60,74,80'), 'rgba(202,224,232,.5)'),
+
+  /* ── raven: charcoal & iridescent blue-black ──────────────────────── */
+  raven_feather: S(ramp('#cdd4dc', '#a7b1bd 44%', '#737f8d 76%', '#454f5c'), '#101419', '#6a7684',
+    'rgba(226,234,244,.5)', 'rgba(178,204,232,.55)', 'feather', grain.hair('44,54,68'), 'rgba(178,204,232,.45)'),
+  raven_nighteye: S(ramp('#d3dcea', '#a3b3ca 42%', '#6d7f9c 74%', '#3f4d66'), '#0d1220', '#63769a',
+    'rgba(230,238,250,.55)', 'rgba(158,192,240,.62)', 'eye', grain.night('44,58,88'), 'rgba(158,192,240,.52)'),
+  raven_death: S(ramp('#ded7c8', '#b6ab97 42%', '#7c7462 74%', '#4a4438'), '#141210', '#7b7261',
+    'rgba(240,236,222,.5)', 'rgba(214,204,180,.55)', 'skull', grain.bone('70,62,48'), 'rgba(214,204,180,.45)'),
+  raven_thousand: S(ramp('#c9c6e2', '#9d99c4 42%', '#6a6697 74%', '#3c3a5e'), '#100f1a', '#635f96',
+    'rgba(232,230,252,.55)', 'rgba(184,178,246,.6)', 'trieye', grain.night('48,44,84'), 'rgba(184,178,246,.5)'),
+
+  /* ── serpent: jade, venom, dark teal ──────────────────────────────── */
+  serpent_scale: S(ramp('#dbe6d2', '#b3c7a6 44%', '#7f9770 76%', '#4d6150'), '#141a10', '#6d8270',
+    'rgba(234,244,224,.5)', 'rgba(178,214,150,.55)', 'scales', grain.scale('56,80,52'), 'rgba(178,214,150,.45)'),
+  serpent_fang: S(ramp('#e6e4c4', '#c8c795 42%', '#939a56 74%', '#5d6730'), '#181a08', '#828a4a',
+    'rgba(246,248,214,.55)', 'rgba(206,224,110,.58)', 'fang', grain.scale('76,84,36'), 'rgba(206,224,110,.48)'),
+  serpent_hydra: S(ramp('#cfe4e2', '#a0c4c4 42%', '#6b8f92 74%', '#3c575c'), '#0f1a1a', '#5e8686',
+    'rgba(228,246,246,.5)', 'rgba(140,214,214,.58)', 'hydra', grain.scale('40,72,76'), 'rgba(140,214,214,.48)'),
+  serpent_devourer: S(ramp('#cfc7b0', '#9e9582 38%', '#625c50 68%', '#332f28'), '#170f06', '#6f6552',
+    'rgba(240,232,208,.55)', 'rgba(238,200,120,.62)', 'ouroboros', grain.metal('96,80,40'), 'rgba(238,200,120,.5)'),
+
+  /* ── crown: brass, copper, gilt ───────────────────────────────────── */
+  crown_court: S(ramp('#e8dcbe', '#cdb385 44%', '#9d8350 76%', '#6b5730'), '#1d1608', '#7e6a3e',
+    'rgba(246,238,214,.55)', 'rgba(224,192,120,.6)', 'crown', grain.metal('104,84,32'), 'rgba(224,192,120,.5)'),
+  crown_taxman: S(ramp('#e3d2bd', '#c19f78 40%', '#8f6a44 72%', '#5c4128'), '#1a1008', '#7a5a38',
+    'rgba(244,230,204,.55)', 'rgba(214,166,104,.6)', 'coin', grain.metal('96,64,28'), 'rgba(214,166,104,.5)'),
+  crown_seal: S(ramp('#f0e2b0', '#dfc172 36%', '#b5903c 62%', '#8a6a22 82%', '#543d10'), '#1e1404', '#9c7c34',
+    'rgba(252,242,206,.7)', 'rgba(246,214,130,.7)', 'seal', grain.metal('108,80,20'), 'rgba(246,214,130,.55)'),
+  crown_queen: S(ramp('#8d3a38', '#5e2124 42%', '#3a1216 72%', '#1e080a'), '#f0c0a8', '#a34a44',
+    'rgba(238,150,132,.62)', 'rgba(255,168,142,.72)', 'brokencrown', grain.ember('64,16,16'), 'rgba(255,120,80,.55)'),
+
+  /* ── astral: night sky, comet ice, starcore, fate ─────────────────── */
+  astral_dust: S(ramp('#cdcfe6', '#a3a6c8 42%', '#7276a0 74%', '#44476e'), '#111226', '#5f6396',
+    'rgba(232,234,252,.55)', 'rgba(186,190,246,.6)', 'constellation', grain.night('48,52,92'), 'rgba(186,190,246,.5)'),
+  astral_comet: S(ramp('#d6e4ea', '#a8c4d2 40%', '#6e8fa4 72%', '#3f5a6c'), '#101a20', '#5e8092',
+    'rgba(234,246,252,.55)', 'rgba(158,222,246,.62)', 'comet', grain.night('40,64,84'), 'rgba(158,222,246,.52)'),
+  astral_core: S(ramp('#efe4c4', '#d9c088 38%', '#b1934a 66%', '#7a6224 86%', '#4a3a10'), '#1a1206', '#99803f',
+    'rgba(252,244,214,.65)', 'rgba(250,222,150,.68)', 'star', grain.metal('104,84,36'), 'rgba(250,222,150,.55)'),
+  astral_eye: S(ramp('#ded0ee', '#b8a4d8 40%', '#8570b4 72%', '#54406e'), '#150e24', '#6f5a9a',
+    'rgba(244,232,252,.6)', 'rgba(214,178,250,.68)', 'fateeye', grain.night('60,44,96'), 'rgba(214,178,250,.55)'),
+};
+
+const FALLBACK = DIE_SKINS.standard;
+
+export function dieSkin(spec) {
+  return DIE_SKINS[spec?.id] || FALLBACK;
+}
+
+/* Inline custom properties. Inline styles outrank the rarity defaults in
+   main.css, so a die keeps its own face while the tier frame/glow still works. */
+export function dieSkinStyle(spec) {
+  const skin = dieSkin(spec);
+  return `--die-face-bg:${skin.face};--die-pip:${skin.pip};--die-pip-rim:${skin.pipRim};`
+    + `--die-edge:${skin.edge};--die-material:${skin.material};`
+    + `--die-glyph-color:${skin.accent};--die-peak-glyph:${skin.accent};`
+    + `--die-peak-glow:${skin.glow};--die-accent:${skin.accent}`;
+}
+
+/* Watermark drawn behind the pips on every face; brighter on weighted faces. */
+export function dieMotifSvg(spec) {
+  const skin = dieSkin(spec);
+  const body = MOTIFS[skin.motif] || MOTIFS.cracks;
+  return `<svg class="die-motif" viewBox="0 0 100 100" aria-hidden="true" focusable="false">${body}</svg>`;
+}
+
+export const MOTIF_KEYS = Object.keys(MOTIFS);

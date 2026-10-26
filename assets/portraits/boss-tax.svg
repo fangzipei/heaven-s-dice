@@ -1,0 +1,90 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="600" height="760" viewBox="0 0 600 760">
+<defs>
+  <radialGradient id="aura" cx=".5" cy=".46" r=".55">
+    <stop offset="0" stop-color="#a9edf7" stop-opacity=".42"/>
+    <stop offset=".5" stop-color="#08242d" stop-opacity=".14"/>
+    <stop offset="1" stop-color="#041318" stop-opacity="0"/>
+  </radialGradient>
+  <radialGradient id="floor" cx=".5" cy=".5" r=".5">
+    <stop offset="0" stop-color="#a8eef8" stop-opacity=".2"/>
+    <stop offset="1" stop-color="#a8eef8" stop-opacity="0"/>
+  </radialGradient>
+  <linearGradient id="robe" x1=".2" y1="0" x2=".8" y2="1">
+    <stop offset="0" stop-color="#18323a"/>
+    <stop offset=".5" stop-color="#0a171c"/>
+    <stop offset="1" stop-color="#03090c"/>
+  </linearGradient>
+  <linearGradient id="rim" x1="0" y1="0" x2="1" y2="1">
+    <stop offset="0" stop-color="#c8fbff" stop-opacity=".92"/>
+    <stop offset=".5" stop-color="#6bc7d8" stop-opacity=".22"/>
+    <stop offset="1" stop-color="#08222b" stop-opacity=".7"/>
+  </linearGradient>
+  <linearGradient id="gold" x1="0" y1="0" x2="1" y2="1">
+    <stop offset="0" stop-color="#f8e1a0"/><stop offset=".55" stop-color="#c99b47"/><stop offset="1" stop-color="#6f4c1c"/>
+  </linearGradient>
+  <filter id="glow" x="-80%" y="-80%" width="260%" height="260%"><feGaussianBlur stdDeviation="7"/></filter>
+</defs>
+<ellipse cx="300" cy="374" rx="270" ry="330" fill="url(#aura)"/>
+<ellipse cx="300" cy="664" rx="240" ry="80" fill="url(#floor)"/>
+<g fill="none" stroke="#b9f4ff" opacity=".32">
+  <circle cx="300" cy="336" r="186" stroke-width="1.2"/>
+  <circle cx="300" cy="336" r="150" stroke-width="1" stroke-dasharray="2 10"/>
+  <path d="M300 118v34M300 520v34M84 336h34M482 336h34" stroke-width="1.4"/>
+</g>
+<g stroke="#b6f6ff" stroke-width="1" opacity=".3">
+  <path d="M138 244l22-16 22 16-8 26h-28z"/>
+  <path d="M418 244l22-16 22 16-8 26h-28z"/>
+  <path d="M270 116l30-20 30 20-10 30h-40z"/>
+</g>
+
+<!-- robe -->
+<path d="M196 330 C170 396 142 512 112 760 L488 760 C458 512 430 396 404 330 C376 302 342 288 300 288 C258 288 224 302 196 330Z" fill="url(#robe)"/>
+<path d="M196 330 C170 396 142 512 112 760 L488 760 C458 512 430 396 404 330" fill="none" stroke="url(#rim)" stroke-width="3"/>
+<path d="M218 356 C246 384 354 384 382 356 L368 414 C340 436 260 436 232 414Z" fill="#081418" stroke="#4e9aab" stroke-width="1.5"/>
+<path d="M300 430 L300 574" stroke="#4b8290" stroke-width="1.4" opacity=".75"/>
+<path d="M258 522 Q300 548 342 522" fill="none" stroke="#5a9baa" stroke-width="1.4" opacity=".55"/>
+
+<!-- mask / hood -->
+<path d="M218 294 C212 216 246 160 300 160 C354 160 388 216 382 294 C356 276 330 268 300 268 C270 268 244 276 218 294Z" fill="#071116"/>
+<path d="M218 294 C212 216 246 160 300 160 C354 160 388 216 382 294" fill="none" stroke="url(#rim)" stroke-width="2.4"/>
+<path d="M243 280 C246 236 267 208 300 208 C333 208 354 236 357 280 C342 262 324 254 300 254 C276 254 258 262 243 280Z" fill="#02080a"/>
+<path d="M269 262 L300 234 L331 262 L300 288Z" fill="none" stroke="#a9eef7" stroke-width="1.2" opacity=".65"/>
+<circle cx="300" cy="260" r="8" fill="#c9fbff" filter="url(#glow)"/>
+<path d="M266 292 Q300 306 334 292" fill="none" stroke="#78c6d5" stroke-width="1.4" opacity=".8"/>
+
+<!-- shoulders / collar -->
+<path d="M196 330 C214 306 240 294 260 292 L300 326 L340 292 C360 294 386 306 404 330" fill="none" stroke="#b7d6a0" stroke-width="2" opacity=".55"/>
+<g fill="url(#gold)" stroke="#f8e3a4" stroke-width=".7">
+  <circle cx="300" cy="350" r="12"/>
+  <path d="M300 342l3.4 6.7 7.4 1-5.4 5.2 1.3 7.3-6.7-3.5-6.7 3.5 1.3-7.3-5.4-5.2 7.4-1z" fill="#4d3514"/>
+</g>
+
+<!-- left scales -->
+<path d="M178 388 C142 412 122 452 112 494" fill="none" stroke="#b9c8c4" stroke-width="4" stroke-linecap="round"/>
+<path d="M92 504 L176 504" stroke="#c9b276" stroke-width="3"/>
+<path d="M112 504 L92 562 A28 28 0 00152 562Z" fill="none" stroke="url(#gold)" stroke-width="2.2"/>
+<path d="M156 504 L136 562 A28 28 0 00196 562Z" fill="none" stroke="url(#gold)" stroke-width="2.2"/>
+<circle cx="134" cy="500" r="5" fill="#d9f8ff" filter="url(#glow)"/>
+<circle cx="92" cy="562" r="3" fill="#e4cd8e"/><circle cx="152" cy="562" r="3" fill="#e4cd8e"/>
+<circle cx="136" cy="562" r="3" fill="#e4cd8e"/><circle cx="196" cy="562" r="3" fill="#e4cd8e"/>
+
+<!-- right staff / coin -->
+<path d="M424 382 C458 410 474 458 482 512" fill="none" stroke="#8a6a38" stroke-width="5" stroke-linecap="round"/>
+<path d="M460 512 L506 512" stroke="#c7a95e" stroke-width="3"/>
+<circle cx="482" cy="486" r="30" fill="none" stroke="url(#gold)" stroke-width="3"/>
+<path d="M482 468l5.6 11.2 12.4 1.8-9 8.7 2.1 12.3-11.1-5.9-11.1 5.9 2.1-12.3-9-8.7 12.4-1.8z" fill="url(#gold)" opacity=".9"/>
+<circle cx="482" cy="486" r="4" fill="#c8fbff" filter="url(#glow)"/>
+
+<!-- crystal shards -->
+<g fill="#b9f4ff" opacity=".55" stroke="#e2fdff" stroke-width=".7">
+  <path d="M196 586 L212 546 L228 586 L212 618Z"/>
+  <path d="M376 590 L392 548 L408 590 L392 620Z"/>
+  <path d="M214 232 L222 210 L230 232 L222 250Z" opacity=".6"/>
+  <path d="M382 232 L390 210 L398 232 L390 250Z" opacity=".6"/>
+</g>
+<g fill="#c9fbff">
+  <circle cx="164" cy="326" r="1.5" opacity=".6"/><circle cx="446" cy="300" r="1.6" opacity=".5"/>
+  <circle cx="480" cy="626" r="1.4" opacity=".4"/><circle cx="154" cy="588" r="1.3" opacity=".45"/>
+  <circle cx="226" cy="164" r="1.2" opacity=".4"/><circle cx="394" cy="672" r="1.7" opacity=".35"/>
+</g>
+</svg>
