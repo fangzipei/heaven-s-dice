@@ -23,6 +23,11 @@ export const RARITIES: RarityTable = {
   },
 };
 
+/** Rarity lookup that tolerates an entry without one — every caller used to
+    carry its own `|| RARITIES.common` fallback. */
+export const rarityOf = (item: { rarity?: string } | null | undefined): RarityTable[RarityId] =>
+  RARITIES[(item?.rarity as RarityId) || 'common'] || RARITIES.common;
+
 export const DICE_SETS: Record<'wolf' | 'demon', DiceSetDef> = {
   wolf: {
     id: 'wolf', name: '狼裔', icon: 'wolf', color: '#d18a58',

@@ -16,7 +16,7 @@ import { TABLE_DEFS } from './tables/index.ts';
 import { MINION_DEFS } from './minions/index.ts';
 
 export {
-  RARITIES, DICE_SETS, SHOP_RARITY_WEIGHTS, rarityShopWeight,
+  RARITIES, rarityOf, DICE_SETS, SHOP_RARITY_WEIGHTS, rarityShopWeight,
   REROLL_REFUND, OVERSHOOT_TIERS, overshootTier,
 } from './meta.ts';
 export { STANDARD_DIE } from './standard_die.ts';
