@@ -11,6 +11,38 @@ export interface Discovery {
   items: string[];
 }
 
+export interface CupPoint {
+  x: number;
+  y: number;
+}
+
+/** 杯垫仪式正在描的那条轨迹：引导线、已画点与对应的 SVG 折线。 */
+export interface CupTrace {
+  gesture: string;
+  name: string;
+  center: CupPoint;
+  radius: number;
+  guide: CupPoint[];
+  guides: CupPoint[];
+  points: CupPoint[];
+  drawn: Element | null;
+}
+
+/** 描线结果，收尾时留给调试桥与测试脚本读。 */
+export interface CupTraceResult {
+  ok: boolean;
+  reason: string;
+  /** 轨迹太短时提前返回，下面这些测量值就还没有。 */
+  coverage?: number;
+  length?: number;
+  guideLength?: number;
+  sweep?: number;
+  gesture: string;
+  points: number;
+  recorded: CupPoint[];
+  guide: CupPoint[];
+}
+
 export interface UiState {
   run: RunState | null;
   discovered: Discovery;
@@ -42,7 +74,9 @@ export interface UiState {
   cupCountdownTimer: ReturnType<typeof setInterval> | null;
   cupCountdownEnd: number;
   cupAutoTimer: ReturnType<typeof setTimeout> | null;
-  cupTrace: unknown;
+  cupTrace: CupTrace | null;
+  /** 最近一次仪式描线的判定结果。 */
+  lastTraceResult: CupTraceResult | null;
   cupPointerId: number | null;
   resultShown: boolean;
 }
@@ -74,6 +108,7 @@ export const app: UiState = {
   cupCountdownEnd: 0,
   cupAutoTimer: null,
   cupTrace: null,
+  lastTraceResult: null,
   cupPointerId: null,
   resultShown: false,
 };
