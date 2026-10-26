@@ -25,7 +25,7 @@ const state = () => js(`(() => {const r=window.HeavensDice.run;return {phase:r.p
 
 const report = {};
 await js(`window.__errors=[];window.addEventListener('error',e=>window.__errors.push(String(e.message)));window.addEventListener('unhandledrejection',e=>window.__errors.push(String(e.reason)));`);
-await js(`document.querySelector('[data-action="start-run"]').click()`); await sleep(400);
+await js(`document.querySelector('[data-action="start-run"]').click(); document.querySelector('[data-action="start-direct"]')?.click()`); await sleep(400);
 await js(`document.querySelector('[data-action="close-intro"]').click()`); await sleep(500);
 
 // Manual cup shake: horizontal drag only.
@@ -76,7 +76,7 @@ await shot('23-circle-result');
 // Responsive rail toggle and horizontal overflow.
 await send('Emulation.setDeviceMetricsOverride', { width: 900, height: 700, deviceScaleFactor: 1, mobile: false });
 await send('Page.navigate', { url: 'http://127.0.0.1:4173/' }); await sleep(900);
-await js(`document.querySelector('[data-action="start-run"]').click()`); await sleep(350);
+await js(`document.querySelector('[data-action="start-run"]').click(); document.querySelector('[data-action="start-direct"]')?.click()`); await sleep(350);
 await js(`document.querySelector('[data-action="close-intro"]').click()`); await sleep(400);
 const beforeToggle = await js(`(() => ({scrollWidth:document.documentElement.scrollWidth,innerWidth,transform:getComputedStyle(document.querySelector('.rail')).transform}))()`);
 await js(`document.querySelector('[data-action="toggle-rail"]').click()`); await sleep(450);
@@ -86,7 +86,7 @@ await shot('24-tablet-rail');
 
 await send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 1, mobile: false });
 await send('Page.navigate', { url: 'http://127.0.0.1:4173/' }); await sleep(900);
-await js(`document.querySelector('[data-action="start-run"]').click()`); await sleep(350);
+await js(`document.querySelector('[data-action="start-run"]').click(); document.querySelector('[data-action="start-direct"]')?.click()`); await sleep(350);
 await js(`document.querySelector('[data-action="close-intro"]').click()`); await sleep(400);
 const mobile = await js(`(() => { const tray=document.querySelector('.dice-tray').getBoundingClientRect(); const cup=document.querySelector('#cup').getBoundingClientRect(); return {innerWidth,innerHeight,scrollWidth:document.documentElement.scrollWidth,tray:tray.toJSON(),cup:cup.toJSON(),overlap:!(cup.right<tray.left||cup.left>tray.right||cup.bottom<tray.top||cup.top>tray.bottom)}; })()`);
 report.mobile = mobile;

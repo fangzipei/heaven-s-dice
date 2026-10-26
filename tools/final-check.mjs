@@ -24,7 +24,7 @@ const shot = async (name) => { const r = await send('Page.captureScreenshot', { 
 const report = {};
 await js(`window.__errors=[];window.addEventListener('error',e=>window.__errors.push(String(e.message)));window.addEventListener('unhandledrejection',e=>window.__errors.push(String(e.reason)));`);
 await shot('26-start-final');
-await js(`document.querySelector('[data-action="start-run"]').click()`); await sleep(400);
+await js(`document.querySelector('[data-action="start-run"]').click(); document.querySelector('[data-action="start-direct"]')?.click()`); await sleep(400);
 await js(`document.querySelector('[data-action="close-intro"]').click()`); await sleep(400);
 
 // Roll until scoring and select a legal combo.

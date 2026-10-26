@@ -24,7 +24,7 @@ const js = async (expression) => { const r = await send('Runtime.evaluate', { ex
 const shot = async (name) => { const r = await send('Page.captureScreenshot', { format: 'png' }); await writeFile(`${OUT}\\${name}.png`, Buffer.from(r.data, 'base64')); };
 
 await shot('01-start');
-await js(`document.querySelector('[data-action="start-run"]').click()`); await sleep(450);
+await js(`document.querySelector('[data-action="start-run"]').click(); document.querySelector('[data-action="start-direct"]')?.click()`); await sleep(450);
 await js(`document.querySelector('[data-action="close-intro"]').click()`); await sleep(450);
 // Deterministic hero state: 5 / 1 / 1 / 6 / 3 / 2 with a 250-point single combo selected.
 await js(`(() => {

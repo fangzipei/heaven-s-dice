@@ -25,7 +25,7 @@ for (const [w, h, name] of [[900, 700, '19-tablet'], [390, 844, '20-mobile'], [1
   await send('Emulation.setDeviceMetricsOverride', { width: w, height: h, deviceScaleFactor: 1, mobile: w < 600 });
   await send('Page.navigate', { url: 'http://127.0.0.1:4173/' });
   await sleep(1000);
-  await js(`document.querySelector('[data-action="start-run"]').click()`); await sleep(400);
+  await js(`document.querySelector('[data-action="start-run"]').click(); document.querySelector('[data-action="start-direct"]')?.click()`); await sleep(400);
   await js(`document.querySelector('[data-action="close-intro"]').click()`); await sleep(500);
   await js(`document.querySelector('[data-action="auto-roll"]')?.click()`); await sleep(900);
   const metrics = await js(`(() => ({

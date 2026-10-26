@@ -22,7 +22,7 @@ async function shot(name, docsName = null) {
   await writeFile(`${OUT}\\${name}.png`, buffer);
   if (docsName) await writeFile(`${DOCS}\\${docsName}`, buffer);
 }
-await js(`document.querySelector('[data-action="start-run"]').click()`); await sleep(400);
+await js(`document.querySelector('[data-action="start-run"]').click(); document.querySelector('[data-action="start-direct"]')?.click()`); await sleep(400);
 await js(`document.querySelector('[data-action="close-intro"]').click()`); await sleep(500);
 await js(`window.HeavensDice.setLevel(2)`); await sleep(300);
 await js(`(() => {

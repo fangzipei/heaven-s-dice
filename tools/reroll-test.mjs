@@ -35,7 +35,7 @@ async function setup(values, selectedCount, rerolls) {
 
 const report = {};
 await js(`window.__errors=[];window.addEventListener('error',e=>window.__errors.push(String(e.message)));window.addEventListener('unhandledrejection',e=>window.__errors.push(String(e.reason)));`);
-await js(`document.querySelector('[data-action="start-run"]').click()`); await sleep(400);
+await js(`document.querySelector('[data-action="start-run"]').click(); document.querySelector('[data-action="start-direct"]')?.click()`); await sleep(400);
 await js(`document.querySelector('[data-action="close-intro"]').click()`); await sleep(350);
 
 // 璁″垎骞剁户缁? click three real 3D cubes, then only the remaining 3 reroll.

@@ -263,8 +263,19 @@ function bindGlobalEvents() {
 async function handleAction(action, target) {
   switch (action) {
     case 'start-run':
+      showStartPrompt();
+      break;
+    case 'start-direct':
+      startRun();
+      break;
     case 'restart-run':
       startRun();
+      break;
+    case 'open-tutorial':
+      openTutorial(!app.run);
+      break;
+    case 'tutorial-nav':
+      scrollTutorial(target.dataset.target);
       break;
     case 'go-home':
       requestHome();
@@ -2390,6 +2401,220 @@ function starSequenceValid(seq) {
 /* ═══════════════════════════════════════════════════════════════════
    Rules
    ═══════════════════════════════════════════════════════════════════ */
+/* ═══════════════════════════════════════════════════════════════════
+   Tutorial / first-run briefing
+   ═══════════════════════════════════════════════════════════════════ */
+function tutorialDieHtml(value) {
+  const positions = PIP_MAP[value] || [];
+  return `<span class="tut-die" role="img" aria-label="${value} 点">${Array.from({ length: 9 }, (_, i) => positions.includes(i)
+    ? `<i class="tut-pip" style="grid-row:${Math.floor(i / 3) + 1};grid-column:${(i % 3) + 1}"></i>` : '').join('')}</span>`;
+}
+
+function tutorialDice(values) {
+  return `<div class="tut-dice">${values.map((value) => tutorialDieHtml(value)).join('')}</div>`;
+}
+
+function tutorialCombo({ title, values, points, note, formula = '', highlight = false }) {
+  return `<article class="tut-combo ${highlight ? 'is-highlight' : ''}">
+    <div class="tut-combo-head"><b>${title}</b><strong>${points}<small>分</small></strong></div>
+    ${tutorialDice(values)}
+    <p>${note}</p>
+    ${formula ? `<span class="tut-formula">${formula}</span>` : ''}
+  </article>`;
+}
+
+function tutorialHtml() {
+  const triples = [1, 2, 3, 4, 5, 6].map((face) => {
+    const points = face === 1 ? 1000 : face * 100;
+    return tutorialCombo({
+      title: `三个 ${face}`, values: [face, face, face], points: num(points),
+      note: face === 1 ? '三个 1 是特别高的基础分。' : '三个相同点数 = 点数 × 100。',
+      formula: face === 1 ? '基础 1000' : `${face} × 100`,
+    });
+  }).join('');
+  const bosses = BOSSES.map((boss) => `<div class="tut-boss">
+    <b>${h(boss.name)}<span>第 ${boss.level} 关</span></b>
+    <p><strong>${h(boss.effectName)}</strong>：${h(boss.effectDesc)}</p>
+  </div>`).join('');
+  return `
+  <div class="modal tutorial-modal">
+    <header class="tutorial-head">
+      <div>
+        <p class="modal-kicker">THE FIRST NIGHT AT THE TABLE</p>
+        <h2>图解赌桌教程</h2>
+        <p>从“三个三为什么是 300 分”开始，把整张赌桌的规则一次讲清楚。</p>
+      </div>
+      <button class="modal-close" data-action="close-overlay" aria-label="关闭教程"><svg><use href="#i-close"></use></svg></button>
+    </header>
+    <nav class="tutorial-nav" aria-label="教程章节">
+      <button class="tutorial-nav-button is-active" data-action="tutorial-nav" data-target="tut-goal">01 目标与流程</button>
+      <button class="tutorial-nav-button" data-action="tutorial-nav" data-target="tut-score">02 计分图解</button>
+      <button class="tutorial-nav-button" data-action="tutorial-nav" data-target="tut-risk">03 本轮与下一关</button>
+      <button class="tutorial-nav-button" data-action="tutorial-nav" data-target="tut-gear">04 骰桶与市集</button>
+      <button class="tutorial-nav-button" data-action="tutorial-nav" data-target="tut-start">05 开局清单</button>
+    </nav>
+    <div class="tutorial-body" id="tutorial-body">
+      <section class="tut-section" id="tut-goal">
+        <div class="tut-section-head"><span>01</span><div><p>THE SHAPE OF A RUN</p><h3>先看目标：一关一关把分数堆上去</h3></div></div>
+        <p class="tut-lede">你坐在长桌这一侧，用六颗骰子去够每关的目标分。达到目标后不会自动结束，可以继续加注；准备好了，再亲自点击「下一关」。</p>
+        <div class="tut-cards three">
+          <div class="tut-card"><b>15 关 · 5 位庄家</b><p>每 3 关遇到一位庄家。庄家有自己的桌规，击败他会拿到永久重投上限。</p></div>
+          <div class="tut-card"><b>6 颗骰子 · 5 次重投</b><p>每关第一掷免费；之后每掷一次消耗 1 次重投。骰子、骰桶、物品会改变你能走多远。</p></div>
+          <div class="tut-card"><b>目标分</b><p>目标会随关卡提高。分数在左上角：大字是“已得”，本轮挂账单独显示。</p></div>
+        </div>
+        <div class="tut-flow">
+          <div><i>1</i><b>摇骰</b><span>拖骰桶自己摇，或点系统摇骰</span></div>
+          <div><i>2</i><b>选骰</b><span>点选要计分的骰子，所有选中骰都必须合法</span></div>
+          <div><i>3</i><b>计分</b><span>继续 / 重投 / 无重投时结算</span></div>
+          <div><i>4</i><b>达标</b><span>目标达成后，点左下角「下一关」</span></div>
+        </div>
+        <div class="tut-callout">
+          <b>“继续”和“重投”有什么区别？</b>
+          <p><strong>计分并继续</strong>：把选中的骰子放到一边，只重投剩下的骰子。<strong>计分并重投</strong>：把六颗骰子全部收回骰桶，重新摇六颗。两种都消耗 1 次重投。</p>
+        </div>
+      </section>
+
+      <section class="tut-section" id="tut-score">
+        <div class="tut-section-head"><span>02</span><div><p>THE ONLY MATH YOU NEED</p><h3>计分图解：三个相同点数，就是“三连”</h3></div></div>
+        <p class="tut-lede">不用记术语，先看骰子。下面每一张牌都把“应该选哪几颗”和“最后拿多少分”画出来了。</p>
+        <div class="tut-callout is-key">
+          <b>最重要的例子：三个 3 = 300 分。</b>
+          <p>“三连”只是说<strong>三个相同点数</strong>。四个 3 是 300 × 2 = 600；五个 3 是 300 × 4 = 1200；六个 3 是 300 × 8 = 2400。</p>
+        </div>
+        <div class="tut-combo-grid">
+          ${tutorialCombo({ title: '单颗 1', values: [1], points: '100', note: '一颗 1 就能单独计分。', formula: '100' })}
+          ${tutorialCombo({ title: '单颗 5', values: [5], points: '50', note: '一颗 5 就能单独计分。', formula: '50' })}
+          ${tutorialCombo({ title: '三个 3（三连）', values: [3, 3, 3], points: '300', note: '三个相同点数先看基础分。', formula: '3 × 100 = 300', highlight: true })}
+        </div>
+
+        <h4 class="tut-subtitle">三个相同点数的基础分</h4>
+        <div class="tut-triple-grid">${triples}</div>
+
+        <h4 class="tut-subtitle">四个、五个、六个相同点数</h4>
+        <p>先算“三个”的基础分，再按数量翻倍。以 3 点为例：</p>
+        <div class="tut-combo-grid">
+          ${tutorialCombo({ title: '四个 3（四连）', values: [3, 3, 3, 3], points: '600', note: '四个相同点数 = 三个的基础分 × 2。', formula: '300 × 2 = 600', highlight: true })}
+          ${tutorialCombo({ title: '五个 3（五连）', values: [3, 3, 3, 3, 3], points: '1,200', note: '五个相同点数 = 三个的基础分 × 4。', formula: '300 × 4 = 1,200' })}
+          ${tutorialCombo({ title: '六个 3（六连）', values: [3, 3, 3, 3, 3, 3], points: '2,400', note: '六个相同点数 = 三个的基础分 × 8。', formula: '300 × 8 = 2,400' })}
+        </div>
+        <div class="tut-multiplier-strip">
+          <span><b>3 个</b> ×1</span><span><b>4 个</b> ×2</span><span><b>5 个</b> ×4</span><span><b>6 个</b> ×8</span>
+        </div>
+        <div class="tut-callout">
+          <b>1 点是唯一例外。</b>
+          <p>三个 1 = 1000 分，所以四个 1 = 2000、五个 1 = 4000、六个 1 = 8000。2–6 的三连基础分分别是 200 / 300 / 400 / 500 / 600。</p>
+        </div>
+
+        <h4 class="tut-subtitle">顺子：五个或六个连续点数</h4>
+        <div class="tut-combo-grid">
+          ${tutorialCombo({ title: '顺子 1–2–3–4–5', values: [1, 2, 3, 4, 5], points: '500', note: '五颗连续点数。', formula: '500' })}
+          ${tutorialCombo({ title: '顺子 2–3–4–5–6', values: [2, 3, 4, 5, 6], points: '750', note: '另一种五颗连续点数。', formula: '750' })}
+          ${tutorialCombo({ title: '通天顺 1–6', values: [1, 2, 3, 4, 5, 6], points: '1,500', note: '六颗骰子刚好组成一条完整顺子。', formula: '1,500', highlight: true })}
+        </div>
+
+        <h4 class="tut-subtitle">一次选择必须把每一颗都算进去</h4>
+        <p>例如同时选三颗 1 和两颗 5：三个 1 = 1000，两个 5 = 100，合计 1100。系统会在合法拆法里自动取最高分，但不会替你忽略“算不进去”的骰子。</p>
+        <div class="tut-combo is-highlight">
+          <div class="tut-combo-head"><b>混合例子：三个 1 + 两个 5</b><strong>1,100<small>分</small></strong></div>
+          ${tutorialDice([1, 1, 1, 5, 5])}
+          <p>三个 1 是一组，两个 5 是一组；所有选中的骰子都被用上了。</p>
+          <span class="tut-formula">1000 + 50 + 50 = 1,100</span>
+        </div>
+        <div class="tut-callout is-warning"><b>如果选中的骰子无法全部组成合法组合，就不能计分。</b><p>例如把 2、3、4 单独选中，没有计分方式；先把能计分的骰子选出来。</p></div>
+      </section>
+
+      <section class="tut-section" id="tut-risk">
+        <div class="tut-section-head"><span>03</span><div><p>THE RISK OF THE NEXT THROW</p><h3>已得、本轮未计入、掷空与下一关</h3></div></div>
+        <p class="tut-lede">左上角的计分面板会拆成两笔：已经安全的分数，和本轮还没确认的分数。</p>
+        <div class="tut-score-demo">
+          <div class="tut-score-demo-top"><span>本关已得</span><span>目标 450</span></div>
+          <div class="tut-score-demo-number"><strong>220</strong><em>+80 本轮</em><span>/450</span></div>
+          <div class="tut-score-demo-labels"><span>已得 220</span><span>本轮未计入 80</span></div>
+          <div class="tut-score-demo-bar"><i style="width:49%"></i><b style="width:18%"></b></div>
+        </div>
+        <div class="tut-cards three">
+          <div class="tut-card"><b>下一次投掷仍能计分</b><p>上一笔“本轮未计入”会转为“已得”，然后你可以继续选骰计分。</p></div>
+          <div class="tut-card"><b>下一次投掷掷空</b><p>本次投掷没有任何可计分组合时，这一笔“本轮未计入”全部作废；已得分数保留。</p></div>
+          <div class="tut-card"><b>目标达成后</b><p>不会自动过关。可以继续得分，直到你亲自点击左上角「下一关」。终局按钮是「查看结局」。</p></div>
+        </div>
+        <div class="tut-callout">
+          <b>全骰（Hot Dice）</b>
+          <p>如果六颗骰子全部被计分，它们会全部归位，下一次投掷免费，不消耗重投次数。但本轮未计入的分数仍然要等下一次投掷确认。</p>
+        </div>
+        <div class="tut-callout">
+          <b>重投耗尽</b>
+          <p>没有重投次数时，选择骰子后会出现「计分并结算」。达到目标就进入下一关；没达到目标，本关失败。</p>
+        </div>
+      </section>
+
+      <section class="tut-section" id="tut-gear">
+        <div class="tut-section-head"><span>04</span><div><p>THE REST OF THE TABLE</p><h3>骰桶、骰子、物品、市集与庄家</h3></div></div>
+        <div class="tut-cards">
+          <div class="tut-card"><b>骰桶 · 6 只</b><p>初始橡木桶之外，3 只概率桶偏向某些点数，2 只仪式桶需要画阵。五芒星要依次穿过五个星点；旋涡要顺时针画满约 288°。拖动骰桶的横向范围覆盖整张桌面。</p></div>
+          <div class="tut-card"><b>骰子 · 20 枚</b><p>2 普通、10 稀有、5 史诗、3 传说。每枚骰子有自己的六面概率与套组；悬停可查看真实概率。同套组 2 / 4 件会触发套组奖励。</p></div>
+          <div class="tut-card"><b>物品 · 10 件</b><p>8 主动、2 被动。主动物品每关恢复一次；被动物品永久生效。幸运币开局自带，每关可用一次，立即 +150 分。</p></div>
+          <div class="tut-card"><b>市集</b><p>每关之后进入：骰子 2 件、骰桶 1 件、物品 3 件。每次刷新都消耗银币，购买前先看构筑。</p></div>
+          <div class="tut-card"><b>赌桌 · 5 张</b><p>木头、青石、黑铁、黄金、钻石。每三关换一个章节和桌规，同一个对手会从打手换成庄家。</p></div>
+        </div>
+        <h4 class="tut-subtitle">五位庄家的桌规</h4>
+        <div class="tut-bosses">${bosses}</div>
+        <div class="tut-callout">
+          <b>操作速记</b>
+          <p>拖动骰桶自己摇，或点击右侧自动摇骰。空格自动摇；数字键 1 / 2 是「计分并继续」「计分并重投」。仪式桶在右下角点「画阵」。</p>
+        </div>
+      </section>
+
+      <section class="tut-section" id="tut-start">
+        <div class="tut-section-head"><span>05</span><div><p>READY TO SIT DOWN</p><h3>开局清单</h3></div></div>
+        <ul class="tut-checklist">
+          <li><b>先看目标：</b>左上角大字是已得分数，金色小字是本轮未计入。</li>
+          <li><b>先选 1 和 5：</b>单颗就能计分；三个相同点数从 200（三个 2）到 1000（三个 1）。</li>
+          <li><b>记住乘以几：</b>四个 ×2、五个 ×4、六个 ×8。</li>
+          <li><b>不要乱选：</b>所选骰子必须全部被合法组合吃掉。</li>
+          <li><b>达标不等于结束：</b>可以继续刷分，准备好再点「下一关」。</li>
+        </ul>
+        <div class="tut-final-line">骰子落下之前，命运只是一句空话。<br><span>现在，去把它掷出来。</span></div>
+      </section>
+    </div>
+    <footer class="tutorial-foot">
+      <span>${app.run ? '教程随时可以在右上角规则里重看。' : '教程看完了，准备好就入座。'}</span>
+      <button class="primary-button" data-action="${app.run ? 'close-overlay' : 'start-direct'}">${app.run ? '回到赌桌' : '入座开局'} <svg><use href="#i-arrow"></use></svg></button>
+    </footer>
+  </div>`;
+}
+
+function showStartPrompt() {
+  openOverlay(`
+    <div class="modal start-choice-modal">
+      <button class="modal-close" data-action="close-overlay" aria-label="关闭"><svg><use href="#i-close"></use></svg></button>
+      <p class="modal-kicker">FIRST TIME AT THE TABLE?</p>
+      <div class="start-choice-mark"><svg><use href="#i-die"></use></svg></div>
+      <h2>要先看看怎么玩吗？</h2>
+      <p class="start-choice-lede">计分规矩会用骰子图一张张画出来：三个 3 = 300，四个 3 = 600，五个 3 = 1200，六个 3 = 2400。第一次坐下的话，建议先看一遍。</p>
+      <div class="start-choice-actions">
+        <button class="primary-button" data-action="open-tutorial">进入图解教程 <svg><use href="#i-book"></use></svg></button>
+        <button class="secondary-button" data-action="start-direct">不用了，直接开局</button>
+      </div>
+      <p class="start-choice-note">开局后也可以随时点右上角规则查看简版；完整图解教程会保留在开始页。</p>
+    </div>
+  `, { dismissible: true });
+}
+
+function openTutorial() {
+  if (app.introOpen) app.introOpen = false;
+  openOverlay(tutorialHtml(), { dismissible: true });
+  const body = $('#tutorial-body');
+  if (body) body.scrollTop = 0;
+}
+
+function scrollTutorial(targetId) {
+  const target = document.getElementById(targetId);
+  const body = $('#tutorial-body');
+  if (!target || !body) return;
+  $$('.tutorial-nav-button').forEach((button) => button.classList.toggle('is-active', button.dataset.target === targetId));
+  body.scrollTo({ top: Math.max(0, target.offsetTop - 4), behavior: 'smooth' });
+}
+
 function openRules() {
   if (app.introOpen) app.introOpen = false;
   const rows = SCORING_ROWS.map((row) => `<tr><td>${h(row.label)}<br><span style="font-size:8px;color:#6f6352">${h(row.detail)}</span></td><td>${h(row.points)}</td></tr>`).join('');

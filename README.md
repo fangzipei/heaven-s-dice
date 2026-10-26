@@ -18,6 +18,27 @@
 
 这台服务器的 80/443 在阿里云安全组未放行，所以先挂在已放行的 9999 端口独立路径下，不改动同端口原有站点。80 端口的 Nginx 站点也已配置好；在安全组放行 80/TCP 后，可直接访问裸 IP。
 
+## 开局教程
+
+点击「入座开局」会先询问是否进入教程，也可以从开始页的「教程」或「先读一遍图解教程」直接打开。
+
+教程用骰子图逐条解释：
+
+- 单颗 1 / 5 的计分；
+- 三个相同点数（三连）的基础分，例如 **三个 3 = 300**；
+- 四个、五个、六个相同点数的倍率，例如 **四个 3 = 600（300 × 2）**、五个 3 = 1,200、六个 3 = 2,400；
+- 1 点的特例、顺子、混合组合与“选中骰必须全部合法”；
+- 已得 / 本轮未计入、掷空作废、全骰、达标后手动下一关；
+- 骰桶、20 枚秘骰、套组、物品、市集和五位庄家的桌规。
+
+| 开局询问 | 计分图解 |
+|---|---|
+| ![开局教程询问](docs/screenshots/19-tutorial-prompt.png) | ![计分图解](docs/screenshots/21-tutorial-scoring.png) |
+
+手机端教程（390px 宽）：
+
+![手机端教程](docs/screenshots/22-tutorial-mobile.png)
+
 | 对局 · 3D 场景 | 3D 骰子特写 |
 |---|---|
 | ![对局](docs/screenshots/02-game.png) | ![3D 骰子](docs/screenshots/09-dice-3d.png) |
@@ -353,6 +374,7 @@ node tools/spin-test.mjs                   # 重投前六骰慢转
 node tools/bust-test.mjs                   # 掷空后本轮分数作废
 node tools/next-level-test.mjs             # 达标后继续得分，手动下一关
 node tools/mobile-select-test.mjs          # 手机端选中后的两个计分按钮
+node tools/tutorial-test.mjs               # 开局询问 + 教程图解 + 从教程开局
 node tools/interaction-test.mjs           # 手动摇桶、旋涡绘制、响应式
 node tools/final-check.mjs                # 悬停概率、图鉴、Boss 抽成
 node tools/campaign-test.mjs              # 真实 UI 连打 15 关、Boss 徽记、终局
@@ -360,7 +382,7 @@ node tools/responsive-test.mjs            # 平板/手机/笔记本断点
 node tools/capture-final.mjs              # 重新生成 docs/screenshots
 ```
 
-浏览器验收使用本机 Microsoft Edge 的 CDP 无头模式；测试脚本会把过程截图写到 `tools/` 作为本地检查记录，不需要随生产部署。`docs/screenshots` 中的展示图由 `capture-final.mjs`、`cup-anim-test.mjs`、`cup-range-test.mjs`、`spin-test.mjs`、`bust-test.mjs`、`next-level-test.mjs` 与 `mobile-select-test.mjs` 生成。
+浏览器验收使用本机 Microsoft Edge 的 CDP 无头模式；测试脚本会把过程截图写到 `tools/` 作为本地检查记录，不需要随生产部署。`docs/screenshots` 中的展示图由 `capture-final.mjs`、`cup-anim-test.mjs`、`cup-range-test.mjs`、`spin-test.mjs`、`bust-test.mjs`、`next-level-test.mjs`、`mobile-select-test.mjs` 与 `tutorial-test.mjs` 生成。
 
 ---
 

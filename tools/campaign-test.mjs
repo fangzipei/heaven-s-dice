@@ -25,7 +25,7 @@ async function state() { return js(`(() => {const r=window.HeavensDice.run;retur
 
 const report = { levels: [], errors: [] };
 await js(`window.__errors=[];window.addEventListener('error',e=>window.__errors.push(String(e.message)));window.addEventListener('unhandledrejection',e=>window.__errors.push(String(e.reason)));`);
-await js(`document.querySelector('[data-action="start-run"]').click()`); await sleep(400);
+await js(`document.querySelector('[data-action="start-run"]').click(); document.querySelector('[data-action="start-direct"]')?.click()`); await sleep(400);
 await js(`document.querySelector('[data-action="close-intro"]').click()`); await sleep(350);
 
 for (let level = 1; level <= 15; level += 1) {

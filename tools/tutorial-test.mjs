@@ -1,0 +1,44 @@
+import { spawn } from 'node:child_process';
+import { writeFile, mkdir } from 'node:fs/promises';
+const EDGE = 'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe';
+const PORT = 9355;
+const ROOT = `D:\\vs_workspace\\Heaven's Dice`;
+const OUT = `${ROOT}\\tools`;
+const DOCS = `${ROOT}\\docs\\screenshots`;
+await mkdir(`${OUT}\\edge-profile-tutorial`, { recursive: true });
+const edge = spawn(EDGE, ['--headless', '--disable-gpu', '--hide-scrollbars', '--no-first-run', '--disable-extensions', '--mute-audio', `--remote-debugging-port=${PORT}`, `--user-data-dir=${OUT}\\edge-profile-tutorial`, '--window-size=1600,1000', 'about:blank'], { stdio: 'ignore' });
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function getJson(path) { for (let i = 0; i < 60; i += 1) { try { const r = await fetch(`http://127.0.0.1:${PORT}${path}`); if (r.ok) return await r.json(); } catch {} await sleep(250); } throw new Error('No CDP'); }
+const page = (await getJson('/json/list')).find((t) => t.type === 'page');
+const ws = new WebSocket(page.webSocketDebuggerUrl);
+await new Promise((res, rej) => { ws.addEventListener('open', res, { once: true }); ws.addEventListener('error', rej, { once: true }); });
+let seq = 0; const pending = new Map(); const events = [];
+ws.addEventListener('message', (e) => { const m = JSON.parse(e.data); if (m.id && pending.has(m.id)) { const p = pending.get(m.id); pending.delete(m.id); m.error ? p.reject(new Error(m.error.message)) : p.resolve(m.result); } else if (m.method === 'Runtime.exceptionThrown' || m.method === 'Log.entryAdded') events.push(m); });
+const send = (method, params = {}) => { const id = ++seq; ws.send(JSON.stringify({ id, method, params })); return new Promise((resolve, reject) => pending.set(id, { resolve, reject })); };
+await send('Runtime.enable'); await send('Page.enable'); await send('Log.enable');
+const targetUrl = process.env.BASE_URL || 'http://127.0.0.1:4173/';
+const MOBILE = process.env.MOBILE === '1';
+if (MOBILE) await send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 1, mobile: true });
+await send('Page.navigate', { url: targetUrl }); await sleep(1300);
+const js = async (expression) => { const r = await send('Runtime.evaluate', { expression, returnByValue: true, awaitPromise: true, userGesture: true }); if (r.exceptionDetails) throw new Error(r.exceptionDetails.exception?.description || r.exceptionDetails.text); return r.result.value; };
+async function shot(name, docsName = null) {
+  const r = await send('Page.captureScreenshot', { format: 'png' });
+  const buffer = Buffer.from(r.data, 'base64');
+  await writeFile(`${OUT}\\${name}.png`, buffer);
+  if (docsName) await writeFile(`${DOCS}\\${docsName}`, buffer);
+}
+await js(`document.querySelector('[data-action="start-run"]').click()`); await sleep(350);
+const prompt = await js(`({title:document.querySelector('.start-choice-modal h2')?.textContent,buttons:[...document.querySelectorAll('.start-choice-modal [data-action]')].map(b=>b.dataset.action),hasTutorial:!!document.querySelector('.start-choice-modal')})`);
+if (!MOBILE) await shot('tutorial-prompt', '19-tutorial-prompt.png');
+await js(`document.querySelector('[data-action="open-tutorial"]').click()`); await sleep(450);
+const tutorial = await js(`({modal:!!document.querySelector('.tutorial-modal'),sections:document.querySelectorAll('.tut-section').length,dice:document.querySelectorAll('.tut-die').length,combos:document.querySelectorAll('.tut-combo').length,hasThreeThree:document.body.innerText.includes('三个 3'),has2400:document.body.innerText.includes('2,400'),footer:document.querySelector('.tutorial-foot [data-action]')?.dataset.action,width:innerWidth,scrollWidth:document.documentElement.scrollWidth,modalRect:document.querySelector('.tutorial-modal')?.getBoundingClientRect().toJSON()})`);
+if (!MOBILE) await shot('tutorial-top', '20-tutorial.png');
+await js(`document.querySelector('[data-action="tutorial-nav"][data-target="tut-score"]').click()`); await sleep(700);
+if (MOBILE) await shot('tutorial-mobile', '22-tutorial-mobile.png');
+else await shot('tutorial-scoring', '21-tutorial-scoring.png');
+const scoring = await js(`({active:document.querySelector('.tutorial-nav-button.is-active')?.dataset.target,tripleCards:document.querySelectorAll('#tut-score .tut-combo').length,hasFour:document.body.innerText.includes('四个 3'),hasFormula:document.body.innerText.includes('300 × 2 = 600')})`);
+await js(`document.querySelector('.tutorial-foot [data-action="start-direct"]').click()`); await sleep(600);
+const started = await js(`({gameHidden:document.querySelector('#game-screen').hidden,intro:!!document.querySelector('.intro-modal'),phase:window.HeavensDice?.run?.phase,overlay:!!document.querySelector('.tutorial-modal')})`);
+const errors = events.filter((e) => e.method === 'Runtime.exceptionThrown' || (e.method === 'Log.entryAdded' && e.params.entry.level === 'error')).map((e) => e.params.exceptionDetails?.exception?.description || e.params.entry?.text);
+console.log(JSON.stringify({ prompt, tutorial, scoring, started, errors }, null, 2));
+ws.close(); edge.kill();

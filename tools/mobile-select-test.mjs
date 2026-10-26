@@ -20,7 +20,7 @@ const targetUrl = process.env.BASE_URL || 'http://127.0.0.1:4173/';
 await send('Page.navigate', { url: targetUrl }); await sleep(1400);
 const js = async (expression) => { const r = await send('Runtime.evaluate', { expression, returnByValue: true, awaitPromise: true, userGesture: true }); if (r.exceptionDetails) throw new Error(r.exceptionDetails.exception?.description || r.exceptionDetails.text); return r.result.value; };
 const shot = async (name, docsName = null) => { const r = await send('Page.captureScreenshot', { format: 'png' }); const b=Buffer.from(r.data,'base64'); await writeFile(`${OUT}\\${name}.png`, b); if(docsName) await writeFile(`${ROOT}\\docs\\screenshots\\${docsName}`, b); };
-await js(`document.querySelector('[data-action="start-run"]').click()`); await sleep(400);
+await js(`document.querySelector('[data-action="start-run"]').click(); document.querySelector('[data-action="start-direct"]')?.click()`); await sleep(400);
 await js(`document.querySelector('[data-action="close-intro"]').click()`); await sleep(500);
 await js(`(() => {
   const run = window.HeavensDice.run;

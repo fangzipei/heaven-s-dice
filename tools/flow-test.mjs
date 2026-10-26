@@ -42,7 +42,7 @@ async function shot(name) { const result = await send('Page.captureScreenshot', 
 async function state() { return js(`(() => { const r=window.HeavensDice.run; return r ? {level:r.level,phase:r.phase,score:r.score,target:r.target,rerolls:r.rerolls,coins:r.coins,bag:r.bag.map(b=>b.dieId),barrel:r.barrelId,active:r.activeItems,passive:r.passiveItems,phaseFlags:{...r.flags},overlay:!!document.querySelector('.overlay'),shop:!!document.querySelector('.shop-screen'),bossBoons:r.bossBoons} : {} })()`); }
 
 await js(`window.__errors=[];window.addEventListener('error',e=>window.__errors.push(String(e.message)));window.addEventListener('unhandledrejection',e=>window.__errors.push(String(e.reason)));`);
-await js(`document.querySelector('[data-action="start-run"]').click()`); await sleep(400);
+await js(`document.querySelector('[data-action="start-run"]').click(); document.querySelector('[data-action="start-direct"]')?.click()`); await sleep(400);
 await js(`document.querySelector('[data-action="close-intro"]').click()`); await sleep(400);
 const report = {};
 
