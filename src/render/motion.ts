@@ -26,18 +26,18 @@ declare global {
 
 /** 动效能对着一枚骰子改的三样东西。three 的 Vector3/Euler 结构上就满足它，
  *  所以这一层不必依赖 three 的类型，DOM 兜底以后也能复用同一套动效。 */
-export interface MotionVec3 {
-  x: number;
-  y: number;
-  z: number;
-  /** 就地写入初始姿态（Vector3/Euler 都有）。 */
+export interface MotionVec3 { x: number; y: number; z: number }
+
+/** 需要就地写入初始姿态的那几根轴：Vector3、Euler 都有 set（Euler 多一个可选
+ *  order 参数，结构类型照样兼容）。 */
+export interface MotionSettable extends MotionVec3 {
   set(x: number, y: number, z: number): unknown;
 }
 
 export interface MotionMesh {
-  position: MotionVec3;
-  rotation: MotionVec3;
-  scale: MotionVec3;
+  position: MotionSettable;
+  rotation: MotionSettable;
+  scale: MotionSettable;
 }
 
 /** 动效只关心“这颗骰子被选中了吗”；其余状态位由表格自己解释。 */

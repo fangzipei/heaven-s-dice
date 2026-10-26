@@ -24,7 +24,7 @@ let DiceTable = null;
 let diceTablePromise = null;
 function loadDiceTable() {
   if (!diceTablePromise) {
-    diceTablePromise = import('./dice-3d.js')
+    diceTablePromise = import('../render/dice-table.ts')
       .then((mod) => { DiceTable = mod.DiceTable; return DiceTable; })
       .catch((error) => { console.warn('WebGL dice unavailable, falling back', error); return null; });
   }
