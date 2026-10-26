@@ -4,11 +4,14 @@ import {
   SHOP_RARITY_WEIGHTS, rarityShopWeight, REROLL_REFUND, OVERSHOOT_TIERS,
   MINION_GAPS, LEVEL_CURVE,
   activeSetBonuses, chapterForLevel, chapterLevelSpan, getLevelConfig, getOpponent, getTable,
+  getDieSpec,
 } from '../compat/content.ts';
 import * as Engine from '../core/engine.ts';
 import { SCORING_ROWS, analyzeSelection } from '../core/scoring.ts';
-import { dieMotifSvg, dieSkinStyle } from '../render/dice-skins.ts';
+import { dieSkinStyle, favoredFaces } from '../render/dice-skins.ts';
 import { pipIndexes } from '../render/pip-layout.ts';
+import { artDieHtml, renderDiceTrayDom } from '../render/dice-dom.ts';
+import { clamp, h, num, sleep } from '../core/util.ts';
 import { motion } from '../render/motion.ts';
 import { sound } from '../platform/sound.ts';
 import {
@@ -36,13 +39,6 @@ function loadDiceTable() {
    ═══════════════════════════════════════════════════════════════════ */
 const $ = (selector, root = document) => root.querySelector(selector);
 const $$ = (selector, root = document) => Array.from(root.querySelectorAll(selector));
-const h = (value) => String(value ?? '')
-  .replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;')
-  .replaceAll('"', '&quot;').replaceAll("'", '&#39;');
-const num = (value) => Number(value || 0).toLocaleString('zh-CN');
-const pct = (value) => `${Math.round(value * 1000) / 10}%`;
-const clamp = (n, min, max) => Math.max(min, Math.min(max, n));
-const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const setCss = (el, name, value) => el?.style?.setProperty(name, value);
 const rarityOf = (item) => RARITIES[item?.rarity] || RARITIES.common;
 
@@ -783,85 +779,13 @@ function renderLog() {
 }
 
 function dieSpecFor(die) {
-  return DICE_BY_ID[die.dieId] || STANDARD_DIE;
-}
-
-function dieMark(spec) {
-  if (spec.id === 'standard') return '';
-  if (spec.setId === 'demon') return '魔';
-  const set = DICE_SETS[spec.setId];
-  return set ? set.name[0] : '';
-}
-
-const FACE_ORDER = ['front', 'back', 'right', 'left', 'top', 'bottom'];
-
-/*
- * Weighted-face carving. A face is "favoured" when its literal weight sits
- * clearly above a fair 1/6 (~.167); those faces get an engraved ornament so
- * the tilt is legible on the die itself, not only in the shop tooltip.
- * A die may override the derived set with an explicit `favored` array.
- */
-const FAVORED_MIN_WEIGHT = 0.2;
-
-function favoredFaces(spec) {
-  if (Array.isArray(spec?.favored)) return spec.favored;
-  const probs = spec?.probs || [];
-  if (!probs.length || spec?.id === 'standard') return [];
-  return probs.map((weight, index) => (weight >= FAVORED_MIN_WEIGHT ? index + 1 : 0)).filter(Boolean);
-}
-
-function peakFace(spec) {
-  const probs = spec?.probs || [];
-  if (!probs.length || spec?.id === 'standard') return 0;
-  return probs.indexOf(Math.max(...probs)) + 1;
+  return getDieSpec(die.dieId);
 }
 
 /* Weighted faces no longer wear a shared ornament: each die carries its own
-   motif (see dice-skins.js) as a watermark on every face, and the weighted
-   faces light theirs up so the tilt is still readable at a glance. */
-
-function pipsHtml(value) {
-  // Explicit grid cells matter: CSS Grid auto-placement would collapse a
-  // diagonal 3 into three pips in the first row. Place each pip by row/column.
-  const positions = pipIndexes(value);
-  return `<div class="pip-grid">${Array.from({ length: 9 }, (_, i) => positions.includes(i)
-    ? `<span class="pip" style="grid-row:${Math.floor(i / 3) + 1};grid-column:${(i % 3) + 1}"></span>` : '').join('')}</div>`;
-}
-
-function faceValuesFor(value) {
-  // Keep the rolled value on the camera-facing face; the other faces use the
-  // opposite pair and two remaining standard pairs so the visible top/side
-  // faces still read as a legal die.
-  const pairs = [[1, 6], [2, 5], [3, 4]];
-  const frontPair = pairs.find((pair) => pair.includes(value)) || pairs[0];
-  const otherPairs = pairs.filter((pair) => pair !== frontPair);
-  return {
-    front: value,
-    back: frontPair[0] + frontPair[1] - value,
-    top: otherPairs[0][0],
-    bottom: otherPairs[0][1],
-    right: otherPairs[1][0],
-    left: otherPairs[1][1],
-  };
-}
-
-function dieFacesHtml(value, spec = STANDARD_DIE, concealed = false, blank = false) {
-  const values = blank ? { front: 0, back: 0, top: 0, bottom: 0, right: 0, left: 0 } : faceValuesFor(value || 1);
-  const favored = favoredFaces(spec);
-  const peak = peakFace(spec);
-  return FACE_ORDER.map((face) => {
-    const faceValue = values[face];
-    const isFavored = !concealed && !blank && favored.includes(faceValue);
-    const isPeak = isFavored && faceValue === peak;
-    const classes = ['die-face', `face-${face}`, isFavored ? 'is-favored' : '', isPeak ? 'is-peak' : '', blank ? 'is-blank' : '']
-      .filter(Boolean).join(' ');
-    return `
-    <div class="${classes}" data-face="${face}">
-      <span class="die-sheen"></span>
-      ${concealed ? '<span class="die-rune">✦</span>' : blank ? '' : `${dieMotifSvg(spec)}${pipsHtml(faceValue)}`}
-    </div>`;
-  }).join('');
-}
+   motif (see render/dice-skins.ts) as a watermark on every face, and the
+   weighted faces light theirs up so the tilt is still readable at a glance.
+   The face markup itself lives in render/dice-dom.ts. */
 
 /* ═══════════════════════════════════════════════════════════════════
    Dice tray — WebGL path
@@ -994,7 +918,7 @@ function renderDiceTray() {
   }
   // First frame before WebGL comes up (or a browser without it): keep the
   // DOM renderer so the table is never empty.
-  renderDiceTrayDom(run, tray);
+  renderDiceTrayDom(run, tray, { rolling: app.rolling, busy: app.busy });
   syncDiceTrayLabels(run);
 }
 
@@ -1034,90 +958,6 @@ function syncDiceTrayLabels(run) {
         : `${run.dice.length} 颗骰子 · 剩余 ${availableCount} 可掷`;
     countNode.classList.toggle('is-active', selectedCount > 0);
   }
-}
-
-/* ═══════════════════════════════════════════════════════════════════
-   Dice tray — DOM fallback (kept for browsers without WebGL)
-   ═══════════════════════════════════════════════════════════════════ */
-function renderDiceTrayDom(run, tray) {
-  const available = Engine.availableDice(run);
-  const selectedCount = run.selected.length;
-  tray.classList.toggle('has-selection', selectedCount > 0);
-  /* Rebuilding the 3D dice DOM on every tap is the single hottest path on
-     phones (≈200 nodes × dozens of preserve-3d layers per click). Only
-     rebuild when the dice set / face values actually change; otherwise just
-     sync classes and attributes in place. */
-  const signature = run.dice.map((die) => {
-    const hidden = die.value == null;
-    const blank = Boolean(die.blank);
-    const blocked = !hidden && !blank && Engine.isBossDieBlocked(run, die);
-    return `${die.uid}:${die.value ?? 'x'}:${die.scored ? 1 : 0}:${blank ? 1 : 0}:${blocked ? 1 : 0}:${app.rolling ? 1 : 0}`;
-  }).join('|');
-  if (tray.dataset.dieSignature !== signature) {
-    tray.dataset.dieSignature = signature;
-    // The canvas lives in this tray too, so the DOM fallback gets its own
-    // host instead of wiping the tray's children.
-    let host = $('#dice-dom-fallback', tray);
-    if (!host) {
-      host = document.createElement('div');
-      host.id = 'dice-dom-fallback';
-      tray.append(host);
-    }
-    host.innerHTML = run.dice.map((die, index) => {
-    const spec = dieSpecFor(die);
-    const hidden = die.value == null;
-    const blank = Boolean(die.blank);
-    const blocked = !hidden && !blank && Engine.isBossDieBlocked(run, die);
-    const selected = run.selected.includes(die.uid);
-    const scored = die.scored;
-    const classes = [
-      'die', `rarity-${spec.rarity || 'common'}`,
-      hidden ? 'is-hidden' : '', selected ? 'is-selected' : '',
-      scored ? 'is-scored' : '', spec.setId === 'demon' ? 'is-demon' : '',
-      blank ? 'is-blank' : '', blocked ? 'is-boss-blocked' : '',
-      app.rolling && !hidden && !scored ? 'is-rolling' : '',
-    ].filter(Boolean).join(' ');
-    const disabled = scored || blank || blocked || app.busy || run.phase !== 'selecting';
-    const label = hidden ? '未掷出的骰子' : blank ? '白骰，无法计分' : blocked ? '六点被庄家禁用' : `${spec.name}，${die.value} 点`;
-    return `
-      <button class="${classes}" data-die-uid="${h(die.uid)}" data-die-tip="${h(spec.id)}"
-        ${disabled ? 'disabled' : ''} aria-pressed="${selected}" aria-label="${h(label)}"
-        style="animation-delay:${app.rolling ? index * 45 : 0}ms;${dieSkinStyle(spec)}">
-        <span class="die-roller"><span class="die-cube">${dieFacesHtml(die.value, spec, hidden, blank)}</span></span>
-        ${hidden ? '<span class="die-mark" style="left:50%;top:50%;transform:translate(-50%,-50%);font-size:12px;color:rgba(231,190,104,.7)">✦</span>' : blank ? `
-          <span class="die-mark" style="left:50%;top:50%;transform:translate(-50%,-50%);font-size:11px;color:#6f6253">白</span>
-        ` : blocked ? `
-          <span class="die-mark" style="left:50%;top:50%;transform:translate(-50%,-50%);font-size:12px;color:#c47768">禁</span>
-        ` : `
-          <span class="die-mark">${h(dieMark(spec))}</span>
-          <span class="die-check">${scored ? '◆' : '✓'}</span>
-        `}
-      </button>`;
-  }).join('');
-  }
-  /* in-place class/attribute sync — no DOM rebuild on selection changes */
-  for (const die of run.dice) {
-    const element = tray.querySelector(`[data-die-uid="${die.uid}"]`);
-    if (!element) continue;
-    const spec = dieSpecFor(die);
-    const hidden = die.value == null;
-    const blank = Boolean(die.blank);
-    const blocked = !hidden && !blank && Engine.isBossDieBlocked(run, die);
-    const selected = run.selected.includes(die.uid);
-    const disabled = die.scored || blank || blocked || app.busy || run.phase !== 'selecting';
-    const classes = [
-      'die', `rarity-${spec.rarity || 'common'}`,
-      hidden ? 'is-hidden' : '', selected ? 'is-selected' : '',
-      die.scored ? 'is-scored' : '', spec.setId === 'demon' ? 'is-demon' : '',
-      blank ? 'is-blank' : '', blocked ? 'is-boss-blocked' : '',
-      app.rolling && !hidden && !die.scored ? 'is-rolling' : '',
-    ].filter(Boolean).join(' ');
-    if (element.className !== classes) element.className = classes;
-    if (element.disabled !== disabled) element.disabled = disabled;
-    if (element.getAttribute('aria-pressed') !== String(selected)) element.setAttribute('aria-pressed', String(selected));
-  }
-  // Labels are shared with the WebGL path (syncDiceTrayLabels).
-  syncDiceTrayLabels(run);
 }
 
 function renderComboPreview() {
@@ -2553,22 +2393,6 @@ function renderItemShopCard(entry, index) {
 
 function emptyShopCard() {
   return '<div class="empty-stock"><svg><use href="#i-lock"></use></svg><span>空货位</span></div>';
-}
-
-function artDieHtml(spec) {
-  const demon = spec.setId === 'demon';
-  const rarity = spec.rarity || 'common';
-  const probs = spec.probs || STANDARD_DIE.probs;
-  const bestFace = probs.indexOf(Math.max(...probs)) + 1;
-  const weighted = favoredFaces(spec).length > 0;
-  const positions = pipIndexes(bestFace);
-  const classes = ['art-die', `rarity-${rarity}`, demon ? 'is-demon' : '', weighted ? 'is-weighted' : '']
-    .filter(Boolean).join(' ');
-  return `<div class="${classes}" role="img" aria-label="${h(spec.name)}，${bestFace} 点" style="${dieSkinStyle(spec)}">
-    <span class="die-sheen"></span>
-    ${dieMotifSvg(spec)}
-    <div class="mini-pips">${Array.from({ length: 9 }, (_, i) => positions.includes(i) ? `<span class="mini-pip" style="grid-row:${Math.floor(i / 3) + 1};grid-column:${(i % 3) + 1}"></span>` : '').join('')}</div>
-  </div>`;
 }
 
 function probabilityBars(probs, rarity) {
