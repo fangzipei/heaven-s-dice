@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#0b0805">
   <meta name="description" content="天国骰局 — 一款以《天国：拯救 2》骰子规则为核心的肉鸽网页游戏。摇骰、留骰、画阵，挑战七位庄家。">
   <title>天国骰局 · Heaven's Dice</title>
-  <link rel="stylesheet" href="css/main.css?v=20261026-ward01">
+  <link rel="stylesheet" href="css/main.css?v=20261026-trace01">
   <link rel="icon" href="assets/items/coin.svg" type="image/svg+xml">
 </head>
 <body>
@@ -164,12 +164,12 @@
           </div>
 
           <div class="cup-zone" id="cup-zone">
-            <div class="cup-drag" id="cup" role="button" tabindex="0" aria-label="握住骰桶左右拖动，松手投掷">
+            <div class="cup-drag" id="cup" role="button" tabindex="0" aria-label="握住骰桶拖动，倒计时结束后落骰">
               <div class="cup-vessel" id="cup-vessel">
                 <div class="cup-glow"></div>
                 <img id="cup-image" src="assets/cups/oak.svg" alt="骰桶">
               </div>
-              <div class="cup-hint"><svg><use href="#i-hand"></use></svg><span>左右拖动，松手投掷</span></div>
+              <div class="cup-hint"><svg><use href="#i-hand"></use></svg><span>按住拖动 · 2 秒后落骰</span></div>
               <div class="cup-badge" id="cup-badge">旧橡木桶</div>
             </div>
           </div>
@@ -257,6 +257,6 @@
     </article>
   </template>
 
-  <script type="module" src="src/app.js?v=20261026-ward01"></script>
+  <script type="module" src="src/app.js?v=20261026-trace01"></script>
 </body>
 </html>

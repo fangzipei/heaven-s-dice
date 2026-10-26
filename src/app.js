@@ -52,6 +52,11 @@ const app = {
   cupHoldPromise: null,
   cupInverted: false,
   cupAnimating: false,
+  cupCountdownTimer: null,
+  cupCountdownEnd: 0,
+  cupAutoTimer: null,
+  cupTrace: null,
+  cupPointerId: null,
   resultShown: false,
 };
 
@@ -364,7 +369,7 @@ async function handleAction(action, target) {
       break;
     case 'cue-cup':
       pulseCup();
-      showToast('按住左侧骰桶左右拖动，松手投掷。');
+      showToast('按住左侧骰桶拖动，2 秒倒计时后落骰；仪式桶要沿桌面轨迹描画。');
       break;
     case 'score-continue':
       handleScore('continue');
@@ -787,7 +792,7 @@ function renderRollHint() {
   const run = app.run;
   const hint = $('#roll-hint');
   if (run.phase === 'ready') {
-    hint.innerHTML = '<strong>首掷免费。</strong>拖动左侧骰桶左右摇晃，松手投掷；也可点击右侧自动摇骰。';
+    hint.innerHTML = '<strong>首掷免费。</strong>按住左侧骰桶摇动，2 秒倒计时后落骰；仪式桶沿桌面轨迹描画。也可点击右侧自动摇骰。';
   } else if (run.phase === 'hot') {
     hint.innerHTML = '<strong>全骰！</strong>六颗骰子全部归位，可免费重投全部骰子。';
   } else if (run.phase === 'dead') {
@@ -1120,7 +1125,7 @@ function renderActionDock() {
         <div class="action-buttons">
           <button class="score-action primary" data-action="cue-cup">
             <span class="action-icon"><svg><use href="#i-cup"></use></svg></span>
-            <span class="action-copy"><b>自己摇骰桶</b><em>按住左侧骰桶左右拖动，松手投掷</em></span>
+            <span class="action-copy"><b>自己摇骰桶</b><em>按住拖动 · 2 秒倒计时 · 仪式桶沿轨迹画</em></span>
           </button>
           <button class="score-action" data-action="auto-roll">
             <span class="action-icon"><svg><use href="#i-die"></use></svg></span>
@@ -1134,7 +1139,7 @@ function renderActionDock() {
   if (phase === 'ready') {
     dock.innerHTML = `
       <div class="action-dock-inner">
-        <div class="action-hint">首掷免费 · 也可以拖动左侧骰桶，松手投掷</div>
+        <div class="action-hint">首掷免费 · 按住骰桶摇动，2 秒后落骰</div>
         <div class="action-buttons">
           <button class="score-action primary single-action" data-action="manual-roll">
             <span class="action-icon"><svg><use href="#i-cup"></use></svg></span>
@@ -1364,15 +1369,196 @@ function rightCup() {
   setTimeout(() => cup.classList.remove('is-ritual'), 380);
 }
 
+function clearCupTimers() {
+  clearInterval(app.cupCountdownTimer);
+  clearTimeout(app.cupAutoTimer);
+  app.cupCountdownTimer = null;
+  app.cupAutoTimer = null;
+}
+
+function removeCupOverlays() {
+  $('#cup-countdown')?.remove();
+  $('#cup-trace')?.remove();
+  $('#cup')?.classList.remove('is-tracing');
+  app.cupTrace = null;
+}
+
 function resetCupVisuals() {
   const cup = $('#cup');
   const vessel = $('#cup-vessel');
   cup?.classList.remove('is-shaking', 'is-inverted', 'is-ritual', 'is-dragging', 'is-cue');
   if (vessel) vessel.style.transform = '';
+  clearCupTimers();
+  removeCupOverlays();
   app.cupInverted = false;
   app.cupAnimating = false;
   app.cupHoldStarted = false;
   app.cupHoldPromise = null;
+}
+
+function cupGestureInfo(run) {
+  const barrel = run ? Engine.getBarrel(run) : null;
+  if (!barrel?.gesture) return null;
+  if (barrel.gesture === 'pentagram' && run.flags.starUsed) return null;
+  if (barrel.gesture === 'circle' && run.flags.vortexUsed) return null;
+  return { gesture: barrel.gesture, name: barrel.gesture === 'pentagram' ? '五芒星' : '旋涡' };
+}
+
+function traceStarPoints(cx, cy, radius) {
+  const angles = [-90, -18, 54, 126, 198].map((deg) => (deg * Math.PI) / 180);
+  const base = angles.map((a) => ({ x: cx + Math.cos(a) * radius, y: cy + Math.sin(a) * radius }));
+  return [0, 2, 4, 1, 3, 0].map((index) => base[index]);
+}
+
+function traceCirclePoints(cx, cy, radius) {
+  return Array.from({ length: 97 }, (_, i) => {
+    const angle = -Math.PI / 2 + (i / 96) * Math.PI * 2;
+    return { x: cx + Math.cos(angle) * radius, y: cy + Math.sin(angle) * radius };
+  });
+}
+
+function samplePath(points, count = 140) {
+  if (!points?.length) return [];
+  const lengths = [];
+  let total = 0;
+  for (let i = 1; i < points.length; i += 1) {
+    const length = Math.hypot(points[i].x - points[i - 1].x, points[i].y - points[i - 1].y);
+    lengths.push(length);
+    total += length;
+  }
+  if (!total) return points.slice(0, 1);
+  const samples = [];
+  for (let i = 0; i <= count; i += 1) {
+    let target = (i / count) * total;
+    let segment = 0;
+    while (segment < lengths.length && target > lengths[segment]) {
+      target -= lengths[segment];
+      segment += 1;
+    }
+    const a = points[Math.min(segment, points.length - 2)];
+    const b = points[Math.min(segment + 1, points.length - 1)];
+    const t = lengths[segment] ? target / lengths[segment] : 0;
+    samples.push({ x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t });
+  }
+  return samples;
+}
+
+function beginCupTrace(center, radius, info) {
+  removeCupOverlays();
+  if (!info) return;
+  $('#cup')?.classList.add('is-tracing');
+  const guide = info.gesture === 'pentagram'
+    ? traceStarPoints(center.x, center.y, radius)
+    : traceCirclePoints(center.x, center.y, radius);
+  const guides = samplePath(guide);
+  const overlay = document.createElement('div');
+  overlay.id = 'cup-trace';
+  overlay.setAttribute('aria-hidden', 'true');
+  overlay.innerHTML = `<svg viewBox="0 0 ${window.innerWidth} ${window.innerHeight}">
+    <polyline class="cup-trace-guide" points="${guide.map((p) => `${p.x},${p.y}`).join(' ')}"></polyline>
+    <polyline class="cup-trace-drawn" points=""></polyline>
+  </svg>`;
+  document.body.append(overlay);
+  app.cupTrace = {
+    ...info, center, radius, guide, guides, points: [],
+    drawn: $('.cup-trace-drawn', overlay),
+  };
+}
+
+function recordCupTrace(x, y) {
+  const trace = app.cupTrace;
+  if (!trace) return;
+  const last = trace.points[trace.points.length - 1];
+  if (last && Math.hypot(x - last.x, y - last.y) < 3) return;
+  trace.points.push({ x, y });
+  if (trace.drawn) trace.drawn.setAttribute('points', trace.points.map((p) => `${p.x},${p.y}`).join(' '));
+}
+
+function evaluateCupTrace() {
+  const trace = app.cupTrace;
+  if (!trace || trace.points.length < 4) return { ok: false, reason: '轨迹太短' };
+  const tolerance = Math.max(16, trace.radius * 0.31);
+  let covered = 0;
+  for (const sample of trace.guides) {
+    let nearest = Infinity;
+    for (const point of trace.points) {
+      const distance = Math.hypot(point.x - sample.x, point.y - sample.y);
+      if (distance < nearest) nearest = distance;
+      if (nearest <= tolerance * 0.4) break;
+    }
+    if (nearest <= tolerance) covered += 1;
+  }
+  const coverage = covered / Math.max(1, trace.guides.length);
+  let length = 0;
+  for (let i = 1; i < trace.points.length; i += 1) {
+    length += Math.hypot(trace.points[i].x - trace.points[i - 1].x, trace.points[i].y - trace.points[i - 1].y);
+  }
+  let sweep = 0;
+  if (trace.gesture === 'circle') {
+    let previous = null;
+    for (const point of trace.points) {
+      const angle = Math.atan2(point.y - trace.center.y, point.x - trace.center.x);
+      if (previous !== null) {
+        let delta = angle - previous;
+        while (delta > Math.PI) delta -= Math.PI * 2;
+        while (delta < -Math.PI) delta += Math.PI * 2;
+        sweep += delta;
+      }
+      previous = angle;
+    }
+  }
+  const guideLength = trace.guides.reduce((sum, point, index) => index
+    ? sum + Math.hypot(point.x - trace.guides[index - 1].x, point.y - trace.guides[index - 1].y) : 0, 0);
+  const ok = coverage >= 0.7 && length >= guideLength * 0.52
+    && (trace.gesture !== 'circle' || sweep >= Math.PI * 1.45);
+  return { ok, coverage, length, guideLength, sweep, reason: ok ? '' : '轨迹偏差过大' };
+}
+
+function finishCupTrace() {
+  const trace = app.cupTrace;
+  if (!trace) return false;
+  const evaluation = evaluateCupTrace();
+  const gesture = trace.gesture;
+  app.lastTraceResult = {
+    ...evaluation, gesture, points: trace.points.length,
+    recorded: trace.points.slice(0, 30), guide: trace.guide,
+  };
+  removeCupOverlays();
+  if (!evaluation.ok) {
+    showToast(`${gesture === 'pentagram' ? '五芒星' : '旋涡'}轨迹偏差过大，仪式失败。`, 'error');
+    return false;
+  }
+  const result = Engine.applyGesture(app.run, gesture);
+  if (!result.ok) {
+    showToast(result.error, 'error');
+    return false;
+  }
+  sound.gesture();
+  showToast(result.message, 'good');
+  return true;
+}
+
+function beginCupCountdown(onDone) {
+  clearCupTimers();
+  const cup = $('#cup');
+  if (!cup) return;
+  $('#cup-countdown')?.remove();
+  const node = document.createElement('span');
+  node.id = 'cup-countdown';
+  cup.append(node);
+  const end = performance.now() + 2000;
+  app.cupCountdownEnd = end;
+  const tick = () => {
+    const left = Math.max(0, end - performance.now());
+    node.textContent = `${(left / 1000).toFixed(1)}s`;
+    node.classList.toggle('is-urgent', left <= 650);
+  };
+  tick();
+  app.cupCountdownTimer = setInterval(tick, 60);
+  app.cupAutoTimer = setTimeout(() => {
+    clearCupTimers();
+    onDone?.();
+  }, 2000);
 }
 
 async function performCupRoll({ free = false, prepared = false } = {}) {
@@ -1468,6 +1654,7 @@ function startCupHold() {
   if (vessel) vessel.style.transform = '';
   renderGame();
   cup?.classList.add('is-ritual');
+  const ritualHold = Boolean(cupGestureInfo(run));
   app.cupHoldPromise = (async () => {
     if (prefersReducedMotion()) return;
     await slowSpinTableDice(run);
@@ -1478,10 +1665,12 @@ function startCupHold() {
     sound.rattle();
     await sleep(320);
     if (!app.cupHoldStarted) return;
-    await invertCup();
-    if (!app.cupHoldStarted) {
-      resetCupVisuals();
-      return;
+    if (!ritualHold) {
+      await invertCup();
+      if (!app.cupHoldStarted) {
+        resetCupVisuals();
+        return;
+      }
     }
     cup.classList.add('is-shaking');
     sound.rattle();
@@ -1647,7 +1836,13 @@ function bindCupDrag() {
   let dragging = false;
   let pointerId = null;
   let startX = 0;
+  let startY = 0;
   let dx = 0;
+  let dy = 0;
+  let allowVertical = false;
+  let traceRadius = 86;
+  let traceCenter = { x: 0, y: 0 };
+  let cupCenter = { x: 0, y: 0 };
   let dragMin = -138;
   let dragMax = 138;
 
@@ -1661,17 +1856,32 @@ function bindCupDrag() {
     sound.unlock();
     dragging = true;
     pointerId = event.pointerId;
+    app.cupPointerId = pointerId;
     startX = event.clientX;
+    startY = event.clientY;
     dx = 0;
+    dy = 0;
     const scene = $('#scene');
     const cupRect = cup.getBoundingClientRect();
     const sceneRect = scene?.getBoundingClientRect();
+    const gestureInfo = cupGestureInfo(app.run);
+    allowVertical = Boolean(gestureInfo);
+    cupCenter = { x: cupRect.left + cupRect.width / 2, y: cupRect.top + cupRect.height / 2 };
+    traceCenter = { ...cupCenter };
+    traceRadius = sceneRect ? clamp(sceneRect.width * .1, 64, 108) : 86;
     if (sceneRect) {
       const margin = Math.max(12, sceneRect.width * .018);
       dragMin = sceneRect.left + margin - cupRect.left;
       dragMax = sceneRect.right - margin - cupRect.right;
       if (dragMax < dragMin) { dragMin = 0; dragMax = 0; }
     }
+    // Keep the whole ritual path inside the cup's reachable strip. The cup
+    // starts near the left edge; centering a star on it would make the left
+    // point unreachable, so shift the target toward the table center.
+    const minCenter = traceCenter.x + dragMin;
+    const maxCenter = traceCenter.x + dragMax;
+    traceRadius = Math.min(traceRadius, Math.max(36, (maxCenter - minCenter) / 2));
+    traceCenter.x = clamp(traceCenter.x, minCenter + traceRadius, maxCenter - traceRadius);
     try { cup.setPointerCapture(pointerId); } catch { /* pointerup fallback below */ }
     cup.classList.add('is-dragging');
   });
@@ -1679,11 +1889,19 @@ function bindCupDrag() {
   const onCupMove = (event) => {
     if (!dragging || event.pointerId !== pointerId) return;
     dx = clamp(event.clientX - startX, dragMin, dragMax);
+    dy = allowVertical ? clamp(event.clientY - startY, -traceRadius * 1.65, traceRadius * 1.65) : 0;
     const tilt = clamp(dx * .02, -9, 9);
-    cup.style.transform = `translateX(${dx}px) rotate(${tilt}deg)`;
-    if (Math.abs(dx) > 8) {
+    cup.style.transform = `translate(${dx}px, ${dy}px) rotate(${tilt}deg)`;
+    if (Math.abs(dx) > 8 || Math.abs(dy) > 8) {
       sound.rattle();
-      if (!app.cupHoldStarted) startCupHold();
+      if (!app.cupHoldStarted) {
+        if (startCupHold()) {
+          const info = cupGestureInfo(app.run);
+          if (info) beginCupTrace(traceCenter, traceRadius, info);
+          beginCupCountdown(finish);
+        }
+      }
+      if (app.cupTrace) recordCupTrace(cupCenter.x + dx, cupCenter.y + dy);
     }
   };
   cup.addEventListener('pointermove', onCupMove);
@@ -1694,26 +1912,32 @@ function bindCupDrag() {
   const finish = async (event) => {
     if (!dragging) return;
     dragging = false;
+    clearCupTimers();
     cup.classList.remove('is-dragging');
     if (pointerId != null) {
       try {
         if (cup.hasPointerCapture(pointerId)) cup.releasePointerCapture(pointerId);
       } catch { /* ignore */ }
     }
-    const moved = Math.abs(dx) >= 12 || app.cupHoldStarted;
+    const moved = Math.abs(dx) >= 12 || Math.abs(dy) >= 12 || app.cupHoldStarted;
     dx = 0;
+    dy = 0;
     if (event?.type === 'pointercancel' && app.cupHoldStarted) {
       cup.style.transform = '';
+      removeCupOverlays();
       cancelCupHold();
       return;
     }
     if (app.cupHoldStarted) {
+      if (app.cupTrace) finishCupTrace();
+      removeCupOverlays();
       try { await app.cupHoldPromise; } catch { /* handled in startCupHold */ }
       cup.style.transform = '';
       if (!app.cupHoldStarted) return;
       await performCupRoll({ prepared: true, free: app.run?.phase === 'hot' });
       return;
     }
+    removeCupOverlays();
     cup.style.transform = '';
     if (moved) beginRoll();
     else {
@@ -1721,7 +1945,7 @@ function bindCupDrag() {
         { transform: 'rotate(0deg)' }, { transform: 'rotate(-4deg)' },
         { transform: 'rotate(4deg)' }, { transform: 'rotate(0deg)' },
       ], { duration: 280, easing: 'ease-out' });
-      showToast('左右拖动骰桶，松手投掷。');
+      showToast('按住骰桶拖动，2 秒倒计时后落骰。');
     }
   };
   cup.addEventListener('pointerup', finish);
@@ -2630,7 +2854,7 @@ function tutorialHtml() {
           <div class="tut-card"><b>目标分</b><p>目标会随关卡提高。分数在左上角：大字是“已得”，本轮挂账单独显示。</p></div>
         </div>
         <div class="tut-flow">
-          <div><i>1</i><b>摇骰</b><span>拖骰桶自己摇，或点系统摇骰</span></div>
+          <div><i>1</i><b>摇骰</b><span>按住骰桶摇动，2 秒后落骰</span></div>
           <div><i>2</i><b>选骰</b><span>点选要计分的骰子，所有选中骰都必须合法</span></div>
           <div><i>3</i><b>计分</b><span>继续 / 重投 / 无重投时结算</span></div>
           <div><i>4</i><b>达标</b><span>目标达成后，点左下角「下一关」</span></div>
@@ -2717,7 +2941,7 @@ function tutorialHtml() {
       <section class="tut-section" id="tut-gear">
         <div class="tut-section-head"><span>04</span><div><p>THE REST OF THE TABLE</p><h3>骰桶、骰子、物品、市集与庄家</h3></div></div>
         <div class="tut-cards">
-          <div class="tut-card"><b>骰桶 · 6 只</b><p>初始橡木桶之外，3 只概率桶偏向某些点数，2 只仪式桶需要画阵。五芒星每关只能生效一次，要依次穿过五个星点；旋涡要顺时针画满约 288°。拖动骰桶的横向范围覆盖整张桌面。</p></div>
+          <div class="tut-card"><b>骰桶 · 6 只</b><p>初始橡木桶之外，3 只概率桶偏向某些点数，2 只仪式桶需要画阵。按住骰桶后桌面会显示五芒星或顺时针圆轨迹，2 秒内沿着画；偏差过大会失败。五芒星每关只能生效一次，也可点右下角「画阵」。</p></div>
           <div class="tut-card"><b>骰子 · 20 枚</b><p>2 普通、10 稀有、5 史诗、3 传说。每枚骰子有自己的六面概率与套组；悬停可查看真实概率。同套组 2 / 4 件会触发套组奖励。</p></div>
           <div class="tut-card"><b>物品 · 12 件</b><p>9 主动、3 被动。主动物品每关恢复一次；被动物品永久生效。丰饶骰袋 +1 骰、裂痕骰袋 -1 骰但计分 +25%，这两件整局各只能获取一次。幸运币开局自带，每关可用一次，立即 +150 分。静默赦令可以消除下一场庄家被动。</p></div>
           <div class="tut-card"><b>市集</b><p>每关之后进入：骰子 2 件、骰桶 1 件、物品 3 件。每次刷新都消耗银币；随身物品可以半价卖回，出售后不会再次上架。</p></div>
@@ -2727,7 +2951,7 @@ function tutorialHtml() {
         <div class="tut-bosses">${bosses}</div>
         <div class="tut-callout">
           <b>操作速记</b>
-          <p>拖动骰桶自己摇，或点击右侧自动摇骰。空格自动摇；数字键 1 / 2 是「计分并继续」「计分并重投」。仪式桶在右下角点「画阵」。</p>
+          <p>按住骰桶拖动会开始 2 秒倒计时，倒计时结束自动落骰；仪式桶会显示桌面轨迹，需要沿着轨迹描画，偏差过大会失败。也可以点击右侧自动摇骰；空格自动摇；数字键 1 / 2 是「计分并继续」「计分并重投」。</p>
         </div>
       </section>
 
@@ -2801,7 +3025,7 @@ function openRules() {
           <table class="scoring-table">${rows}</table>
           <div class="rules-note">一次计分必须把所选骰子全部纳入合法组合。1 和 5 可以单颗计分；其他点数至少三颗才能计分。所有组合取最高合法分值。</div>
           <h3 style="margin-top:18px">一掷的流程</h3>
-          <p>1. 摇动骰桶或点击自动摇骰。<br>2. 点击选择要计分的骰子。<br>3. 选择「计分并继续」，计分后把选中骰放一边、重投剩余骰子；或「计分并重投」，计分后把全部六颗骰子重新投。两者各消耗 1 次重投。<br>4. 六颗骰子全部计分会触发「全骰」，免费重投全部骰子。<br>5. 没有重投次数时，按钮变为「计分并结算」，得分后本关结束。</p>
+          <p>1. 按住骰桶摇动，2 秒倒计时后落骰；或点击自动摇骰。<br>2. 点击选择要计分的骰子。<br>3. 选择「计分并继续」，计分后把选中骰放一边、重投剩余骰子；或「计分并重投」，计分后把全部六颗骰子重新投。两者各消耗 1 次重投。<br>4. 六颗骰子全部计分会触发「全骰」，免费重投全部骰子。<br>5. 没有重投次数时，按钮变为「计分并结算」，得分后本关结束。</p>
           <div class="rules-note">开局有 5 次重投。每击败一位庄家，你会夺下他的徽记：后续关卡重投上限 +1。门房还会送你一枚每关都能使用的幸运币。</div>
         </div>
         <div class="rules-section">

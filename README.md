@@ -77,6 +77,8 @@
 | ![掷空作废](docs/screenshots/12-round-bust.png) | ![目标达成](docs/screenshots/16-next-level.png) |
 | **骰桶全桌拖动** | **五芒星仪式** |
 | ![全桌拖动](docs/screenshots/17-cup-range.png) | ![仪式](docs/screenshots/04-gesture.png) |
+| **桌面五芒星轨迹** | **桌面顺时针圆轨迹** |
+| ![桌面五芒星](docs/screenshots/34-cup-trace.png) | ![桌面圆轨迹](docs/screenshots/35-cup-circle.png) |
 | **赌徒图鉴** | **市集** |
 | ![图鉴](docs/screenshots/07-compendium-tables.png) | ![市集](docs/screenshots/03-shop.png) |
 | **终局赌桌** | **庄家登场** |
@@ -98,7 +100,8 @@
 
 - 房间的后墙、侧墙、地面、桌面和对手座椅都由 **CSS 3D transforms** 组成，带有真实透视与深度排序。
 - 鼠标在场景内移动时，房间与桌面会产生很轻的**视差摆动**；对手、骰桶和骰子随之位移，UI 保持稳定。
-- 重投前，桌上可读的骰子会先缓慢自转（全部重投时六颗一起转）；按住骰桶摇动后，骰子逐颗飞进桶里，桶身倒扣并持续抖动，松手后扶正、骰子落桌。
+- 重投前，桌上可读的骰子会先缓慢自转（全部重投时六颗一起转）；按住骰桶摇动后，骰子逐颗飞进桶里，并开始 **2 秒倒计时**，倒计时结束自动扶正落骰。
+- 装备五芒桶或旋涡桶时，按住骰桶会在桌面上显示金色轨迹（五芒星 / 顺时针圆）；沿着轨迹拖动骰桶描画，轨迹覆盖率或方向偏差过大时仪式失败，但仍会正常落骰。
 - 选骰高亮：选中骰子会抬高、金色描边、底座光晕并亮起右上角 ✓，未选骰子自动退暗；托盘上方同步显示“已选 N 颗”。
 - 骰子是真正的**六面立方体**：每个面都有独立点数，落定时结果面朝向镜头；投掷时整颗骰子翻滚。
 - 点数是标准骰子布局：**2 点与 3 点斜向排列**，4 点四角，5 点四角加中心，6 点两列。三点不会再排成一条直线。
@@ -174,7 +177,8 @@ node tools/balance.mjs 400
 
 | 操作 | 方式 |
 |---|---|
-| 手动摇骰 | 按住左侧骰桶拖动；拖动范围覆盖整张桌面，骰子入桶、桶倒扣后松手落骰 |
+| 手动摇骰 | 按住左侧骰桶拖动；拖动范围覆盖整张桌面，2 秒倒计时后自动落骰 |
+| 仪式轨迹 | 五芒桶 / 旋涡桶按住后显示桌面轨迹，沿轨迹画；偏差过大则仪式失败 |
 | 手机端计分 | 选中骰子后，底部安全区上方固定出现「计分并继续 / 计分并重投」两个按钮 |
 | 自动摇骰 | 点击右侧「自动摇骰」或按空格 |
 | 选择骰子 | 点击骰子；可多选 |
@@ -182,7 +186,7 @@ node tools/balance.mjs 400
 | 计分并重投 | 底部右侧按钮 / 数字键 `2`（全部六颗重新投） |
 | 计分并结算 | 无重投次数时出现的单一按钮（也可按 `1`） |
 | 使用物品 | 右侧「随身物品」栏 |
-| 画阵 | 装备仪式骰桶后，点击「画阵」 |
+| 画阵 | 装备仪式骰桶后，也可点击「画阵」使用独立画布 |
 | 关闭弹窗 | `Esc` 或右上角关闭 |
 
 鼠标悬停在骰子上可以看到**当前骰桶修正后的六面概率**、稀有度、套组和骰子特性。
@@ -311,7 +315,7 @@ node tools/balance.mjs 400
 
 骰型加成桶只奖励**真正被选入本次计分**的对应骰子：带着同套骰只是备用不会白拿分，鼓励围绕一套骰子组构筑。
 
-仪式通过 Canvas 轨迹识别：五芒星必须依次穿过五颗星点，旋涡必须顺时针画满至少约 288° 且保持在一个圆环内。画阵失败可以重画，不消耗资源。
+仪式支持两种入口：按住骰桶直接在桌面描画（2 秒倒计时，偏差过大失败），或点击「画阵」打开独立画布。画阵失败可以重画，不消耗资源。
 
 ---
 
@@ -432,6 +436,7 @@ node tools/tutorial-test.mjs               # 开局询问 + 教程图解 + 从�
 node tools/codex-test.mjs                  # 首页三按钮 + 图鉴锁定/市集解锁/持久化
 node tools/boss-test.mjs                   # 七位庄家的白骰、禁六、牌型限制、计分税与静默赦令
 node tools/shop-sell-test.mjs              # 市集随身物品半价出售
+node tools/cup-trace-test.mjs              # 骰桶 2 秒倒计时与桌面仪式轨迹
 node tools/interaction-test.mjs           # 手动摇桶、旋涡绘制、响应式
 node tools/final-check.mjs                # 悬停概率、图鉴、Boss 抽成
 node tools/campaign-test.mjs              # 真实 UI 连打 15 关、Boss 徽记、终局
@@ -439,7 +444,7 @@ node tools/responsive-test.mjs            # 平板/手机/笔记本断点
 node tools/capture-final.mjs              # 重新生成 docs/screenshots
 ```
 
-浏览器验收使用本机 Microsoft Edge 的 CDP 无头模式；测试脚本会把过程截图写到 `tools/` 作为本地检查记录，不需要随生产部署。`docs/screenshots` 中的展示图由 `capture-final.mjs`、`cup-anim-test.mjs`、`cup-range-test.mjs`、`spin-test.mjs`、`bust-test.mjs`、`next-level-test.mjs`、`mobile-select-test.mjs`、`tutorial-test.mjs`、`codex-test.mjs`、`boss-test.mjs` 与 `shop-sell-test.mjs` 生成。
+浏览器验收使用本机 Microsoft Edge 的 CDP 无头模式；测试脚本会把过程截图写到 `tools/` 作为本地检查记录，不需要随生产部署。`docs/screenshots` 中的展示图由 `capture-final.mjs`、`cup-anim-test.mjs`、`cup-range-test.mjs`、`spin-test.mjs`、`bust-test.mjs`、`next-level-test.mjs`、`mobile-select-test.mjs`、`tutorial-test.mjs`、`codex-test.mjs`、`boss-test.mjs`、`shop-sell-test.mjs` 与 `cup-trace-test.mjs` 生成。
 
 ---
 

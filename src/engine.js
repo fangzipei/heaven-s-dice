@@ -903,8 +903,8 @@ export function applyGesture(state, gesture) {
     } else {
       state.flags.vortexScore = true;
     }
-    pushLog(state, '旋涡仪式完成：+1 次重投，本掷计分 +10%。', 'gesture');
-    return { ok: true, message: '旋涡转动。+1 重投，本掷 +10%' };
+    pushLog(state, '旋涡仪式完成：+1 次重投，本掷计分 +15%。', 'gesture');
+    return { ok: true, message: '旋涡转动。+1 重投，本掷 +15%' };
   }
   return { ok: false, error: '未知仪式。' };
 }
