@@ -1,41 +1,41 @@
+// ui/app.ts — 组装层：启动、全局事件、关卡生命周期与调试桥。
+//
+// src/legacy/app.js 的最后一块。到这里，每个屏与牌桌控制都有自己的模块，
+// 这个文件只做三件事：把 DOM 事件翻译成动作、把一关的场景摆好、把调试桥交给 tools/。
 import {
-  DICE, ITEMS,
-  ITEM_BY_ID, LEVEL_COUNT, RARITIES, TABLES, STANDARD_DIE,
-  rarityShopWeight, REROLL_REFUND, OVERSHOOT_TIERS,
-  activeSetBonuses, chapterForLevel, getLevelConfig, getOpponent, getTable,
-} from '../compat/content.ts';
+  LEVEL_COUNT, OVERSHOOT_TIERS, REROLL_REFUND,
+  chapterForLevel, getLevelConfig, getOpponent, getTable,
+} from '../content/index.ts';
 import * as Engine from '../core/engine.ts';
-import { analyzeSelection } from '../core/scoring.ts';
-import { clamp, h, num, sleep } from '../core/util.ts';
+import type { BossDef, Opponent } from '../core/types.ts';
+import { clamp, h, num } from '../core/util.ts';
 import { motion } from '../render/motion.ts';
 import { sound } from '../platform/sound.ts';
 import {
-  bindDiscovery, discoverLoadout, discoverShop,
+  bindDiscovery, discoverLoadout,
   loadDiscovery, readSoundPref, saveSoundPref,
 } from '../platform/storage.ts';
 import { installDebugBridge } from '../platform/debug-bridge.ts';
-import { $, $$, setCss } from '../ui/dom.ts';
-import { app } from '../ui/state.ts';
+import { closeOverlay, openOverlay } from './components/overlay.ts';
+import { clearToasts, showToast } from './components/toast.ts';
+import { bindTooltip, hideTooltip } from './components/tooltip.ts';
+import { $, $$, setCss } from './dom.ts';
 import {
-  barrelTooltip, bindTooltip, barrelTypeLabel, dieTooltip, hideTooltip, itemTooltip, setTooltip,
-} from '../ui/components/tooltip.ts';
-import { closeOverlay, openOverlay } from '../ui/components/overlay.ts';
-import { clearToasts, showToast } from '../ui/components/toast.ts';
-import { renderOpponentPlate, renderRail, renderScorePanel, renderTopbar, showBustNotice } from '../ui/hud.ts';
-import { renderActionDock, renderAutoButton, renderComboPreview, renderDangerStrip } from '../ui/dock.ts';
-import { baseReward, projectedReward } from '../ui/reward.ts';
-import { diceTable, ensureDiceTable, renderDiceTray, setTrayRepaint } from '../ui/tray.ts';
-import { openRules, openTutorial, scrollTutorial, showStartPrompt } from '../ui/screens/tutorial.ts';
-import { openCompendium, switchCompendiumTab } from '../ui/screens/compendium.ts';
+  advanceCurrentLevel, beginRoll, bindCupDrag, forfeitRun, handleScore,
+  pulseCup, renderGame, setSpeech, useItem,
+} from './game.ts';
+import { renderTopbar } from './hud.ts';
+import { baseReward } from './reward.ts';
+import { openCompendium, switchCompendiumTab } from './screens/compendium.ts';
+import { openGesture } from './screens/gesture.ts';
+import { showDefeat, showVictory } from './screens/result.ts';
 import {
   buyBarrel, buyDie, buyItem, closeShopScreen, confirmReplace, openShopScreen,
   refreshShop, sellShopItem,
-} from '../ui/screens/shop.ts';
-import { showDefeat, showVictory } from '../ui/screens/result.ts';
-import {
-  advanceCurrentLevel, beginRoll, bindCupDrag, cancelCupHold, forfeitRun, handleScore,
-  pulseCup, renderGame, setSpeech, startCupHold, useItem,
-} from '../ui/game.ts';
+} from './screens/shop.ts';
+import { openRules, openTutorial, scrollTutorial, showStartPrompt } from './screens/tutorial.ts';
+import { app } from './state.ts';
+import { diceTable, ensureDiceTable, renderDiceTray, setTrayRepaint } from './tray.ts';
 
 /* ═══════════════════════════════════════════════════════════════════
    Boot
@@ -56,7 +56,7 @@ document.addEventListener('DOMContentLoaded', () => {
   renderStartDecor();
 });
 
-function bindViewportHeight() {
+function bindViewportHeight(): void {
   const root = document.documentElement;
   const sync = () => {
     const height = Math.round(window.visualViewport?.height || window.innerHeight || root.clientHeight);
@@ -69,10 +69,10 @@ function bindViewportHeight() {
   window.addEventListener('orientationchange', () => setTimeout(sync, 120));
 }
 
-function bindSceneParallax() {
+function bindSceneParallax(): void {
   const scene = $('#scene');
   if (!scene || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-  let frame = null;
+  let frame: number | null = null;
   const reset = () => {
     if (frame) cancelAnimationFrame(frame);
     frame = null;
@@ -99,36 +99,36 @@ function bindSceneParallax() {
   scene.addEventListener('pointercancel', reset);
 }
 
-function renderStartDecor() {
-  const cup = $('.hero-cup img');
+function renderStartDecor(): void {
+  const cup = $<HTMLImageElement>('.hero-cup img');
   if (cup) cup.src = 'assets/cups/astral.svg';
 }
 
 /* ═══════════════════════════════════════════════════════════════════
    Global events
    ═══════════════════════════════════════════════════════════════════ */
-function bindGlobalEvents() {
-  document.addEventListener('click', (event) => {
+function bindGlobalEvents(): void {
+  document.addEventListener('click', (event: MouseEvent) => {
     hideTooltip();
-    const die = event.target.closest('[data-die-uid]');
+    const die = (event.target as Element).closest<HTMLButtonElement>('[data-die-uid]');
     if (die && !die.disabled && app.run?.phase === 'selecting' && !app.busy && !app.introOpen) {
       sound.unlock();
-      if (Engine.toggleDie(app.run, die.dataset.dieUid)) {
+      if (Engine.toggleDie(app.run, die.dataset.dieUid!)) {
         sound.click();
         renderGame();
       }
       return;
     }
-    const target = event.target.closest('[data-action]');
+    const target = (event.target as Element).closest<HTMLElement>('[data-action]');
     if (!target) return;
-    const action = target.dataset.action;
-    if (target.matches('button') && target.disabled) return;
+    const action = target.dataset.action!;
+    if (target.matches('button') && (target as HTMLButtonElement).disabled) return;
     sound.unlock();
     sound.click();
     handleAction(action, target, event);
   });
 
-  document.addEventListener('keydown', (event) => {
+  document.addEventListener('keydown', (event: KeyboardEvent) => {
     if (event.defaultPrevented) return;
     if (event.key === 'Escape') {
       if (app.overlayDismissible) {
@@ -138,9 +138,9 @@ function bindGlobalEvents() {
       return;
     }
     if (app.introOpen || app.shopOpen || $('.overlay')) return;
-    if (event.target.matches('input, textarea, select')) return;
+    if ((event.target as Element).matches('input, textarea, select')) return;
     if (event.code === 'Space') {
-      if (['ready', 'dead', 'hot'].includes(app.run?.phase)) {
+      if (['ready', 'dead', 'hot'].includes(app.run?.phase ?? '')) {
         event.preventDefault();
         beginRoll();
       }
@@ -154,7 +154,7 @@ function bindGlobalEvents() {
   });
 }
 
-async function handleAction(action, target) {
+async function handleAction(action: string, target: HTMLElement, _event?: MouseEvent): Promise<void> {
   switch (action) {
     case 'start-run':
       showStartPrompt();
@@ -166,10 +166,10 @@ async function handleAction(action, target) {
       startRun();
       break;
     case 'open-tutorial':
-      openTutorial(!app.run);
+      openTutorial();
       break;
     case 'tutorial-nav':
-      scrollTutorial(target.dataset.target);
+      scrollTutorial(target.dataset.target!);
       break;
     case 'go-home':
       requestHome();
@@ -188,7 +188,7 @@ async function handleAction(action, target) {
       openCompendium(target.dataset.tab || app.compendiumTab);
       break;
     case 'switch-compendium-tab':
-      switchCompendiumTab(target.dataset.tab);
+      switchCompendiumTab(target.dataset.tab!);
       break;
     case 'toggle-sound':
       toggleSound();
@@ -217,7 +217,7 @@ async function handleAction(action, target) {
       advanceCurrentLevel();
       break;
     case 'use-item':
-      useItem(target.dataset.itemId);
+      useItem(target.dataset.itemId!);
       break;
     case 'open-gesture':
       openGesture();
@@ -237,7 +237,7 @@ async function handleAction(action, target) {
       leaveShop();
       break;
     case 'refresh-shop':
-      refreshShop(target.dataset.section);
+      refreshShop(target.dataset.section!);
       break;
     case 'buy-die':
       buyDie(Number(target.dataset.index));
@@ -249,10 +249,10 @@ async function handleAction(action, target) {
       buyItem(Number(target.dataset.index));
       break;
     case 'sell-item':
-      sellShopItem(target.dataset.itemId);
+      sellShopItem(target.dataset.itemId!);
       break;
     case 'confirm-replace':
-      confirmReplace(target.dataset.bagUid);
+      confirmReplace(target.dataset.bagUid!);
       break;
     case 'cancel-replace':
       app.pendingReplace = null;
@@ -272,7 +272,7 @@ async function handleAction(action, target) {
   }
 }
 
-function toggleSound() {
+function toggleSound(): void {
   app.soundEnabled = !app.soundEnabled;
   sound.setEnabled(app.soundEnabled);
   saveSoundPref(app.soundEnabled);
@@ -281,7 +281,7 @@ function toggleSound() {
     sound.unlock().then(() => sound.click());
   }
 }
-function updateSoundButtons() {
+function updateSoundButtons(): void {
   $$('[data-action="toggle-sound"]').forEach((button) => {
     button.classList.toggle('is-muted', !app.soundEnabled);
     const use = $('use', button);
@@ -293,7 +293,7 @@ function updateSoundButtons() {
 /* ═══════════════════════════════════════════════════════════════════
    Run lifecycle
    ═══════════════════════════════════════════════════════════════════ */
-function startRun() {
+export function startRun(): void {
   closeOverlay();
   closeShopScreen();
   app.run = Engine.createRun();
@@ -302,15 +302,15 @@ function startRun() {
   app.busy = false;
   app.rolling = false;
   app.resultShown = false;
-  $('#start-screen').hidden = true;
-  $('#game-screen').hidden = false;
+  $('#start-screen')!.hidden = true;
+  $('#game-screen')!.hidden = false;
   setupLevelScene(true);
   renderGame();
   // Bring the WebGL table up once the game screen has a real size, then
   // repaint so the first roll already animates in 3D.
   ensureDiceTable().then((table) => {
     if (!table || !app.run) return;
-    diceTable.resize();
+    diceTable!.resize();
     renderDiceTray();
     motion.markDirty();
   });
@@ -318,7 +318,7 @@ function startRun() {
   showLevelIntro();
 }
 
-function resetToStart() {
+export function resetToStart(): void {
   closeOverlay();
   closeShopScreen();
   app.run = null;
@@ -326,12 +326,12 @@ function resetToStart() {
   app.rolling = false;
   app.screen = 'start';
   app.resultShown = false;
-  $('#start-screen').hidden = false;
-  $('#game-screen').hidden = true;
+  $('#start-screen')!.hidden = false;
+  $('#game-screen')!.hidden = true;
   window.scrollTo({ top: 0, behavior: 'instant' });
 }
 
-function requestHome() {
+function requestHome(): void {
   if (!app.run) {
     resetToStart();
     return;
@@ -349,41 +349,42 @@ function requestHome() {
   `, { dismissible: true });
 }
 
-function setupLevelScene(force = false) {
+export function setupLevelScene(force = false): void {
   if (!app.run) return;
   app.resultShown = false;
   hideTooltip();
   clearToasts();
   const table = getTable(app.run.level);
-  const opponent = getOpponent(app.run.level);
+  const opponent = getOpponent(app.run.level)!;
   const isBoss = Boolean(getLevelConfig(app.run.level).boss);
-  const sceneArt = $('#scene-art');
-  const scene = $('#scene');
+  const boss = isBoss ? (opponent as BossDef) : null;
+  const sceneArt = $('#scene-art')!;
+  const scene = $('#scene')!;
   scene.dataset.table = table.id;
   setCss(scene, '--table-accent', table.accent);
-  $('#room-back').style.backgroundImage = `url("assets/rooms/${table.art}.svg")`;
-  $('#chapter-tag').innerHTML = `<span>${h(table.subtitle.split(' · ')[0])}</span><b>${h(table.subtitle.split(' · ')[1] || '')}</b>`;
-  const opponentEl = $('#opponent');
+  $('#room-back')!.style.backgroundImage = `url("assets/rooms/${table.art}.svg")`;
+  $('#chapter-tag')!.innerHTML = `<span>${h(table.subtitle.split(' · ')[0])}</span><b>${h(table.subtitle.split(' · ')[1] || '')}</b>`;
+  const opponentEl = $('#opponent')!;
   opponentEl.classList.toggle('is-boss', isBoss);
   opponentEl.style.setProperty('--boss-accent', opponent.accent || '#c25b5b');
-  const image = $('#opponent-image');
+  const image = $<HTMLImageElement>('#opponent-image')!;
   image.src = `assets/portraits/${opponent.art}.svg`;
   image.alt = opponent.name;
-  $('#opponent-name').textContent = opponent.name;
-  $('#opponent-kicker').textContent = isBoss ? `第 ${app.run.level} 关 · 庄家` : opponent.title;
-  $('#opponent-inline').textContent = `对手：${opponent.name}`;
-  $('#boss-badge').hidden = !isBoss;
-  $('#boss-effect-card').hidden = !isBoss;
+  $('#opponent-name')!.textContent = opponent.name;
+  $('#opponent-kicker')!.textContent = isBoss ? `第 ${app.run.level} 关 · 庄家` : opponent.title;
+  $('#opponent-inline')!.textContent = `对手：${opponent.name}`;
+  $('#boss-badge')!.hidden = !isBoss;
+  $('#boss-effect-card')!.hidden = !isBoss;
   if (isBoss) {
-    $('#boss-effect-name').textContent = opponent.effectName;
-    $('#boss-effect-title').textContent = opponent.effectName;
+    $('#boss-effect-name')!.textContent = boss!.effectName;
+    $('#boss-effect-title')!.textContent = boss!.effectName;
     const status = Engine.bossStatusText(app.run);
-    $('#boss-effect-desc').textContent = `${opponent.effectDesc}${status ? ` · ${status}` : ''}`;
+    $('#boss-effect-desc')!.textContent = `${boss!.effectDesc}${status ? ` · ${status}` : ''}`;
   }
   const cup = Engine.getBarrel(app.run);
-  $('#cup-image').src = `assets/cups/${cup.art}.svg`;
-  $('#cup-badge').textContent = cup.name;
-  $('#barrel-thumb').src = `assets/cups/${cup.art}.svg`;
+  $<HTMLImageElement>('#cup-image')!.src = `assets/cups/${cup.art}.svg`;
+  $('#cup-badge')!.textContent = cup.name;
+  $<HTMLImageElement>('#barrel-thumb')!.src = `assets/cups/${cup.art}.svg`;
   setSpeech(introLine(opponent, app.run.level, isBoss));
   renderTopbar();
   if (force) {
@@ -391,13 +392,14 @@ function setupLevelScene(force = false) {
   }
 }
 
-function showLevelIntro() {
+export function showLevelIntro(): void {
   if (!app.run) return;
   const run = app.run;
-  const opponent = getOpponent(run.level);
+  const opponent = getOpponent(run.level)!;
   const table = getTable(run.level);
   const cfg = getLevelConfig(run.level);
   const isBoss = Boolean(cfg.boss);
+  const boss = isBoss ? (opponent as BossDef) : null;
   const chapter = chapterForLevel(run.level);
   const roman = ['I', 'II', 'III', 'IV', 'V'][chapter];
   const reward = baseReward();
@@ -405,8 +407,8 @@ function showLevelIntro() {
   const effect = isBoss ? `
     <div class="intro-effect">
       <span>庄家特权</span>
-      <b>${h(opponent.effectName)}</b>
-      <p>${h(opponent.effectDesc)}</p>
+      <b>${h(boss!.effectName)}</b>
+      <p>${h(boss!.effectDesc)}</p>
     </div>` : '';
   app.introOpen = true;
   openOverlay(`
@@ -439,7 +441,7 @@ function showLevelIntro() {
   `, { dismissible: false });
 }
 
-function goToShop() {
+function goToShop(): void {
   if (!app.run) return;
   if (app.run.phase !== 'won') return;
   closeOverlay();
@@ -448,21 +450,21 @@ function goToShop() {
   openShopScreen();
 }
 
-function leaveShop() {
+function leaveShop(): void {
   if (!app.run) return;
   const next = app.run.level + 1;
   const result = Engine.leaveShop(app.run);
-  if (!result.ok) { showToast(result.error, 'error'); return; }
+  if (!result.ok) { showToast(result.error!, 'error'); return; }
   closeShopScreen();
   setupLevelScene(true);
   renderGame();
   if (next <= LEVEL_COUNT) showLevelIntro();
 }
 
-function retryLevel() {
+function retryLevel(): void {
   if (!app.run) return;
   const result = Engine.retryLevel(app.run);
-  if (!result.ok) { showToast(result.error, 'error'); return; }
+  if (!result.ok) { showToast(result.error!, 'error'); return; }
   closeOverlay();
   closeShopScreen();
   app.busy = false;
@@ -474,270 +476,9 @@ function retryLevel() {
 }
 
 /* ═══════════════════════════════════════════════════════════════════
-   Gesture minigame
-   ═══════════════════════════════════════════════════════════════════ */
-function openGesture() {
-  if (!app.run || app.busy) return;
-  const barrel = Engine.getBarrel(app.run);
-  if (!barrel.gesture) return;
-  if (app.run.flags.gestureUsedThisThrow) { showToast('本次投掷已经完成过仪式。'); return; }
-  if (barrel.gesture === 'pentagram' && app.run.flags.starUsed) { showToast('五芒星每关只能生效一次。'); return; }
-  if (barrel.gesture === 'circle' && app.run.flags.vortexUsed) { showToast('旋涡桶的额外重投每关只能获得一次。'); return; }
-  closeOverlay();
-  const isStar = barrel.gesture === 'pentagram';
-  const nodes = isStar ? starNodes() : [];
-  const nodeHtml = nodes.map((node, i) => `<span class="gesture-node" data-node="${i}" style="left:${node.x}%;top:${node.y}%"><i></i><b style="position:absolute;font-size:7px;transform:rotate(-45deg);color:inherit">${node.order + 1}</b></span>`).join('');
-  openOverlay(`
-    <div class="modal gesture-modal">
-      <div class="gesture-head">
-        <p class="modal-kicker">RITUAL OF ${isStar ? 'THE FIVE POINTS' : 'THE VORTEX'}</p>
-        <h2>${isStar ? '五芒星仪式' : '旋涡仪式'}</h2>
-        <p>${isStar ? '每关只能完成一次。依次连接五颗星点：顶 → 右下 → 左上 → 右上 → 左下 → 回到顶。完成后，本次投掷获得加成。' : '从任意位置开始，顺时针画满一整圈。完成后，本次投掷获得加成。'}</p>
-      </div>
-      <div class="gesture-board-wrap">
-        <div class="gesture-board" id="gesture-board">
-          <canvas id="gesture-canvas"></canvas>
-          <div class="gesture-guide"></div>
-          <div class="gesture-center-mark"></div>
-          <div class="gesture-nodes">${nodeHtml}</div>
-        </div>
-      </div>
-      <div class="gesture-status" id="gesture-status">${isStar ? '从任意星点开始，沿五角星描线。' : '在圆盘内顺时针画一圈。'}</div>
-      <div class="gesture-actions">
-        <button class="secondary-button" data-action="gesture-reset">重新描绘</button>
-        <button class="secondary-button" data-action="close-overlay">先不画</button>
-      </div>
-    </div>
-  `, { dismissible: true });
-  requestAnimationFrame(() => initGestureBoard(isStar, nodes));
-}
-
-function starNodes() {
-  const positions = [
-    { x: 50, y: 9 }, { x: 90, y: 37 }, { x: 76, y: 87 }, { x: 24, y: 87 }, { x: 10, y: 37 },
-  ];
-  // Star path order: top -> lower-right -> upper-left -> upper-right -> lower-left.
-  const order = [0, 2, 4, 1, 3];
-  return positions.map((pos, index) => ({ ...pos, index, order: order.indexOf(index) }));
-}
-
-function initGestureBoard(isStar, nodes) {
-  const board = $('#gesture-board');
-  const canvas = $('#gesture-canvas');
-  if (!board || !canvas) return;
-  const status = $('#gesture-status');
-  const ctx = canvas.getContext('2d');
-  const dpr = Math.min(2, window.devicePixelRatio || 1);
-  let drawing = false;
-  let points = [];
-  let nodeHits = [];
-  let totalPositive = 0;
-  let totalNegative = 0;
-  let lastAngle = null;
-  let radiusSamples = [];
-  let finished = false;
-
-  const resize = () => {
-    const rect = board.getBoundingClientRect();
-    canvas.width = Math.round(rect.width * dpr);
-    canvas.height = Math.round(rect.height * dpr);
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    redraw();
-  };
-  const localPoint = (event) => {
-    const rect = board.getBoundingClientRect();
-    return { x: event.clientX - rect.left, y: event.clientY - rect.top, w: rect.width, h: rect.height };
-  };
-  const redraw = () => {
-    const rect = board.getBoundingClientRect();
-    ctx.clearRect(0, 0, rect.width, rect.height);
-    if (points.length < 2) return;
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
-    ctx.strokeStyle = 'rgba(255,216,137,.9)';
-    ctx.shadowColor = 'rgba(255,193,86,.8)';
-    ctx.shadowBlur = 14;
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    ctx.moveTo(points[0].x, points[0].y);
-    for (let i = 1; i < points.length; i += 1) ctx.lineTo(points[i].x, points[i].y);
-    ctx.stroke();
-    ctx.shadowBlur = 0;
-    ctx.strokeStyle = 'rgba(255,239,195,.4)';
-    ctx.lineWidth = 1;
-    ctx.stroke();
-  };
-  const reset = () => {
-    if (finished) return;
-    points = [];
-    nodeHits = [];
-    totalPositive = 0;
-    totalNegative = 0;
-    lastAngle = null;
-    radiusSamples = [];
-    $$('.gesture-node', board).forEach((node) => node.classList.remove('is-lit'));
-    status.textContent = isStar ? '从任意星点开始，沿五角星描线。' : '在圆盘内顺时针画一圈。';
-    status.className = 'gesture-status';
-    redraw();
-  };
-  app.gestureReset = reset;
-  window.addEventListener('resize', resize);
-
-  const registerNodeHits = (point) => {
-    if (!isStar) return;
-    for (const node of nodes) {
-      const nx = (node.x / 100) * point.w;
-      const ny = (node.y / 100) * point.h;
-      const distance = Math.hypot(point.x - nx, point.y - ny);
-      if (distance < 38) {
-        if (nodeHits.at(-1) !== node.index) {
-          nodeHits.push(node.index);
-          const el = $(`.gesture-node[data-node="${node.index}"]`, board);
-          el?.classList.add('is-lit');
-          sound.tone(520 + node.order * 55, .1, 'sine', .015);
-        }
-      }
-    }
-  };
-
-  const pointerDown = (event) => {
-    if (finished) return;
-    event.preventDefault();
-    drawing = true;
-    points = [];
-    nodeHits = [];
-    totalPositive = 0;
-    totalNegative = 0;
-    lastAngle = null;
-    radiusSamples = [];
-    $$('.gesture-node', board).forEach((node) => node.classList.remove('is-lit'));
-    const point = localPoint(event);
-    points.push(point);
-    registerNodeHits(point);
-    board.setPointerCapture(event.pointerId);
-    redraw();
-  };
-  const pointerMove = (event) => {
-    if (!drawing) return;
-    event.preventDefault();
-    const point = localPoint(event);
-    const prev = points.at(-1);
-    if (prev && Math.hypot(point.x - prev.x, point.y - prev.y) < 2) return;
-    points.push(point);
-    registerNodeHits(point);
-    if (!isStar) {
-      const cx = point.w / 2;
-      const cy = point.h / 2;
-      const dx = point.x - cx;
-      const dy = point.y - cy;
-      const radius = Math.hypot(dx, dy);
-      radiusSamples.push(radius);
-      const angle = Math.atan2(dy, dx);
-      if (lastAngle != null) {
-        let delta = angle - lastAngle;
-        while (delta > Math.PI) delta -= Math.PI * 2;
-        while (delta < -Math.PI) delta += Math.PI * 2;
-        if (delta > 0) totalPositive += delta;
-        else totalNegative += Math.abs(delta);
-      }
-      lastAngle = angle;
-    }
-    redraw();
-  };
-  const pointerUp = (event) => {
-    if (!drawing) return;
-    drawing = false;
-    if (board.hasPointerCapture?.(event.pointerId)) board.releasePointerCapture(event.pointerId);
-    if (isStar) evaluateStar(); else evaluateCircle();
-  };
-
-  function evaluateStar() {
-    const seq = nodeHits.slice();
-    if (seq.length >= 5) {
-      const complete = starSequenceValid(seq);
-      if (complete) {
-        finishSuccess('五芒星闭合，星辉落在骰面上。');
-      } else {
-        finishFail('星线没有依次穿过所有星点。再试一次。');
-      }
-    } else {
-      finishFail('星线还未完成，需要连接全部五颗星点。');
-    }
-  }
-
-  function evaluateCircle() {
-    const minRadius = board.getBoundingClientRect().width * .2;
-    const maxRadius = board.getBoundingClientRect().width * .48;
-    const inBand = radiusSamples.length && radiusSamples.every((r) => r >= minRadius * .65 && r <= maxRadius * 1.1);
-    if (totalPositive >= Math.PI * 1.55 && totalNegative < totalPositive * .35 && inBand) {
-      finishSuccess('旋涡闭合，骰桶开始自行转动。');
-    } else if (totalNegative > totalPositive) {
-      finishFail('方向反了。顺时针再画一次。');
-    } else {
-      finishFail('圈还没有画满。保持在一个圆上，顺时针画一整圈。');
-    }
-  }
-
-  function finishSuccess(message) {
-    if (finished) return;
-    finished = true;
-    status.textContent = message;
-    status.className = 'gesture-status is-success';
-    sound.gesture();
-    const result = Engine.applyGesture(app.run, isStar ? 'pentagram' : 'circle');
-    setTimeout(() => {
-      if (result.ok) {
-        closeOverlay();
-        renderGame();
-        showToast(result.message, 'good');
-      } else {
-        finished = false;
-        status.textContent = result.error;
-        status.className = 'gesture-status is-fail';
-      }
-    }, 850);
-  }
-  function finishFail(message) {
-    status.textContent = message;
-    status.className = 'gesture-status is-fail';
-    points = [];
-    nodeHits = [];
-    totalPositive = 0;
-    totalNegative = 0;
-    lastAngle = null;
-    redraw();
-    $$('.gesture-node', board).forEach((node) => node.classList.remove('is-lit'));
-  }
-
-  board.addEventListener('pointerdown', pointerDown);
-  board.addEventListener('pointermove', pointerMove);
-  board.addEventListener('pointerup', pointerUp);
-  board.addEventListener('pointercancel', pointerUp);
-  resize();
-  app.gestureCleanup = () => window.removeEventListener('resize', resize);
-}
-
-function starSequenceValid(seq) {
-  const unique = seq.filter((value, index) => value !== seq[index - 1]);
-  if (unique.length < 5) return false;
-  const first = unique[0];
-  const cycle = [];
-  let index = unique.indexOf(first);
-  if (index === -1) return false;
-  for (let i = 0; i < 5; i += 1) {
-    cycle.push(unique[(index + i) % unique.length]);
-  }
-  const pattern = [0, 2, 4, 1, 3];
-  const reversePattern = [...pattern].reverse();
-  const rotations = (arr) => Array.from({ length: 5 }, (_, r) => arr.map((_, i) => arr[(i + r) % 5]).join(','));
-  return rotations(pattern).includes(cycle.join(',')) || rotations(reversePattern).includes(cycle.join(','));
-}
-
-
-/* ═══════════════════════════════════════════════════════════════════
    Toast
    ═══════════════════════════════════════════════════════════════════ */
-function introLine(opponent, level, isBoss) {
+function introLine(opponent: Opponent, level: number, isBoss: boolean): string {
   if (isBoss) return opponent.intro;
   const chapterSlot = (level - 1) % 3;
   if (chapterSlot === 0) return opponent.intro;
@@ -749,7 +490,7 @@ function introLine(opponent, level, isBoss) {
    ═══════════════════════════════════════════════════════════════════ */
 installDebugBridge({
   get run() { return app.run; },
-  get app() { return app; },
+  get app() { return app as unknown as Record<string, unknown>; },
   Engine,
   start: startRun,
   roll: beginRoll,
@@ -767,7 +508,7 @@ installDebugBridge({
   diceTable: () => diceTable,
   diceTableEntries: () => diceTable?.entries.length ?? 0,
   motion,
-  setLevel(level) {
+  setLevel(level: number) {
     if (!app.run) return false;
     app.run.level = clamp(Number(level) || 1, 1, LEVEL_COUNT);
     app.run.shop = null;

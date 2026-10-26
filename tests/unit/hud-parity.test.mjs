@@ -19,6 +19,7 @@ import {
   renderSets, renderTopbar, showBustNotice,
 } from '../../src/ui/hud.ts';
 import { installDomStub } from '../helpers/stub-dom.mjs';
+import { assemblySource, legacyAppSource } from '../helpers/legacy-app.mjs';
 
 let dom;
 let nodes;
@@ -106,7 +107,7 @@ describe('HUD 渲染器搬到 ui/hud.ts 之后仍然写同样的文案', () => {
 });
 
 describe('HUD 只有一份实现', () => {
-  const legacy = readFileSync(new URL('../../src/legacy/app.js', import.meta.url), 'utf8');
+  const legacy = legacyAppSource();
   const hud = readFileSync(new URL('../../src/ui/hud.ts', import.meta.url), 'utf8');
   const reward = readFileSync(new URL('../../src/ui/reward.ts', import.meta.url), 'utf8');
 
@@ -119,8 +120,9 @@ describe('HUD 只有一份实现', () => {
   }
 
   test('app.js 从 ui/hud.ts 与 ui/reward.ts 取用', () => {
-    expect(legacy).toMatch(/from '\.\.\/ui\/hud\.ts'/);
-    expect(legacy).toMatch(/from '\.\.\/ui\/reward\.ts'/);
+    const assembly = assemblySource();
+    expect(assembly).toMatch(/from '\.\/hud\.ts'/);
+    expect(assembly).toMatch(/from '\.\/reward\.ts'/);
   });
 
   test('奖励预估只存在于 ui/reward.ts', () => {

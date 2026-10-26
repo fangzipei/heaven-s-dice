@@ -9,6 +9,7 @@ import { showDefeat, showVictory } from '../../src/ui/screens/result.ts';
 import { createRun } from '../../src/core/engine.ts';
 import { LEVEL_COUNT, getLevelConfig, getOpponent, getTable } from '../../src/content/index.ts';
 import { installDomStub } from '../helpers/stub-dom.mjs';
+import { assemblySource, legacyAppSource } from '../helpers/legacy-app.mjs';
 
 let dom;
 
@@ -90,7 +91,7 @@ describe('结算弹窗搬到 ui/screens/result.ts 之后仍然写同样的文案
 });
 
 describe('结算弹窗只有一份实现', () => {
-  const legacy = readFileSync(new URL('../../src/legacy/app.js', import.meta.url), 'utf8');
+  const legacy = legacyAppSource();
   const result = readFileSync(new URL('../../src/ui/screens/result.ts', import.meta.url), 'utf8');
 
   for (const name of ['showVictory', 'showDefeat']) {
@@ -101,6 +102,6 @@ describe('结算弹窗只有一份实现', () => {
   }
 
   test('app.js 从 ui/screens/result.ts 取用', () => {
-    expect(legacy).toMatch(/from '\.\.\/ui\/screens\/result\.ts'/);
+    expect(assemblySource()).toMatch(/from '\.\/screens\/result\.ts'/);
   });
 });

@@ -39,6 +39,7 @@ import { app } from '../../src/ui/state.ts';
 import { beginRoll, handleScore, forfeitRun, renderGame, useItem, setSpeech } from '../../src/ui/game.ts';
 import { createRun } from '../../src/core/engine.ts';
 import { installDomStub } from '../helpers/stub-dom.mjs';
+import { assemblySource, legacyAppSource } from '../helpers/legacy-app.mjs';
 
 let dom;
 
@@ -121,7 +122,7 @@ describe('物品与弃局', () => {
 });
 
 describe('对局控制只有一份实现', () => {
-  const legacy = readFileSync(new URL('../../src/legacy/app.js', import.meta.url), 'utf8');
+  const legacy = legacyAppSource();
   const game = readFileSync(new URL('../../src/ui/game.ts', import.meta.url), 'utf8');
 
   for (const name of [
@@ -135,6 +136,6 @@ describe('对局控制只有一份实现', () => {
   }
 
   test('app.js 从 ui/game.ts 取用', () => {
-    expect(legacy).toMatch(/from '\.\.\/ui\/game\.ts'/);
+    expect(assemblySource()).toMatch(/from '\.\/game\.ts'/);
   });
 });

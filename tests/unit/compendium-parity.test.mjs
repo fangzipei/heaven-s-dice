@@ -11,6 +11,7 @@ import { openCompendium, switchCompendiumTab } from '../../src/ui/screens/compen
 import { probabilityBars } from '../../src/ui/components/cards.ts';
 import { BARRELS, BOSSES, DICE, ITEMS, MINIONS, TABLES } from '../../src/content/index.ts';
 import { installDomStub } from '../helpers/stub-dom.mjs';
+import { assemblySource, legacyAppSource } from '../helpers/legacy-app.mjs';
 
 let dom;
 
@@ -109,7 +110,7 @@ describe('概率条搬到 ui/components/cards.ts 之后仍然是同样的柱子'
 });
 
 describe('图鉴只有一份实现', () => {
-  const legacy = readFileSync(new URL('../../src/legacy/app.js', import.meta.url), 'utf8');
+  const legacy = legacyAppSource();
   const compendium = readFileSync(new URL('../../src/ui/screens/compendium.ts', import.meta.url), 'utf8');
   const cards = readFileSync(new URL('../../src/ui/components/cards.ts', import.meta.url), 'utf8');
 
@@ -130,7 +131,7 @@ describe('图鉴只有一份实现', () => {
   });
 
   test('app.js 取图鉴，图鉴取概率条', () => {
-    expect(legacy).toMatch(/from '\.\.\/ui\/screens\/compendium\.ts'/);
+    expect(assemblySource()).toMatch(/from '\.\/screens\/compendium\.ts'/);
     expect(compendium).toMatch(/from '\.\.\/components\/cards\.ts'/);
   });
 

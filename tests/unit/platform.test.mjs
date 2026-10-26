@@ -1,13 +1,13 @@
 /* Phase 2a contract tests: the browser-side concerns (audio, persistence,
    debug hooks) live in src/platform exactly once, and the shape the CDP
    scripts under tools/ drive the game through has not shrunk.
-   app.js is not type-checked (tsconfig excludes src/legacy), so these source
-   assertions are what catch a dropped hook or a renamed save key. */
+   The assembly layer (ui/app.ts) is where those concerns get wired, so these
+   source assertions are what catch a dropped hook or a renamed save key. */
 import { describe, it, expect } from 'vitest';
 import { readFile } from 'node:fs/promises';
 
 const read = (relative) => readFile(new URL(relative, import.meta.url), 'utf8');
-const appSource = () => read('../../src/legacy/app.js');
+const appSource = () => read('../../src/ui/app.ts');
 
 /* Everything tools/{boss,campaign,codex,flow,shop-sell,tutorial,...}-test.mjs
    reach for. Dropping one of these fails a CDP script silently. */
@@ -20,9 +20,9 @@ const BRIDGE_KEYS = [
 describe('platform layer', () => {
   it('installs the whole debug hook surface through the bridge', async () => {
     const source = await appSource();
-    expect(source, 'app.js must not assign window.HeavensDice directly').not.toMatch(/window\.HeavensDice\s*=/);
+    expect(source, 'app.ts must not assign window.HeavensDice directly').not.toMatch(/window\.HeavensDice\s*=/);
     const block = source.match(/installDebugBridge\(\{([\s\S]*?)\n\}\);/);
-    expect(block, 'app.js installs its debug hooks via installDebugBridge').toBeTruthy();
+    expect(block, 'app.ts installs its debug hooks via installDebugBridge').toBeTruthy();
     const keys = [...block[1].matchAll(/^\s{2}(?:get\s+)?([A-Za-z_$][\w$]*)\s*[,(:]/gm)].map((m) => m[1]);
     expect([...new Set(keys)].sort()).toEqual(BRIDGE_KEYS);
   });
@@ -32,7 +32,7 @@ describe('platform layer', () => {
     expect(source).toContain("'heavensDice.codex.v1'");
     expect(source).toContain("'heavens-dice-sound'");
     for (const key of ['heavensDice.codex.v1', 'heavens-dice-sound', 'localStorage']) {
-      expect(app, `app.js still contains "${key}"`).not.toContain(key);
+      expect(app, `app.ts still contains "${key}"`).not.toContain(key);
     }
     expect(app).toMatch(/from '\.\.\/platform\/storage\.ts'/);
   });
@@ -42,7 +42,7 @@ describe('platform layer', () => {
     expect(source).toMatch(/class SoundKit/);
     expect(source).toMatch(/export const sound = new SoundKit\(\)/);
     for (const stale of ['class SoundKit', 'AudioContext', 'createOscillator', 'createBuffer']) {
-      expect(app, `app.js still defines audio (${stale})`).not.toContain(stale);
+      expect(app, `app.ts still defines audio (${stale})`).not.toContain(stale);
     }
     expect(app).toMatch(/import \{ sound \} from '\.\.\/platform\/sound\.ts'/);
   });

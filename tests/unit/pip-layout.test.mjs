@@ -4,6 +4,7 @@
    have moved a pip — except on face 6, where the two paths genuinely disagreed
    and the texture drawing was chosen as the winner on 2026-10-26. */
 import { readFileSync } from 'node:fs';
+import { legacyAppSource } from '../helpers/legacy-app.mjs';
 import { describe, expect, test } from 'vitest';
 
 import {
@@ -70,7 +71,7 @@ describe('pip layout keeps every pip where it was', () => {
 
 describe('the duplicated tables are really gone', () => {
   test('app.js and dice-3d.js read the layout from src/render', () => {
-    const app = readFileSync(new URL('../../src/legacy/app.js', import.meta.url), 'utf8');
+    const app = legacyAppSource();
     const gl = readFileSync(new URL('../../src/legacy/dice-3d.js', import.meta.url), 'utf8');
     for (const [name, source] of [['app.js', app], ['dice-3d.js', gl]]) {
       expect(source, `${name} must not keep its own pip table`).not.toMatch(/\bPIP_(MAP|LAYOUT)\s*=\s*\{/);

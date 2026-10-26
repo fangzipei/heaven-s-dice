@@ -7,6 +7,7 @@
    顺序有依赖：兜底用例必须先跑，因为 ensureDiceTable() 一旦成功，模块里的 diceTable
    就再也回不到 null。 */
 import { readFileSync } from 'node:fs';
+import { assemblySource, legacyAppSource } from '../helpers/legacy-app.mjs';
 import { beforeAll, describe, expect, test, vi } from 'vitest';
 
 const recorder = vi.hoisted(() => ({
@@ -298,7 +299,7 @@ describe('点骰子：只有真的翻了选中态才重画', () => {
 });
 
 describe('牌桌胶水只有一份实现', () => {
-  const legacy = readFileSync(new URL('../../src/legacy/app.js', import.meta.url), 'utf8');
+  const legacy = legacyAppSource();
   const tray = readFileSync(new URL('../../src/ui/tray.ts', import.meta.url), 'utf8');
 
   for (const name of [
@@ -317,8 +318,9 @@ describe('牌桌胶水只有一份实现', () => {
   });
 
   test('app.js 从 ui/tray.ts 取用，且不反向持有骰桌', () => {
-    expect(legacy).toMatch(/from '\.\.\/ui\/tray\.ts'/);
-    expect(legacy).toMatch(/setTrayRepaint\(renderGame\)/);
+    const assembly = assemblySource();
+    expect(assembly).toMatch(/from '\.\/tray\.ts'/);
+    expect(assembly).toMatch(/setTrayRepaint\(renderGame\)/);
     expect(tray, 'tray 不能 import 组装层').not.toMatch(/from '\.\.\/ui\/|from '\.\/app/);
   });
 });

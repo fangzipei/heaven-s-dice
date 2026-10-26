@@ -9,6 +9,7 @@ import { openRules, openTutorial, scrollTutorial, showStartPrompt } from '../../
 import { BOSSES, DICE, ITEMS, LEVEL_COUNT, REROLL_REFUND, TABLES } from '../../src/content/index.ts';
 import { SCORING_ROWS } from '../../src/core/scoring.ts';
 import { installDomStub } from '../helpers/stub-dom.mjs';
+import { assemblySource, legacyAppSource } from '../helpers/legacy-app.mjs';
 
 let dom;
 
@@ -95,7 +96,7 @@ describe('规则表与开始页提示', () => {
 });
 
 describe('教程与规则只有一份实现', () => {
-  const legacy = readFileSync(new URL('../../src/legacy/app.js', import.meta.url), 'utf8');
+  const legacy = legacyAppSource();
   const tutorial = readFileSync(new URL('../../src/ui/screens/tutorial.ts', import.meta.url), 'utf8');
 
   for (const name of [
@@ -109,6 +110,6 @@ describe('教程与规则只有一份实现', () => {
   }
 
   test('app.js 从 ui/screens/tutorial.ts 取用', () => {
-    expect(legacy).toMatch(/from '\.\.\/ui\/screens\/tutorial\.ts'/);
+    expect(assemblySource()).toMatch(/from '\.\/screens\/tutorial\.ts'/);
   });
 });

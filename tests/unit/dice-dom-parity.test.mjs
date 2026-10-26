@@ -3,6 +3,7 @@
    那批函数逐字跑出来的产物，所以以后谁动了这个模块 —— 挪一个点、掉一个 class、
    换一层面序 —— 都会在这里失败，而不是在 33 关手测时靠肉眼发现。 */
 import { readFileSync } from 'node:fs';
+import { legacyAppSource } from '../helpers/legacy-app.mjs';
 import { describe, expect, test } from 'vitest';
 
 import { DICE_BY_ID, STANDARD_DIE } from '../../src/content/index.ts';
@@ -46,7 +47,7 @@ describe('the ported DOM dice renderer still writes the same markup', () => {
 });
 
 describe('the DOM tray renderer is the only one left', () => {
-  const app = readFileSync(new URL('../../src/legacy/app.js', import.meta.url), 'utf8');
+  const app = legacyAppSource();
 
   test('app.js no longer builds die markup itself', () => {
     for (const name of ['dieFacesHtml', 'pipsHtml', 'faceValuesFor', 'artDieHtml', 'dieMark', 'renderDiceTrayDom']) {
@@ -58,7 +59,9 @@ describe('the DOM tray renderer is the only one left', () => {
   });
 
   test('the pure helpers moved to core/util so render can use them too', () => {
-    expect(app).toMatch(/from '\.\.\/core\/util\.ts'/);
+    const dom = readFileSync(new URL('../../src/render/dice-dom.ts', import.meta.url), 'utf8');
+    expect(dom).toMatch(/from '\.\.\/core\/util\.ts'/);
+    expect(dom).not.toMatch(/const h = \(value\)/);
     expect(app).not.toMatch(/const h = \(value\)/);
   });
 

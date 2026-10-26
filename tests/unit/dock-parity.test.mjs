@@ -11,6 +11,7 @@ import {
   renderActionDock, renderAutoButton, renderComboPreview, renderDangerStrip,
 } from '../../src/ui/dock.ts';
 import { installDomStub } from '../helpers/stub-dom.mjs';
+import { assemblySource, legacyAppSource } from '../helpers/legacy-app.mjs';
 
 let dom;
 
@@ -139,7 +140,7 @@ describe('操作坞搬到 ui/dock.ts 之后仍然写同样的文案', () => {
 });
 
 describe('操作坞只有一份实现', () => {
-  const legacy = readFileSync(new URL('../../src/legacy/app.js', import.meta.url), 'utf8');
+  const legacy = legacyAppSource();
   const dock = readFileSync(new URL('../../src/ui/dock.ts', import.meta.url), 'utf8');
 
   for (const name of ['renderComboPreview', 'renderActionDock', 'renderAutoButton', 'renderDangerStrip']) {
@@ -149,7 +150,9 @@ describe('操作坞只有一份实现', () => {
     });
   }
 
-  test('app.js 从 ui/dock.ts 取用', () => {
-    expect(legacy).toMatch(/from '\.\.\/ui\/dock\.ts'/);
+  test('牌桌控制从 ui/dock.ts 取用', () => {
+    // renderGame 搬到 ui/game.ts 之后，操作坞由它装配，组装层不再直接 import。
+    const game = readFileSync(new URL('../../src/ui/game.ts', import.meta.url), 'utf8');
+    expect(game).toMatch(/from '\.\/dock\.ts'/);
   });
 });

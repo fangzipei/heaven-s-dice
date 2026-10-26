@@ -13,6 +13,7 @@ import {
 import { createRun, createShop, getDiceCapacity, refreshCost, sectionLabel, shopPrice } from '../../src/core/engine.ts';
 import { DICE_BY_ID, ITEM_BY_ID, getTable } from '../../src/content/index.ts';
 import { installDomStub } from '../helpers/stub-dom.mjs';
+import { assemblySource, legacyAppSource } from '../helpers/legacy-app.mjs';
 
 let dom;
 
@@ -127,7 +128,7 @@ describe('替换弹窗可以直接被调用', () => {
 });
 
 describe('市集只有一份实现', () => {
-  const legacy = readFileSync(new URL('../../src/legacy/app.js', import.meta.url), 'utf8');
+  const legacy = legacyAppSource();
   const shop = readFileSync(new URL('../../src/ui/screens/shop.ts', import.meta.url), 'utf8');
 
   for (const name of [
@@ -142,7 +143,7 @@ describe('市集只有一份实现', () => {
   }
 
   test('app.js 从 ui/screens/shop.ts 取用', () => {
-    expect(legacy).toMatch(/from '\.\.\/ui\/screens\/shop\.ts'/);
+    expect(assemblySource()).toMatch(/from '\.\/screens\/shop\.ts'/);
   });
 
   test('市集屏不反向 import 组装层', () => {

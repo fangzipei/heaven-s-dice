@@ -3,6 +3,7 @@
 // `roll` or `app.busy` fails silently, so the shape is declared here once.
 import type { RunState } from '../core/types.ts';
 import type * as EngineNamespace from '../core/engine.ts';
+import type { ScoreAction } from '../core/engine.ts';
 
 export interface DebugBridge {
   readonly run: RunState | null;
@@ -10,7 +11,7 @@ export interface DebugBridge {
   readonly Engine: typeof EngineNamespace;
   readonly start: () => void;
   readonly roll: (options?: { free?: boolean }) => void;
-  readonly score: (action: string) => void;
+  readonly score: (action: ScoreAction) => void;
   readonly render: () => void;
   readonly setup: (force?: boolean) => void;
   readonly intro: () => void;

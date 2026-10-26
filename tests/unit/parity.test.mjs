@@ -3,7 +3,6 @@
    surface re-exports the very same objects), scoring is checked exhaustively,
    and the engine is checked by replaying identical scripted runs side by side. */
 import { describe, it, expect } from 'vitest';
-import { readFile } from 'node:fs/promises';
 import * as LegacyData from '../../src/legacy/data.js';
 import * as LegacyScoring from '../../src/legacy/scoring.js';
 import * as LegacyEngine from '../../src/legacy/engine.js';
@@ -222,14 +221,16 @@ describe('engine parity', () => {
     expect(NewEngine.DICE).toBeUndefined();
   });
 
-  it('feeds the UI through one compat surface', async () => {
+  it('the compat shim adds no names of its own', async () => {
+    // src/compat/content.ts 只剩一个用途：给还没有搬走的旧脚本一个中转出口。
+    // 3c 之后 app.js 已经退休，所以这里改为守住「它只是转出、不自己造」——
+    // Phase 3d 删掉它时，这条随文件一起消失。
     const Compat = await import('../../src/compat/content.ts');
-    const source = await readFile(new URL('../../src/legacy/app.js', import.meta.url), 'utf8');
-    const block = source.match(/import \{([\s\S]*?)\} from '\.\.\/compat\/content\.ts';/);
-    expect(block, 'app.js imports its game surface from src/compat').toBeTruthy();
-    const names = block[1].split(',').map((s) => s.trim()).filter(Boolean);
-    // 3c 拆屏期间这份清单在缩水（每搬走一节就少几项），但 app.js 仍然必须走兼容出口。
-    expect(names.length).toBeGreaterThanOrEqual(15);
-    expect(names.filter((name) => Compat[name] === undefined)).toEqual([]);
+    const missing = Object.keys(Compat).filter((name) => (
+      NewEngine[name] === undefined
+      && Content[name] === undefined
+      && NewScoring[name] === undefined
+    ));
+    expect(missing).toEqual([]);
   });
 });
