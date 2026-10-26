@@ -154,12 +154,26 @@ document.addEventListener('DOMContentLoaded', () => {
   app.soundEnabled = readSoundPref();
   sound.setEnabled(app.soundEnabled);
   updateSoundButtons();
+  bindViewportHeight();
   bindGlobalEvents();
   bindCupDrag();
   bindTooltip();
   bindSceneParallax();
   renderStartDecor();
 });
+
+function bindViewportHeight() {
+  const root = document.documentElement;
+  const sync = () => {
+    const height = Math.round(window.visualViewport?.height || window.innerHeight || root.clientHeight);
+    if (height > 0) root.style.setProperty('--app-height', `${height}px`);
+  };
+  sync();
+  requestAnimationFrame(sync);
+  window.visualViewport?.addEventListener('resize', sync);
+  window.addEventListener('resize', sync);
+  window.addEventListener('orientationchange', () => setTimeout(sync, 120));
+}
 
 function bindSceneParallax() {
   const scene = $('#scene');

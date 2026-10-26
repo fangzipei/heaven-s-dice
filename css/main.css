@@ -251,7 +251,7 @@ svg { width: 1em; height: 1em; display: block; }
 /* ═══════════════════════════════════════════════════════════════════
    GAME SHELL / TOP BAR
    ═══════════════════════════════════════════════════════════════════ */
-.game-screen { height: 100vh; display: flex; flex-direction: column; background: #070605; overflow: hidden; }
+.game-screen { height: 100vh; height: var(--app-height, 100dvh); display: flex; flex-direction: column; background: #070605; overflow: hidden; }
 .topbar {
   position: relative; z-index: 20; height: 68px; flex: 0 0 68px;
   display: flex; align-items: center; gap: 30px; padding: 0 24px 0 26px;
@@ -1280,7 +1280,7 @@ svg { width: 1em; height: 1em; display: block; }
   .coin-pill { padding: 0 9px; }
   .topbar-actions .icon-button:not(.sound-toggle):not(.rail-toggle):not(.help-button) { display: none; }
   .topbar-actions .rail-toggle { display: inline-flex !important; }
-  .game-layout { height: calc(100vh - 60px); }
+  .game-layout { height: calc(100vh - 60px); height: calc(var(--app-height, 100dvh) - 60px); }
   .score-panel { width: 200px; left: 12px; top: 60px; padding: 10px; }
   .chapter-tag { left: 13px; top: 12px; }
   .score-number { gap: 4px; }
@@ -1296,7 +1296,16 @@ svg { width: 1em; height: 1em; display: block; }
   .cup-hint span, .cup-badge { display: none; }
   .dice-zone { width: 94%; bottom: 118px; }
   .dice-tray { padding-left: 0; padding-right: 0; }
-  .action-dock { width: 94%; bottom: 12px; }
+  .action-dock {
+    position: absolute; left: 0; right: 0; bottom: 0; width: 100%; transform: none;
+    padding: 10px 10px calc(10px + env(safe-area-inset-bottom, 0px));
+    background: linear-gradient(180deg, rgba(5,4,3,0), rgba(5,4,3,.78) 22%, rgba(5,4,3,.97));
+    box-shadow: 0 -12px 30px rgba(0,0,0,.28);
+    z-index: 60;
+  }
+  .action-dock .action-hint { padding-top: 2px; }
+  .action-dock .action-buttons { gap: 6px; }
+  .score-action { min-height: 56px; }
   .auto-roll { right: 10px; bottom: 236px; width: 46px; padding: 6px; }
   .auto-roll span:last-child { display: none; }
   .auto-icon { flex-basis: 32px; }
@@ -1310,7 +1319,7 @@ svg { width: 1em; height: 1em; display: block; }
   .score-action b { font-size: 13px; }
   .score-action .action-points { font-size: 16px; min-width: 42px; }
   .score-action em { font-size: 7px; }
-  .rail { top: 70px; max-height: calc(100vh - 84px); width: 280px; }
+  .rail { top: 70px; max-height: calc(100vh - 84px); max-height: calc(100dvh - 84px); width: 280px; }
   .intro-modal { grid-template-columns: 1fr; }
   .intro-portrait { min-height: 260px; }
   .intro-body { padding: 24px; }

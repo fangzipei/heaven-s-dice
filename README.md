@@ -38,6 +38,10 @@
 
 ![线上运行](docs/screenshots/15-deployed.png)
 
+手机端选中骰子后的计分按钮（固定在底部安全区上方）：
+
+![手机端计分按钮](docs/screenshots/18-mobile-actions.png)
+
 ---
 
 ## 3D 场景
@@ -123,6 +127,7 @@ node tools/balance.mjs 400
 | 操作 | 方式 |
 |---|---|
 | 手动摇骰 | 按住左侧骰桶拖动；拖动范围覆盖整张桌面，骰子入桶、桶倒扣后松手落骰 |
+| 手机端计分 | 选中骰子后，底部安全区上方固定出现「计分并继续 / 计分并重投」两个按钮 |
 | 自动摇骰 | 点击右侧「自动摇骰」或按空格 |
 | 选择骰子 | 点击骰子；可多选 |
 | 计分并继续 | 底部左侧按钮 / 数字键 `1`（重投剩余骰子） |
@@ -347,6 +352,7 @@ node tools/cup-range-test.mjs               # 骰桶可拖遍整张桌面
 node tools/spin-test.mjs                   # 重投前六骰慢转
 node tools/bust-test.mjs                   # 掷空后本轮分数作废
 node tools/next-level-test.mjs             # 达标后继续得分，手动下一关
+node tools/mobile-select-test.mjs          # 手机端选中后的两个计分按钮
 node tools/interaction-test.mjs           # 手动摇桶、旋涡绘制、响应式
 node tools/final-check.mjs                # 悬停概率、图鉴、Boss 抽成
 node tools/campaign-test.mjs              # 真实 UI 连打 15 关、Boss 徽记、终局
@@ -354,7 +360,7 @@ node tools/responsive-test.mjs            # 平板/手机/笔记本断点
 node tools/capture-final.mjs              # 重新生成 docs/screenshots
 ```
 
-浏览器验收使用本机 Microsoft Edge 的 CDP 无头模式；测试脚本会把过程截图写到 `tools/` 作为本地检查记录，不需要随生产部署。`docs/screenshots` 中的展示图由 `capture-final.mjs`、`cup-anim-test.mjs`、`cup-range-test.mjs`、`spin-test.mjs`、`bust-test.mjs` 与 `next-level-test.mjs` 生成。
+浏览器验收使用本机 Microsoft Edge 的 CDP 无头模式；测试脚本会把过程截图写到 `tools/` 作为本地检查记录，不需要随生产部署。`docs/screenshots` 中的展示图由 `capture-final.mjs`、`cup-anim-test.mjs`、`cup-range-test.mjs`、`spin-test.mjs`、`bust-test.mjs`、`next-level-test.mjs` 与 `mobile-select-test.mjs` 生成。
 
 ---
 
