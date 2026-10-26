@@ -9,6 +9,12 @@ import * as Engine from '../core/engine.ts';
 import { SCORING_ROWS, analyzeSelection } from '../core/scoring.ts';
 import { dieMotifSvg, dieSkinStyle } from './dice-skins.js';
 import { motion } from './motion.js';
+import { sound } from '../platform/sound.ts';
+import {
+  bindDiscovery, discoverLoadout, discoverShop, isDiscovered,
+  loadDiscovery, readSoundPref, saveSoundPref,
+} from '../platform/storage.ts';
+import { installDebugBridge } from '../platform/debug-bridge.ts';
 
 /* The dice itself is WebGL. Loaded lazily so a browser without WebGL2 (or a
    failure inside three) falls back to the DOM renderer instead of blanking
@@ -44,7 +50,6 @@ const PIP_MAP = {
   5: [0, 2, 4, 6, 8], 6: [0, 2, 3, 5, 6, 8],
 };
 
-const DISCOVERY_KEY = 'heavensDice.codex.v1';
 const codexDice = () => DICE.filter((die) => !die.isStandard);
 
 const app = {
@@ -77,158 +82,12 @@ const app = {
   resultShown: false,
 };
 
-function readSoundPref() {
-  try {
-    const value = localStorage.getItem('heavens-dice-sound');
-    return value === null ? true : value === '1';
-  } catch { return true; }
-}
-
-function emptyDiscovery() {
-  return { dice: [], barrels: [], items: [] };
-}
-
-function loadDiscovery() {
-  try {
-    const raw = JSON.parse(localStorage.getItem(DISCOVERY_KEY) || '{}');
-    const clean = emptyDiscovery();
-    Object.keys(clean).forEach((kind) => {
-      if (Array.isArray(raw[kind])) clean[kind] = [...new Set(raw[kind].filter((id) => typeof id === 'string'))];
-    });
-    return clean;
-  } catch { return emptyDiscovery(); }
-}
-
-function saveDiscovery() {
-  try { localStorage.setItem(DISCOVERY_KEY, JSON.stringify(app.discovered)); } catch { /* private mode */ }
-}
-
-function isDiscovered(kind, id) {
-  return Boolean(id && app.discovered[kind]?.includes(id));
-}
-
-function discover(kind, id) {
-  if (!id || !app.discovered[kind]) return false;
-  if (app.discovered[kind].includes(id)) return false;
-  app.discovered[kind].push(id);
-  saveDiscovery();
-  return true;
-}
-
-function discoverLoadout(run) {
-  if (!run) return;
-  run.bag?.forEach((entry) => {
-    const spec = Engine.getDieSpec(entry.dieId);
-    if (!spec?.isStandard) discover('dice', entry.dieId);
-  });
-  if (run.barrelId) discover('barrels', run.barrelId);
-  run.ownedBarrels?.forEach((id) => discover('barrels', id));
-  run.activeItems?.forEach((id) => discover('items', id));
-  run.passiveItems?.forEach((id) => discover('items', id));
-}
-
-function discoverShop(run) {
-  if (!run?.shop) return;
-  run.shop.dice?.forEach((entry) => entry.id && discover('dice', entry.id));
-  run.shop.barrel?.forEach((entry) => entry.id && discover('barrels', entry.id));
-  run.shop.item?.forEach((entry) => entry.id && discover('items', entry.id));
-}
-function saveSoundPref(value) {
-  try { localStorage.setItem('heavens-dice-sound', value ? '1' : '0'); } catch { /* ignore */ }
-}
-
-/* ═══════════════════════════════════════════════════════════════════
-   Sound — all synthesised, no assets
-   ═══════════════════════════════════════════════════════════════════ */
-class SoundKit {
-  constructor() {
-    this.ctx = null;
-    this.enabled = true;
-    this.lastRattle = 0;
-  }
-  setEnabled(value) { this.enabled = value; }
-  async unlock() {
-    if (!this.enabled) return;
-    try {
-      if (!this.ctx) this.ctx = new (window.AudioContext || window.webkitAudioContext)();
-      if (this.ctx.state === 'suspended') await this.ctx.resume();
-    } catch { /* audio is optional */ }
-  }
-  tone(freq, duration = .12, type = 'sine', gain = .045, when = 0) {
-    if (!this.enabled || !this.ctx) return;
-    const ctx = this.ctx;
-    const osc = ctx.createOscillator();
-    const amp = ctx.createGain();
-    osc.type = type;
-    osc.frequency.setValueAtTime(freq, ctx.currentTime + when);
-    amp.gain.setValueAtTime(0.0001, ctx.currentTime + when);
-    amp.gain.exponentialRampToValueAtTime(gain, ctx.currentTime + when + .012);
-    amp.gain.exponentialRampToValueAtTime(.0001, ctx.currentTime + when + duration);
-    osc.connect(amp).connect(ctx.destination);
-    osc.start(ctx.currentTime + when);
-    osc.stop(ctx.currentTime + when + duration + .03);
-  }
-  noise(duration = .08, gain = .04, when = 0, freq = 1200) {
-    if (!this.enabled || !this.ctx) return;
-    const ctx = this.ctx;
-    const length = Math.max(1, Math.floor(ctx.sampleRate * duration));
-    const buffer = ctx.createBuffer(1, length, ctx.sampleRate);
-    const data = buffer.getChannelData(0);
-    for (let i = 0; i < length; i += 1) {
-      data[i] = (Math.random() * 2 - 1) * (1 - i / length) ** 2;
-    }
-    const source = ctx.createBufferSource();
-    source.buffer = buffer;
-    const filter = ctx.createBiquadFilter();
-    filter.type = 'bandpass';
-    filter.frequency.value = freq;
-    filter.Q.value = .8;
-    const amp = ctx.createGain();
-    amp.gain.value = gain;
-    source.connect(filter).connect(amp).connect(ctx.destination);
-    source.start(ctx.currentTime + when);
-  }
-  click() { this.tone(430 + Math.random() * 90, .055, 'triangle', .025); }
-  dice(count = 6) {
-    for (let i = 0; i < Math.min(10, count + 3); i += 1) {
-      this.noise(.06 + Math.random() * .04, .035, i * .035 + Math.random() * .02, 800 + Math.random() * 1200);
-    }
-    this.tone(118, .18, 'sine', .03, .06);
-  }
-  rattle() {
-    const now = performance.now();
-    if (now - this.lastRattle < 75) return;
-    this.lastRattle = now;
-    this.noise(.035, .018, 0, 1700 + Math.random() * 900);
-  }
-  score(value = 300) {
-    const base = 330;
-    this.tone(base, .12, 'triangle', .035);
-    this.tone(base * 1.25, .14, 'triangle', .028, .07);
-    this.tone(base * 1.5, .2, 'sine', .025, .14);
-    if (value > 800) this.tone(base * 2, .28, 'sine', .025, .22);
-  }
-  item() { this.tone(620, .1, 'triangle', .028); this.tone(930, .2, 'sine', .02, .07); }
-  gesture() {
-    [392, 523, 659, 784, 1046].forEach((f, i) => this.tone(f, .24, 'sine', .022, i * .075));
-  }
-  win() {
-    [261.6, 329.6, 392, 523.2].forEach((f, i) => this.tone(f, .8, 'triangle', .03, i * .13));
-    this.tone(130.8, 1.2, 'sine', .025, .02);
-  }
-  lose() {
-    this.tone(196, .5, 'sine', .03);
-    this.tone(146.8, .8, 'sine', .025, .2);
-    this.tone(98, 1.1, 'triangle', .02, .36);
-  }
-}
-const sound = new SoundKit();
-
 /* ═══════════════════════════════════════════════════════════════════
    Boot
    ═══════════════════════════════════════════════════════════════════ */
 document.addEventListener('DOMContentLoaded', () => {
   app.discovered = loadDiscovery();
+  bindDiscovery(app, (dieId) => Boolean(Engine.getDieSpec(dieId).isStandard));
   app.soundEnabled = readSoundPref();
   sound.setEnabled(app.soundEnabled);
   updateSoundButtons();
@@ -3507,7 +3366,7 @@ function introLine(opponent, level, isBoss) {
 /* ═══════════════════════════════════════════════════════════════════
    Debug / testing hooks (harmless in production)
    ═══════════════════════════════════════════════════════════════════ */
-window.HeavensDice = {
+installDebugBridge({
   get run() { return app.run; },
   get app() { return app; },
   Engine,
@@ -3536,4 +3395,4 @@ window.HeavensDice = {
     renderGame();
     return true;
   },
-};
+});
