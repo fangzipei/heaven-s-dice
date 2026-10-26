@@ -6,7 +6,7 @@ import {
   buyBarrel, buyItem, leaveShop, applyGesture, getDiceCapacity,
   openShop, refreshSection, getBarrel, BASE_REROLLS, advanceLevel,
   buildScore, syncBag, getScorePreview, hasItemEverBeenTaken,
-  activeBoss, isBossDieBlocked, handTypeOf,
+  activeBoss, isBossDieBlocked, handTypeOf, sellItem, canSellItem, itemSellPrice,
 } from '../src/engine.js';
 import { makeRng } from '../src/engine.js';
 
@@ -382,6 +382,40 @@ test('cracked pouch trades a die for a permanent score multiplier', () => {
   state.coins = 500;
   const second = buyItem(state, 0);
   assert.equal(second.ok, false);
+});
+
+test('owned items can be sold for half price only in the shop', () => {
+  const state = fresh();
+  state.phase = 'shop';
+  state.shop = {};
+  state.activeItems = ['glove'];
+  state.itemCharges = { glove: 1 };
+  state.coins = 10;
+  const expected = itemSellPrice({ price: 32 });
+  assert.equal(expected, 16);
+  assert.equal(canSellItem(state, 'glove').ok, true);
+  const result = sellItem(state, 'glove');
+  assert.equal(result.ok, true);
+  assert.equal(result.price, 11);
+  assert.equal(state.coins, 10 + result.price);
+  assert.equal(state.activeItems.includes('glove'), false);
+  assert.equal(state.itemCharges.glove, undefined);
+  assert.equal(sellItem(state, 'glove').ok, false);
+});
+
+test('selling a dice capacity passive keeps the bag legal', () => {
+  const state = fresh();
+  state.phase = 'shop';
+  state.shop = {};
+  state.passiveItems = ['dice_bag'];
+  state.acquiredItemIds = ['dice_bag'];
+  syncBag(state);
+  assert.equal(state.bag.length, 7);
+  assert.equal(canSellItem(state, 'dice_bag').ok, false);
+  state.bag.pop();
+  assert.equal(canSellItem(state, 'dice_bag').ok, true);
+  assert.equal(sellItem(state, 'dice_bag').ok, true);
+  assert.equal(getDiceCapacity(state), 6);
 });
 
 test('boss roster covers seven levels and seven effects', () => {

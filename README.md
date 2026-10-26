@@ -346,6 +346,10 @@ node tools/balance.mjs 400
 - 骰袋满 6 枚（或被动后 7 枚）时购入新骰会弹出替换选择。
 - 物品不重复出售；已拥有的秘骰和骰桶不会再出现在货架上。
 - 改变骰子数量的被动（丰饶骰袋、裂痕骰袋）整局记录一次：即使刷新到也不会二次出售。
+- **随身物品半价回收**：市集下方会列出自己拥有的主动/被动物品，按基础价格的一半出售；出售后立即移除效果并增加银币。
+- 丰饶骰袋在骰袋已满 7 颗时不能出售，避免挤掉已有骰子；裂痕骰袋出售后会补回骰子容量。
+
+![市集半价回收](docs/screenshots/32-shop-sell.png)
 
 ---
 
@@ -408,7 +412,7 @@ python tools/generate_portraits.py   # 10 张角色画像
 ## 验收
 
 ```bash
-npm test                                  # 42 项规则/引擎/内容测试
+npm test                                  # 44 项规则/引擎/内容测试
 node tools/flow-test.mjs                  # 物品、商店、骰袋替换、五芒星
 node tools/reroll-test.mjs                # 继续=重投剩余；重投=全部六颗
 node tools/cup-anim-test.mjs               # 手动入骰、倒扣、落骰
@@ -420,6 +424,7 @@ node tools/mobile-select-test.mjs          # 手机端选中后的两个计分�
 node tools/tutorial-test.mjs               # 开局询问 + 教程图解 + 从教程开局
 node tools/codex-test.mjs                  # 首页三按钮 + 图鉴锁定/市集解锁/持久化
 node tools/boss-test.mjs                   # 七位庄家的白骰、禁六、牌型限制与计分税
+node tools/shop-sell-test.mjs              # 市集随身物品半价出售
 node tools/interaction-test.mjs           # 手动摇桶、旋涡绘制、响应式
 node tools/final-check.mjs                # 悬停概率、图鉴、Boss 抽成
 node tools/campaign-test.mjs              # 真实 UI 连打 15 关、Boss 徽记、终局
@@ -427,7 +432,7 @@ node tools/responsive-test.mjs            # 平板/手机/笔记本断点
 node tools/capture-final.mjs              # 重新生成 docs/screenshots
 ```
 
-浏览器验收使用本机 Microsoft Edge 的 CDP 无头模式；测试脚本会把过程截图写到 `tools/` 作为本地检查记录，不需要随生产部署。`docs/screenshots` 中的展示图由 `capture-final.mjs`、`cup-anim-test.mjs`、`cup-range-test.mjs`、`spin-test.mjs`、`bust-test.mjs`、`next-level-test.mjs`、`mobile-select-test.mjs`、`tutorial-test.mjs`、`codex-test.mjs` 与 `boss-test.mjs` 生成。
+浏览器验收使用本机 Microsoft Edge 的 CDP 无头模式；测试脚本会把过程截图写到 `tools/` 作为本地检查记录，不需要随生产部署。`docs/screenshots` 中的展示图由 `capture-final.mjs`、`cup-anim-test.mjs`、`cup-range-test.mjs`、`spin-test.mjs`、`bust-test.mjs`、`next-level-test.mjs`、`mobile-select-test.mjs`、`tutorial-test.mjs`、`codex-test.mjs`、`boss-test.mjs` 与 `shop-sell-test.mjs` 生成。
 
 ---
 

@@ -1183,6 +1183,41 @@ export function buyItem(state, index) {
   return { ok: true, item, price };
 }
 
+export function itemSellPrice(item) {
+  return Math.max(1, Math.floor((item?.price || 0) / 2));
+}
+
+export function canSellItem(state, itemId) {
+  if (state.phase !== 'shop') return { ok: false, error: '只能在本关市集出售物品。' };
+  const item = ITEM_BY_ID[itemId];
+  if (!item || !getOwnedItemIds(state).includes(itemId)) {
+    return { ok: false, error: '你没有这件物品。' };
+  }
+  if (itemId === 'dice_bag') {
+    const capacityAfter = Math.max(4, 6 - (state.passiveItems.includes('cracked_pouch') ? 1 : 0));
+    if (state.bag.length > capacityAfter) {
+      return { ok: false, error: '骰袋里骰子太多，卖出丰饶骰袋会挤掉骰子。' };
+    }
+  }
+  return { ok: true, item, price: itemSellPrice(item) };
+}
+
+export function sellItem(state, itemId) {
+  const check = canSellItem(state, itemId);
+  if (!check.ok) return check;
+  const { item, price } = check;
+  if (state.activeItems.includes(itemId)) {
+    state.activeItems = state.activeItems.filter((id) => id !== itemId);
+    delete state.itemCharges[itemId];
+  } else {
+    state.passiveItems = state.passiveItems.filter((id) => id !== itemId);
+    if (itemId === 'dice_bag' || itemId === 'cracked_pouch') syncBag(state);
+  }
+  state.coins += price;
+  pushLog(state, `出售「${item.name}」，获得 ${price} 银币（半价）。`, 'shop');
+  return { ok: true, item, price };
+}
+
 export function leaveShop(state) {
   if (state.phase !== 'shop') return { ok: false, error: '你不在商店。' };
   if (state.level >= LEVEL_COUNT) return { ok: false, error: '已经是最后一关。' };

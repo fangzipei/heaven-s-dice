@@ -410,6 +410,9 @@ async function handleAction(action, target) {
     case 'buy-item':
       buyItem(Number(target.dataset.index));
       break;
+    case 'sell-item':
+      sellShopItem(target.dataset.itemId);
+      break;
     case 'confirm-replace':
       confirmReplace(target.dataset.bagUid);
       break;
@@ -2038,7 +2041,7 @@ function renderShopScreen() {
     </header>
     <div class="shop-body">
       <div class="shop-intro">
-        <p><b>“看一看，摸一摸，别问来路。”</b> 每关之间只有一次市集。骰子、骰桶和物品会改变你下一关能走多远。${discount ? '<span style="color:#d9b46a"> 王冠套组已让价格降低。</span>' : ''}</p>
+        <p><b>“看一看，摸一摸，别问来路。”</b> 每关之间只有一次市集。骰子、骰桶和物品会改变你下一关能走多远；随身物品也可以半价卖回。${discount ? '<span style="color:#d9b46a"> 王冠套组已让价格降低。</span>' : ''}</p>
         <span class="rail-note">本关奖励已入袋：<b style="color:#e5c278">${num(reward)}</b> 银币</span>
       </div>
       <div class="shop-zones">
@@ -2046,6 +2049,7 @@ function renderShopScreen() {
         ${shopZone('barrel', '骰桶', '默认 1 只 · 立即替换当前骰桶', shop.barrel, renderBarrelShopCard)}
         ${shopZone('item', '物品', '默认 3 件 · 主动物品栏上限 4', shop.item, renderItemShopCard)}
       </div>
+      ${renderSellShelf(run)}
     </div>
     <footer class="shop-footer">
       <div class="loadout-strip">
@@ -2066,6 +2070,35 @@ function renderShopScreen() {
   `;
   const body = $('.shop-body', screen);
   if (body) body.scrollTop = bodyScroll;
+}
+
+function renderSellShelf(run) {
+  const owned = Engine.getOwnedItemIds(run);
+  const cards = owned.map((id) => {
+    const item = ITEM_BY_ID[id];
+    if (!item) return '';
+    const check = Engine.canSellItem(run, id);
+    const rarity = rarityOf(item);
+    const price = Engine.itemSellPrice(item);
+    return `<article class="sell-card" style="--rarity:${rarity.color}">
+      <img src="assets/items/${item.icon}.svg" alt="${h(item.name)}">
+      <div class="sell-copy">
+        <div class="sell-tags"><span>${item.type === 'active' ? '主动' : '被动'}</span><b>${rarity.name}</b></div>
+        <strong>${h(item.name)}</strong>
+        <em>${check.ok ? `半价回收 +${price}` : h(check.error)}</em>
+      </div>
+      <button class="sell-button" data-action="sell-item" data-item-id="${h(id)}" ${check.ok ? '' : 'disabled'} title="${h(check.ok ? `以 ${price} 银币出售` : check.error)}">
+        <svg><use href="#i-coin"></use></svg>+${price}
+      </button>
+    </article>`;
+  }).join('');
+  return `<section class="shop-sell">
+    <header class="shop-sell-head">
+      <div><h3>随身物品 · 半价回收</h3><p>出售自己拥有的主动或被动物品，立即换取一半价格。</p></div>
+      <span class="rail-note">可出售 ${owned.length} 件</span>
+    </header>
+    ${owned.length ? `<div class="sell-grid">${cards}</div>` : '<div class="sell-empty">行囊里还没有可出售的物品。</div>'}
+  </section>`;
 }
 
 function shopZone(section, title, subtitle, entries, cardRenderer) {
@@ -2226,6 +2259,15 @@ function buyItem(index) {
   sound.item();
   renderShopScreen();
   showToast(`购入「${result.item.name}」，花费 ${result.price} 银币。`, 'good');
+}
+
+function sellShopItem(itemId) {
+  if (!app.run) return;
+  const result = Engine.sellItem(app.run, itemId);
+  if (!result.ok) { showToast(result.error, 'error'); return; }
+  sound.item();
+  renderShopScreen();
+  showToast(`出售「${result.item.name}」，获得 ${result.price} 银币（半价）。`, 'good');
 }
 
 function showReplaceModal() {
@@ -2678,7 +2720,7 @@ function tutorialHtml() {
           <div class="tut-card"><b>骰桶 · 6 只</b><p>初始橡木桶之外，3 只概率桶偏向某些点数，2 只仪式桶需要画阵。五芒星每关只能生效一次，要依次穿过五个星点；旋涡要顺时针画满约 288°。拖动骰桶的横向范围覆盖整张桌面。</p></div>
           <div class="tut-card"><b>骰子 · 20 枚</b><p>2 普通、10 稀有、5 史诗、3 传说。每枚骰子有自己的六面概率与套组；悬停可查看真实概率。同套组 2 / 4 件会触发套组奖励。</p></div>
           <div class="tut-card"><b>物品 · 11 件</b><p>8 主动、3 被动。主动物品每关恢复一次；被动物品永久生效。丰饶骰袋 +1 骰、裂痕骰袋 -1 骰但计分 +25%，这两件整局各只能获取一次。幸运币开局自带，每关可用一次，立即 +150 分。</p></div>
-          <div class="tut-card"><b>市集</b><p>每关之后进入：骰子 2 件、骰桶 1 件、物品 3 件。每次刷新都消耗银币，购买前先看构筑。</p></div>
+          <div class="tut-card"><b>市集</b><p>每关之后进入：骰子 2 件、骰桶 1 件、物品 3 件。每次刷新都消耗银币；随身物品可以半价卖回，出售后不会再次上架。</p></div>
           <div class="tut-card"><b>赌桌 · 5 张</b><p>木头、青石、黑铁、黄金、钻石。每三关换一张桌子；从第 3 关起，庄家隔关落座。</p></div>
         </div>
         <h4 class="tut-subtitle">七位庄家的桌规</h4>
@@ -2771,7 +2813,7 @@ function openRules() {
             </div>`).join('')}
           <h3 style="margin-top:16px">装备与市集</h3>
           <p>骰子有各自的点数概率与套组效果，20 枚秘骰分为普通、稀有、史诗、传说。鼠标移到骰子上查看六面概率。骰桶分为概率偏向与仪式加成两类，点「画阵」完成星阵或旋涡，能为本次投掷争取优势。</p>
-          <p>每关之后进入市集：骰子区默认 2 件、骰桶区 1 件、物品区 3 件，刷新均需银币。主动物品每关恢复一次，被动物品永久生效。</p>
+          <p>每关之后进入市集：骰子区默认 2 件、骰桶区 1 件、物品区 3 件，刷新均需银币。主动物品每关恢复一次，被动物品永久生效。市集下方可以把随身物品按半价卖回。</p>
           <div class="rules-note">提示：空格投掷，数字键 1 / 2 分别使用「计分并继续」「计分并重投」。“计分并继续”会触发金冠赌王的抽成。</div>
         </div>
       </div>

@@ -1479,6 +1479,23 @@ svg { width: 1em; height: 1em; display: block; }
 .buy-button[disabled] { opacity: .35; cursor: not-allowed; }
 .empty-stock { min-height: 306px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 7px; color: #655a49; border: 1px dashed rgba(217,180,106,.13); font-family: var(--serif); font-size: 11px; letter-spacing: .08em; text-align: center; }
 .empty-stock svg { width: 26px; height: 26px; opacity: .5; }
+.shop-sell { margin-top: 16px; padding: 14px 16px; border: 1px solid rgba(217,180,106,.14); background: linear-gradient(160deg, rgba(28,21,14,.72), rgba(9,7,5,.7)); }
+.shop-sell-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; padding-bottom: 10px; margin-bottom: 10px; border-bottom: 1px solid rgba(217,180,106,.09); }
+.shop-sell-head h3 { font-family: var(--serif); font-size: 17px; font-weight: 400; letter-spacing: .1em; color: #e8d7b8; }
+.shop-sell-head p { color: #7c6d58; font-size: 8px; letter-spacing: .05em; margin-top: 3px; }
+.sell-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.sell-card { display: flex; align-items: center; gap: 8px; min-width: 0; padding: 8px; border: 1px solid color-mix(in srgb, var(--rarity, rgba(217,180,106,.2)) 36%, transparent); background: rgba(255,255,255,.018); }
+.sell-card > img { flex: 0 0 34px; width: 34px; height: 34px; object-fit: contain; filter: drop-shadow(0 5px 8px rgba(0,0,0,.45)); }
+.sell-copy { display: flex; flex-direction: column; gap: 1px; min-width: 0; flex: 1; }
+.sell-tags { display: flex; align-items: center; gap: 5px; color: #7f715e; font-size: 7px; letter-spacing: .05em; }
+.sell-tags b { color: var(--rarity, #a9987b); font-weight: 400; }
+.sell-copy strong { color: #ddc7a0; font-family: var(--serif); font-size: 11px; font-weight: 400; letter-spacing: .04em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sell-copy em { color: #887961; font-size: 7px; font-style: normal; line-height: 1.35; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sell-button { flex: 0 0 auto; display: inline-flex; align-items: center; gap: 3px; height: 28px; padding: 0 7px; border: 1px solid rgba(217,180,106,.26); background: rgba(217,180,106,.07); color: #dbbd7f; font: 9px var(--sans); letter-spacing: .04em; white-space: nowrap; }
+.sell-button svg { width: 11px; height: 11px; color: var(--gold); }
+.sell-button:hover:not([disabled]) { border-color: rgba(217,180,106,.55); color: #ffe2a2; background: rgba(217,180,106,.14); }
+.sell-button[disabled] { opacity: .35; cursor: not-allowed; }
+.sell-empty { padding: 12px; color: #766957; font-size: 9px; text-align: center; }
 .shop-footer { position: relative; z-index: 3; flex: 0 0 auto; display: flex; align-items: center; justify-content: space-between; gap: 22px; padding: 14px 38px 18px; border-top: 1px solid rgba(217,180,106,.15); background: linear-gradient(0deg, rgba(7,5,3,.97), rgba(7,5,3,.75)); }
 .loadout-strip { display: flex; align-items: center; gap: 14px; min-width: 0; overflow: hidden; }
 .loadout-label { flex: 0 0 auto; color: #706250; font-size: 7px; letter-spacing: .16em; }
@@ -1743,6 +1760,7 @@ svg { width: 1em; height: 1em; display: block; }
   .shop-zones { grid-template-columns: 1fr; }
   .shop-grid.dice { grid-template-columns: repeat(2, 1fr); }
   .shop-grid.items, .shop-grid.item { grid-template-columns: repeat(3, 1fr); }
+  .sell-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .rules-columns { grid-template-columns: 1fr; gap: 18px; }
   .compendium-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .tables-grid, .bosses-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -1864,6 +1882,9 @@ svg { width: 1em; height: 1em; display: block; }
   .loadout-strip { width: 100%; overflow-x: auto; }
   .shop-grid.dice, .shop-grid.items, .shop-grid.item { grid-template-columns: 1fr; }
   .shop-card { min-height: 260px; }
+  .shop-sell { padding: 12px; }
+  .sell-grid { grid-template-columns: 1fr; }
+  .sell-card { padding: 7px; }
   .shop-continue { width: 100%; }
   .shop-continue .primary-button { width: 100%; }
   .result-score { gap: 20px; }
