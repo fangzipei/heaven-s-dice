@@ -1,6 +1,6 @@
 import {
   BARRELS, BARREL_BY_ID, BOSSES, DICE, DICE_BY_ID, DICE_SETS, ITEMS,
-  ITEM_BY_ID, LEVELS, LEVEL_COUNT, MINIONS, RARITIES, rarityOf, TABLES, STANDARD_DIE,
+  ITEM_BY_ID, LEVEL_COUNT, MINIONS, RARITIES, rarityOf, TABLES, STANDARD_DIE,
   SHOP_RARITY_WEIGHTS, rarityShopWeight, REROLL_REFUND, OVERSHOOT_TIERS,
   MINION_GAPS, LEVEL_CURVE,
   activeSetBonuses, chapterForLevel, chapterLevelSpan, getLevelConfig, getOpponent, getTable,
@@ -27,6 +27,8 @@ import {
 } from '../ui/components/tooltip.ts';
 import { closeOverlay, openOverlay } from '../ui/components/overlay.ts';
 import { clearToasts, showToast } from '../ui/components/toast.ts';
+import { renderOpponentPlate, renderRail, renderScorePanel, renderTopbar, showBustNotice } from '../ui/hud.ts';
+import { baseReward, projectedReward } from '../ui/reward.ts';
 
 /* The dice itself is WebGL. Loaded lazily so a browser without WebGL2 (or a
    failure inside three) falls back to the DOM renderer instead of blanking
@@ -447,31 +449,6 @@ function showLevelIntro() {
   `, { dismissible: false });
 }
 
-/** Base level payout, before reroll cash-out and overshoot tiers. */
-function baseReward() {
-  if (!app.run) return 0;
-  let reward = getLevelConfig(app.run.level).reward;
-  // Must match awardLevel in the engine (gold_cuff pays 15).
-  if (app.run.passiveItems.includes('gold_cuff')) reward += 15;
-  return reward;
-}
-
-function projectedReward() {
-  if (!app.run) return 0;
-  // Live preview: what banking at this exact moment would pay.
-  return baseReward() + Engine.cashOutValue(app.run).total;
-}
-
-/** Itemised preview shown in the HUD tooltip so the cash-out rules stay visible. */
-function cashOutHint() {
-  const cash = Engine.cashOutValue(app.run);
-  const parts = [`基础 ${getLevelConfig(app.run.level).reward}`];
-  if (app.run.passiveItems.includes('gold_cuff')) parts.push('镀金袖扣 +15');
-  parts.push(`剩余重投 ${cash.spare} × ${REROLL_REFUND} = ${cash.refund}`);
-  parts.push(cash.tier ? `${cash.tier.label} +${cash.tierValue}` : '超额赏金 未达成（1.5 倍 +25 / 2 倍 +60 / 3 倍 +140）');
-  return parts.join('\n');
-}
-
 function goToShop() {
   if (!app.run) return;
   if (app.run.phase !== 'won') return;
@@ -509,6 +486,8 @@ function retryLevel() {
 /* ═══════════════════════════════════════════════════════════════════
    Rendering — game
    ═══════════════════════════════════════════════════════════════════ */
+/* The individual panels live in ui/hud.ts; renderGame is the one call that
+   paints the whole table and still has to reach the tray and the dock below. */
 function renderGame() {
   if (!app.run) return;
   const run = app.run;
@@ -522,233 +501,6 @@ function renderGame() {
   renderAutoButton();
   renderDangerStrip();
   renderOpponentPlate();
-}
-
-function renderTopbar() {
-  const run = app.run;
-  if (!run) return;
-  $('#coin-value').textContent = num(run.coins);
-  const table = getTable(run.level);
-  $('#chapter-label').textContent = `${table.subtitle}`;
-  $('#level-label').textContent = `第 ${run.level} / ${LEVEL_COUNT} 关`;
-  const track = $('#level-track');
-  track.innerHTML = LEVELS.map((entry) => {
-    const boss = Boolean(entry.boss);
-    const className = [
-      'level-pip', boss ? 'is-boss' : '',
-      entry.level < run.level ? 'is-past' : '',
-      entry.level === run.level ? 'is-current' : '',
-    ].filter(Boolean).join(' ');
-    return `<span class="${className}" title="第 ${entry.level} 关${boss ? ' · 庄家' : ''}"></span>`;
-  }).join('');
-}
-
-function renderScorePanel() {
-  const run = app.run;
-  const round = Math.max(0, run.roundScore || 0);
-  const secured = Math.max(0, run.score - round);
-  // 悬秤人：整桌都是漂浮分，没有“已落袋”的一半可说。
-  const floating = Engine.isFloatingScore(run);
-  $('#score-value').textContent = num(floating ? run.score : secured);
-  $('#secured-value').textContent = num(secured);
-  $('#target-value').textContent = num(run.target);
-  $('#target-value-2').textContent = num(run.target);
-  $('#score-pending').hidden = floating || round <= 0;
-  $('#round-value').textContent = num(round);
-  $('#round-breakdown').hidden = floating || round <= 0;
-  $('#round-value-2').textContent = num(round);
-  $('#secured-note').hidden = floating;
-  $('#float-note').hidden = !floating;
-  const target = Math.max(1, run.target);
-  const securedProgress = clamp((secured / target) * 100, 0, 100);
-  const totalProgress = clamp((run.score / target) * 100, 0, 100);
-  $('#score-progress').style.width = `${securedProgress}%`;
-  $('#score-progress-pending').style.width = `${totalProgress}%`;
-  $('#reroll-inline').textContent = `重投 ×${run.rerolls}`;
-  $('#score-panel').classList.toggle('is-floating', floating);
-  $('#score-panel').classList.toggle('is-danger', run.rerolls <= 0 && run.score < run.target);
-  const canAdvance = run.score >= run.target && !['won', 'run-won', 'lost', 'shop'].includes(run.phase);
-  const nextButton = $('#next-level');
-  nextButton.hidden = !canAdvance || app.busy;
-  $('#next-level-label').textContent = run.level >= LEVEL_COUNT ? '查看结局' : '下一关';
-  $('#score-panel').classList.toggle('is-cleared', canAdvance);
-  if (round > 0 || run.throwNumber === 0 || run.phase === 'selecting') {
-    $('#score-bust').hidden = true;
-    $('#score-panel').classList.remove('is-bust');
-  }
-}
-
-function showBustNotice(lost) {
-  const panel = $('#score-panel');
-  const note = $('#score-bust');
-  if (!panel || !note) return;
-  const floating = Engine.isFloatingScore(app.run);
-  note.hidden = false;
-  note.textContent = floating ? `秤翻了 · 整桌 ${num(lost)} 分消散` : `本轮 ${num(lost)} 分作废`;
-  panel.classList.remove('is-bust');
-  void panel.offsetWidth;
-  panel.classList.add('is-bust');
-  showToast(floating
-    ? `没有可计分的组合，秤翻了：整桌 ${num(lost)} 分漂浮分全部消散。`
-    : `没有可计分的组合，本轮 ${num(lost)} 分作废。`, 'error');
-  clearTimeout(app.bustTimer);
-  app.bustTimer = setTimeout(() => {
-    note.hidden = true;
-    panel.classList.remove('is-bust');
-  }, 2800);
-}
-
-function renderOpponentPlate() {
-  const run = app.run;
-  const opponent = getOpponent(run.level);
-  const isBoss = Boolean(getLevelConfig(run.level).boss);
-  $('#opponent-name').textContent = opponent.name;
-  $('#opponent-kicker').textContent = isBoss ? `第 ${run.level} 关 · 庄家` : opponent.title;
-  $('#boss-badge').hidden = !isBoss;
-  $('#boss-effect-card').hidden = !isBoss;
-  if (isBoss) {
-    $('#boss-effect-name').textContent = opponent.effectName;
-    $('#boss-effect-title').textContent = opponent.effectName;
-    const status = Engine.bossStatusText(run);
-    $('#boss-effect-desc').textContent = `${opponent.effectDesc}${status ? ` · ${status}` : ''}`;
-  }
-}
-
-function renderRail() {
-  const run = app.run;
-  const opponent = getOpponent(run.level);
-  const isBoss = Boolean(getLevelConfig(run.level).boss);
-  $('#objective-level').textContent = `第 ${run.level} 关`;
-  $('#objective-name').textContent = opponent.name;
-  $('#objective-role').textContent = opponent.title;
-  $('#objective-target').textContent = num(run.target);
-  const rewardEl = $('#objective-reward');
-  rewardEl.textContent = num(projectedReward());
-  rewardEl.title = `现在收手可带走：\n${cashOutHint()}`;
-  $('#objective-dice').textContent = run.bag.length;
-  const taunt = $('#objective-taunt');
-  if (isBoss) {
-    taunt.innerHTML = `<b style="color:#d29b8c;font-weight:400">${h(opponent.effectName)}</b> · ${h(opponent.effectDesc)}`;
-  } else {
-    taunt.textContent = `“${opponent.taunts[0]}”`;
-  }
-  $('#reroll-note').textContent = run.bossBoons
-    ? `剩余 ${run.rerolls} 次 · 徽记 +${run.bossBoons}`
-    : `剩余 ${run.rerolls} 次`;
-  const maxTokens = Math.max(run.maxRerolls, run.rerolls, 1);
-  $('#reroll-row').innerHTML = Array.from({ length: Math.min(12, maxTokens) }, (_, index) => {
-    const active = index < run.rerolls;
-    const extra = index >= 5;
-    return `<span class="reroll-token ${active ? '' : 'is-spent'} ${extra ? 'is-extra' : ''}" title="${active ? '可用重投' : '已消耗'}"></span>`;
-  }).join('') + `<span class="reroll-count">${run.rerolls}<small style="color:#6f6352;font-size:8px"> / ${run.maxRerolls}</small></span>`;
-
-  const barrel = Engine.getBarrel(run);
-  $('#barrel-name').textContent = barrel.name;
-  $('#barrel-short').textContent = barrel.short;
-  $('#barrel-thumb').src = `assets/cups/${barrel.art}.svg`;
-  const gestureButton = $('#gesture-button');
-  if (barrel.gesture) {
-    gestureButton.hidden = false;
-    const used = run.flags.gestureUsedThisThrow
-      || (barrel.gesture === 'circle' && run.flags.vortexUsed)
-      || (barrel.gesture === 'pentagram' && run.flags.starUsed);
-    gestureButton.disabled = used || ['won', 'run-won', 'lost', 'cleared'].includes(run.phase) || app.busy;
-    gestureButton.innerHTML = `<svg><use href="#i-gesture"></use></svg>${used ? '已完成' : '画阵'}`;
-  } else {
-    gestureButton.hidden = true;
-  }
-  renderRollHint();
-  renderItems();
-  renderSets();
-  renderLog();
-}
-
-function renderRollHint() {
-  const run = app.run;
-  const hint = $('#roll-hint');
-  if (run.phase === 'ready') {
-    hint.innerHTML = '<strong>首掷免费。</strong>按住左侧骰桶摇动，2 秒倒计时后落骰；仪式桶沿桌面轨迹描画。也可点击右侧自动摇骰。';
-  } else if (run.phase === 'hot') {
-    hint.innerHTML = '<strong>全骰！</strong>六颗骰子全部归位，可免费重投全部骰子。';
-  } else if (run.phase === 'dead') {
-    hint.innerHTML = run.rerolls > 0
-      ? `本掷无分可计。<strong>重投会消耗 1 次</strong>，剩余 ${run.rerolls} 次。`
-      : '本掷无分可计，重投已经耗尽。可以使用物品，或结束本关。';
-  } else if (run.phase === 'selecting') {
-    hint.innerHTML = run.rerolls > 0
-      ? `重投剩余骰子，或重投全部六颗。二者各消耗 1 次，剩余 <strong>${run.rerolls}</strong> 次。`
-      : '重投已耗尽。计分后本关将直接结算。';
-  } else if (run.phase === 'reroll-pending') {
-    hint.textContent = '骰子正在重新落桌……';
-  } else if (run.phase === 'won' || run.phase === 'run-won') {
-    hint.textContent = '赌局已结束。';
-  } else if (run.phase === 'lost') {
-    hint.textContent = '这一局已经结束。';
-  }
-}
-
-function renderItems() {
-  const run = app.run;
-  const active = run.activeItems;
-  const container = $('#active-items');
-  const slots = [];
-  for (let i = 0; i < Engine.ACTIVE_ITEM_SLOTS; i += 1) {
-    const id = active[i];
-    if (!id) {
-      slots.push('<div class="item-slot is-empty" aria-hidden="true"></div>');
-      continue;
-    }
-    const item = ITEM_BY_ID[id];
-    const charges = run.itemCharges[id] || 0;
-    const check = Engine.canUseItem(run, id);
-    slots.push(`
-      <button class="item-slot" data-action="use-item" data-item-id="${h(id)}" data-item-tip="${h(id)}"
-        ${check.ok ? '' : 'disabled'} title="${h(item.name)}" aria-label="使用${h(item.name)}">
-        <img src="assets/items/${item.icon}.svg" alt="">
-        <span class="charge">${charges > 0 ? charges : '×'}</span>
-        <span class="item-name">${h(item.name)}</span>
-      </button>`);
-  }
-  container.innerHTML = slots.join('');
-  $('#item-slot-note').textContent = `${active.length} / ${Engine.ACTIVE_ITEM_SLOTS}`;
-  const passives = run.passiveItems;
-  const passiveEl = $('#passive-items');
-  if (!passives.length) {
-    passiveEl.innerHTML = '<span class="passive-empty">还没有被动物品 · <button data-action="open-compendium" data-tab="items">查看物品</button></span>';
-  } else {
-    passiveEl.innerHTML = passives.map((id) => {
-      const item = ITEM_BY_ID[id];
-      return `<span class="passive-chip" data-item-tip="${h(id)}"><img src="assets/items/${item.icon}.svg" alt="">${h(item.name)}</span>`;
-    }).join('');
-  }
-}
-
-function renderSets() {
-  const run = app.run;
-  const counts = Engine.setCounts(run);
-  $('#set-list').innerHTML = Object.values(DICE_SETS).map((set) => {
-    const count = counts[set.id]?.count || 0;
-    const tier = counts[set.id]?.tier || 0;
-    const pips = Array.from({ length: 4 }, (_, i) => `<i class="${i < count ? 'on' : ''}"></i>`).join('');
-    let text = count === 0 ? '还差 2 枚激活 2 件套' : '再集 1 枚激活 2 件套';
-    if (tier >= 4) text = `4 件：${set.bonuses[1].text}`;
-    else if (tier >= 2) text = `2 件已激活 · 再集 ${4 - count} 枚解锁 4 件`;
-
-    return `
-      <div class="set-row ${tier >= 2 ? 'is-active' : ''} ${count >= 4 ? 'has-four' : ''}"
-           style="color:${set.color}" data-set-tip="${set.id}">
-        <span class="set-icon">${h(set.name[0])}</span>
-        <div class="set-copy"><b>${h(set.name)}</b><span>${h(text)}</span></div>
-        <span class="set-pips" title="${count} / 4">${pips}</span>
-      </div>`;
-  }).join('');
-}
-
-function renderLog() {
-  const log = app.run.log.slice(0, 5);
-  $('#game-log').innerHTML = log.map((line) => `
-    <div class="log-line type-${h(line.type)}"><i></i><span>${h(line.text)}</span></div>
-  `).join('') || '<div class="log-line"><i></i><span>骰子已经摆好，等你落座。</span></div>';
 }
 
 function dieSpecFor(die) {
