@@ -52,7 +52,9 @@ describe('the DOM tray renderer is the only one left', () => {
     for (const name of ['dieFacesHtml', 'pipsHtml', 'faceValuesFor', 'artDieHtml', 'dieMark', 'renderDiceTrayDom']) {
       expect(app, `app.js must not redeclare ${name}`).not.toMatch(new RegExp(`function ${name}\\s*\\(`));
     }
-    expect(app).toMatch(/from '\.\.\/render\/dice-dom\.ts'/);
+    /* 3c-3c 之后骰面卡片的最后一个读者（市集）也搬走了，现在由屏模块取用。 */
+    const shop = readFileSync(new URL('../../src/ui/screens/shop.ts', import.meta.url), 'utf8');
+    expect(shop).toMatch(/from '\.\.\/\.\.\/render\/dice-dom\.ts'/);
   });
 
   test('the pure helpers moved to core/util so render can use them too', () => {

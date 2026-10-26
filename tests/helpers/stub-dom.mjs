@@ -55,7 +55,9 @@ export function installDomStub() {
     if (!nodes.has(selector)) nodes.set(selector, makeNode(selector));
     return nodes.get(selector);
   };
+  const body = makeNode('body');
   globalThis.document = {
+    body,
     querySelector: (selector) => nodeFor(selector),
     getElementById: (id) => nodeFor(`#${id}`),
     querySelectorAll: () => [],
@@ -63,6 +65,7 @@ export function installDomStub() {
   };
   return {
     nodes,
+    body,
     node: nodeFor,
     text: (selector) => nodeFor(selector).textContent,
     html: (selector) => nodeFor(selector).innerHTML,

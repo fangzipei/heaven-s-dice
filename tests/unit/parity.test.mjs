@@ -229,7 +229,7 @@ describe('engine parity', () => {
     expect(block, 'app.js imports its game surface from src/compat').toBeTruthy();
     const names = block[1].split(',').map((s) => s.trim()).filter(Boolean);
     // 3c 拆屏期间这份清单在缩水（每搬走一节就少几项），但 app.js 仍然必须走兼容出口。
-    expect(names.length).toBeGreaterThanOrEqual(20);
+    expect(names.length).toBeGreaterThanOrEqual(15);
     expect(names.filter((name) => Compat[name] === undefined)).toEqual([]);
   });
 });

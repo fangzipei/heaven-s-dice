@@ -3,7 +3,7 @@
 // 原来就是 app.js 顶部那个 `const app = {…}`，字段、初值一个没改，只是搬了个家：
 // 拆出去的 ui 组件要读它，而 app.js 里的代码还有一大半没搬完，两边都得能用同一个对象。
 // 等 app.js 拆空之后，这个对象由 ui/app.ts 在启动时创建并持有（见 Phase 3c-3）。
-import type { RunState } from '../core/types.ts';
+import type { PricedDie, RunState } from '../core/types.ts';
 
 export interface Discovery {
   dice: string[];
@@ -23,8 +23,8 @@ export interface UiState {
   screen: string;
   soundEnabled: boolean;
   compendiumTab: string;
-  /** 等待玩家挑一颗骰子替换的骰子 uid。 */
-  pendingReplace: string | null;
+  /** 骰袋已满时，市集买入流程挂起的那笔订单。 */
+  pendingReplace: { index: number; die: PricedDie; price: number } | null;
   speechTimer: ReturnType<typeof setTimeout> | null;
   rollTimer: ReturnType<typeof setTimeout> | null;
   overlayTimer: ReturnType<typeof setTimeout> | null;

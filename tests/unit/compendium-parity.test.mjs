@@ -129,9 +129,9 @@ describe('图鉴只有一份实现', () => {
     expect(compendium).toMatch(/const codexDice\s*=/);
   });
 
-  test('app.js 从两个新模块取用', () => {
+  test('app.js 取图鉴，图鉴取概率条', () => {
     expect(legacy).toMatch(/from '\.\.\/ui\/screens\/compendium\.ts'/);
-    expect(legacy).toMatch(/from '\.\.\/ui\/components\/cards\.ts'/);
+    expect(compendium).toMatch(/from '\.\.\/components\/cards\.ts'/);
   });
 
   test('图鉴不反向 import 市集屏', () => {
