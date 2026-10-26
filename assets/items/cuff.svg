@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="120" height="120" viewBox="0 0 120 120">
+  <defs>
+    <radialGradient id="bg" cx=".5" cy=".42" r=".62">
+      <stop offset="0" stop-color="#e7c471" stop-opacity=".28"/>
+      <stop offset="1" stop-color="#0b0907" stop-opacity=".96"/>
+    </radialGradient>
+    <filter id="glow" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="5"/></filter>
+  </defs>
+  <circle cx="60" cy="60" r="53" fill="url(#bg)" stroke="#e7c471" stroke-opacity=".5" stroke-width="1.5"/>
+  <circle cx="60" cy="60" r="45" fill="none" stroke="#e7c471" stroke-opacity=".18" stroke-width="1"/>
+  <circle cx="60" cy="60" r="48" fill="none" stroke="#e7c471" stroke-opacity=".12" stroke-width="6" stroke-dasharray="1 7"/>
+  <g transform="translate(60 58) scale(1.15)"><path d="M-28 -20 L22 -20 L28 20 L-22 20Z" fill="none" stroke="#eac66f" stroke-width="2.4"/><circle cx="4" cy="0" r="12" fill="none" stroke="#eac66f" stroke-width="2.4"/><path d="M-6 -6 Q4 -12 14 -6 Q4 0 -6 -6Z" fill="#eac66f"/><path d="M-24 12 L18 12" stroke="#eac66f" stroke-width="1" opacity=".6"/></g>
+  <path d="M22 88 Q60 108 98 88" fill="none" stroke="#e7c471" stroke-opacity=".22" stroke-width="1"/>
+</svg>

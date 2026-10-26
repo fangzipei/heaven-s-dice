@@ -1,0 +1,52 @@
+import { spawn } from 'node:child_process';
+import { writeFile } from 'node:fs/promises';
+const EDGE = 'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe';
+const PORT = 9347;
+const OUT = 'D:\\vs_workspace\\Heaven\'s Dice\\tools';
+const DOCS = 'D:\\vs_workspace\\Heaven\'s Dice\\docs\\screenshots';
+const edge = spawn(EDGE, ['--headless', '--disable-gpu', '--hide-scrollbars', '--no-first-run', '--disable-extensions', '--mute-audio', `--remote-debugging-port=${PORT}`, `--user-data-dir=${OUT}\\edge-profile-bust`, '--window-size=1600,1000', 'about:blank'], { stdio: 'ignore' });
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function getJson(path) { for (let i = 0; i < 60; i += 1) { try { const r = await fetch(`http://127.0.0.1:${PORT}${path}`); if (r.ok) return await r.json(); } catch {} await sleep(250); } throw new Error('No CDP'); }
+const page = (await getJson('/json/list')).find((t) => t.type === 'page');
+const ws = new WebSocket(page.webSocketDebuggerUrl);
+await new Promise((res, rej) => { ws.addEventListener('open', res, { once: true }); ws.addEventListener('error', rej, { once: true }); });
+let seq = 0; const pending = new Map(); const events = [];
+ws.addEventListener('message', (e) => { const m = JSON.parse(e.data); if (m.id && pending.has(m.id)) { const p = pending.get(m.id); pending.delete(m.id); m.error ? p.reject(new Error(m.error.message)) : p.resolve(m.result); } if (m.method === 'Runtime.consoleAPICalled') events.push(m.params.type); });
+const send = (method, params = {}) => { const id = ++seq; ws.send(JSON.stringify({ id, method, params })); return new Promise((resolve, reject) => pending.set(id, { resolve, reject })); };
+await send('Runtime.enable'); await send('Page.enable');
+await send('Page.navigate', { url: 'http://127.0.0.1:4173/' }); await sleep(1200);
+const js = async (expression) => { const r = await send('Runtime.evaluate', { expression, returnByValue: true, awaitPromise: true, userGesture: true }); if (r.exceptionDetails) throw new Error(r.exceptionDetails.exception?.description || r.exceptionDetails.text); return r.result.value; };
+async function shot(name, docsName = null) {
+  const r = await send('Page.captureScreenshot', { format: 'png' });
+  const buffer = Buffer.from(r.data, 'base64');
+  await writeFile(`${OUT}\\${name}.png`, buffer);
+  if (docsName) await writeFile(`${DOCS}\\${docsName}`, buffer);
+}
+await js(`document.querySelector('[data-action="start-run"]').click()`); await sleep(400);
+await js(`document.querySelector('[data-action="close-intro"]').click()`); await sleep(500);
+await js(`window.HeavensDice.setLevel(2)`); await sleep(300);
+await js(`(() => {
+  const run = window.HeavensDice.run;
+  run.score = 300;
+  run.roundScore = 200;
+  run.stats.levelScore = 300;
+  run.phase = 'reroll-pending';
+  run.rerolls = 4;
+  run.stats.levelRolls = 1;
+  [1,5,2,3,4,6].forEach((v,i) => { run.dice[i].value = v; run.dice[i].scored = i < 2; });
+  run.selected = [];
+  run.flags.rerollAll = false;
+  const seq = [0.2,0.4,0.6,0.95];
+  run.rng = () => seq.length ? seq.shift() : 0.95;
+  const app = window.HeavensDice.app;
+  app.busy = false; app.rolling = false; app.cupAnimating = false;
+  window.HeavensDice.render();
+})()`);
+await sleep(300);
+const before = await js(`({score:window.HeavensDice.run.score,round:window.HeavensDice.run.roundScore,big:document.querySelector('#score-value').textContent,pending:document.querySelector('#score-pending').textContent})`);
+await js(`window.HeavensDice.roll()`);
+await sleep(3300);
+const after = await js(`({score:window.HeavensDice.run.score,round:window.HeavensDice.run.roundScore,phase:window.HeavensDice.run.phase,busy:window.HeavensDice.app.busy,big:document.querySelector('#score-value').textContent,note:document.querySelector('#score-bust').textContent,noteHidden:document.querySelector('#score-bust').hidden,lastBust:window.HeavensDice.run.lastBust})`);
+await shot('bust-round', '12-round-bust.png');
+console.log(JSON.stringify({ before, after, consoleEvents: events }, null, 2));
+ws.close(); edge.kill();

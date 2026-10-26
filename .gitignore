@@ -1,0 +1,8 @@
+node_modules/
+tools/edge-profile*/
+tools/*.png
+*.log
+.DS_Store
+Thumbs.db
+
+.deploy/

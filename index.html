@@ -1,0 +1,279 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0b0805">
+  <meta name="description" content="天国骰局 — 一款以《天国：拯救 2》骰子规则为核心的肉鸽网页游戏。摇骰、留骰、画阵，挑战五位庄家。">
+  <title>天国骰局 · Heaven's Dice</title>
+  <link rel="stylesheet" href="css/main.css">
+  <link rel="icon" href="assets/items/coin.svg" type="image/svg+xml">
+</head>
+<body>
+  <svg class="svg-sprite" aria-hidden="true">
+    <symbol id="i-coin" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M9 8.5l1.5 2L12 7l1.5 3.5L15 8.5l-.7 6h-4.6z" fill="currentColor" opacity=".9"/></symbol>
+    <symbol id="i-die" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="3.5" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="9" cy="9" r="1.3" fill="currentColor"/><circle cx="15" cy="9" r="1.3" fill="currentColor"/><circle cx="12" cy="12" r="1.3" fill="currentColor"/><circle cx="9" cy="15" r="1.3" fill="currentColor"/><circle cx="15" cy="15" r="1.3" fill="currentColor"/></symbol>
+    <symbol id="i-volume" viewBox="0 0 24 24"><path d="M5 10v4h3l4 3V7L8 10z" fill="currentColor"/><path d="M15.5 9a4 4 0 010 6M18 6.5a7.5 7.5 0 010 11" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></symbol>
+    <symbol id="i-muted" viewBox="0 0 24 24"><path d="M5 10v4h3l4 3V7L8 10z" fill="currentColor"/><path d="M15 9.5l5 5M20 9.5l-5 5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></symbol>
+    <symbol id="i-help" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M9.5 9.2a2.7 2.7 0 115 1.5c-.8 1-2.3 1.3-2.3 3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><circle cx="12" cy="17.2" r="1" fill="currentColor"/></symbol>
+    <symbol id="i-book" viewBox="0 0 24 24"><path d="M4 5.5c3.5-1.4 5.8-.8 8 1.1 2.2-1.9 4.5-2.5 8-1.1v13c-3.5-1.4-5.8-.8-8 1.1-2.2-1.9-4.5-2.5-8-1.1z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M12 6.6v13" stroke="currentColor" stroke-width="1.2" opacity=".5"/></symbol>
+    <symbol id="i-close" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
+    <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14M14 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-spark" viewBox="0 0 24 24"><path d="M12 2.5l1.7 6.3L20 11l-6.3 1.7L12 19l-1.7-6.3L4 11l6.3-2.2z" fill="currentColor"/></symbol>
+    <symbol id="i-cup" viewBox="0 0 24 24"><path d="M6 4h12l-1.5 12.5c-.1 1.4-3 2.5-4.5 2.5s-4.4-1.1-4.5-2.5z" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M5.5 4h13" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="10" cy="10" r="1" fill="currentColor"/><circle cx="14" cy="13" r="1" fill="currentColor"/></symbol>
+    <symbol id="i-hand" viewBox="0 0 24 24"><path d="M8 11V5.5a1.5 1.5 0 013 0V10m0-5.5a1.5 1.5 0 013 0V10m0-4a1.5 1.5 0 013 0v7.5c0 4.2-2.4 7.5-6.5 7.5S4 18 4 14.5V11a1.5 1.5 0 013 0v2" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></symbol>
+    <symbol id="i-gesture" viewBox="0 0 24 24"><path d="M12 3l2.2 6.5H21l-5.4 4 2.1 6.5-5.7-4.1L6.3 20l2.1-6.5-5.4-4h6.8z" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></symbol>
+    <symbol id="i-skull" viewBox="0 0 24 24"><path d="M5 11a7 7 0 1114 0c0 2.2-1 3.6-2.5 4.6V19h-9v-3.4C6 14.6 5 13.2 5 11z" fill="none" stroke="currentColor" stroke-width="1.5"/><circle cx="9.2" cy="11" r="1.4" fill="currentColor"/><circle cx="14.8" cy="11" r="1.4" fill="currentColor"/><path d="M9 19v2M12 19v2.5M15 19v2" stroke="currentColor" stroke-width="1.2"/></symbol>
+    <symbol id="i-restart" viewBox="0 0 24 24"><path d="M4 11a8 8 0 111.9 5.2M4 5v6h6" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-shop" viewBox="0 0 24 24"><path d="M4 9l2-4h12l2 4M4 9v10h16V9M4 9c0 1.7 1.3 3 3 3s3-1.3 3-3c0 1.7 1.3 3 3 3s3-1.3 3-3c0 1.7 1.3 3 3 3s3-1.3 3-3" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M9 19v-5h6v5" fill="none" stroke="currentColor" stroke-width="1.5"/></symbol>
+    <symbol id="i-lock" viewBox="0 0 24 24"><rect x="5" y="10" width="14" height="10" rx="2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M8 10V7a4 4 0 018 0v3" fill="none" stroke="currentColor" stroke-width="1.6"/></symbol>
+    <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 7h16M4 12h11M4 17h16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></symbol>
+  </svg>
+
+  <div id="app">
+    <section id="start-screen" class="start-screen">
+      <div class="start-backdrop" aria-hidden="true"></div>
+      <div class="start-veil" aria-hidden="true"></div>
+      <div class="start-grain" aria-hidden="true"></div>
+
+      <header class="start-header">
+        <a class="wordmark" href="#" aria-label="天国骰局首页">
+          <span class="wordmark-mark"><svg><use href="#i-die"></use></svg></span>
+          <span><b>HEAVEN'S DICE</b><em>天国骰局</em></span>
+        </a>
+        <nav class="start-nav">
+          <button class="ghost-button" data-action="open-compendium"><svg><use href="#i-book"></use></svg><span>赌徒图鉴</span></button>
+          <button class="ghost-button" data-action="open-rules"><svg><use href="#i-help"></use></svg><span>规则</span></button>
+          <button class="icon-button sound-toggle" data-action="toggle-sound" aria-label="开关声音"><svg><use href="#i-volume"></use></svg></button>
+        </nav>
+      </header>
+
+      <main class="start-main">
+        <div class="start-copy">
+          <p class="eyebrow"><span></span> A ROGUE DICE DUEL <span></span></p>
+          <h1><span>天国</span><span>骰局</span></h1>
+          <p class="start-subtitle">骰子落下之前，命运只是一句空话。</p>
+          <p class="start-lede">以《天国：拯救 2》的骰子规则，穿过五张赌桌、五位庄家。留住点数、押上银币、画下禁忌的仪式——然后在天亮前赢回自己的名字。</p>
+          <div class="start-actions">
+            <button class="primary-button large" data-action="start-run">
+              <span class="button-shine"></span>
+              <span class="primary-label">入座开局</span>
+              <svg><use href="#i-arrow"></use></svg>
+            </button>
+            <button class="text-button" data-action="open-rules">先读一遍赌桌规矩 <span>↗</span></button>
+          </div>
+          <div class="start-meta">
+            <span><i class="meta-dot"></i>15 关 · 5 位庄家</span>
+            <span><i class="meta-dot"></i>20 枚秘骰 · 5 套收藏</span>
+            <span><i class="meta-dot"></i>原版 Farkle 计分</span>
+          </div>
+        </div>
+
+        <div class="start-visual" aria-hidden="true">
+          <div class="hero-portrait boss-diamond-portrait">
+            <img src="assets/portraits/boss-diamond.svg" alt="">
+          </div>
+          <div class="hero-die die-show die-show-one"><span class="show-pip"></span></div>
+          <div class="hero-die die-show die-show-five"><i></i><i></i><i></i><i></i><i></i></div>
+          <div class="hero-cup"><img src="assets/cups/astral.svg" alt=""></div>
+          <div class="hero-orbit"></div>
+          <div class="hero-caption"><span>FINAL DEALER</span><b>钻石天使</b><em>“证明你的运气不是别人借给你的。”</em></div>
+        </div>
+      </main>
+
+      <footer class="start-footer">
+        <div class="start-chapters">
+          <span><b>I</b>腐烂的根系</span><span><b>II</b>石头的证词</span><span><b>III</b>炉火不熄</span><span><b>IV</b>王冠的重量</span><span><b>V</b>天穹之上</span>
+        </div>
+        <p>每一局都是新的牌桌。每一次落骰，都有人替你记着。</p>
+      </footer>
+    </section>
+
+    <section id="game-screen" class="game-screen" hidden>
+      <header class="topbar">
+        <a class="wordmark compact" href="#" data-action="go-home" aria-label="返回首页">
+          <span class="wordmark-mark"><svg><use href="#i-die"></use></svg></span>
+          <span><b>HEAVEN'S DICE</b><em>天国骰局</em></span>
+        </a>
+        <div class="level-track-wrap">
+          <div class="level-track-label"><span id="chapter-label">第一幕 · 腐烂的根系</span><span id="level-label">第 1 / 15 关</span></div>
+          <div class="level-track" id="level-track"></div>
+        </div>
+        <div class="topbar-actions">
+          <button class="icon-button rail-toggle" data-action="toggle-rail" aria-label="展开侧栏" title="展开侧栏"><svg><use href="#i-menu"></use></svg></button>
+          <div class="coin-pill" title="银币">
+            <svg><use href="#i-coin"></use></svg><strong id="coin-value">40</strong>
+          </div>
+          <button class="icon-button" data-action="open-compendium" aria-label="赌徒图鉴" title="赌徒图鉴"><svg><use href="#i-book"></use></svg></button>
+          <button class="icon-button help-button" data-action="open-rules" aria-label="规则" title="规则"><svg><use href="#i-help"></use></svg></button>
+          <button class="icon-button sound-toggle" data-action="toggle-sound" aria-label="开关声音"><svg><use href="#i-volume"></use></svg></button>
+        </div>
+      </header>
+
+      <div class="game-layout">
+        <section class="scene" id="scene">
+          <div class="scene-art" id="scene-art" aria-hidden="true">
+            <div class="room-3d">
+              <div class="room-wall back" id="room-back"></div>
+              <div class="room-wall left"></div>
+              <div class="room-wall right"></div>
+              <div class="room-floor"></div>
+              <div class="room-glow"></div>
+            </div>
+            <div class="table-3d" id="table-3d">
+              <div class="table-surface">
+                <div class="table-inlay"></div>
+                <div class="table-grain"></div>
+                <div class="table-rim"></div>
+                <div class="table-decor decor-left"></div>
+                <div class="table-decor decor-right"></div>
+              </div>
+              <div class="table-front"></div>
+              <div class="table-leg leg-left"></div>
+              <div class="table-leg leg-right"></div>
+            </div>
+          </div>
+          <div class="scene-vignette" aria-hidden="true"></div>
+          <div class="scene-dust" id="scene-dust" aria-hidden="true"></div>
+
+          <div class="chapter-tag" id="chapter-tag"><span>第一幕</span><b>腐烂的根系</b></div>
+
+          <div class="score-panel" id="score-panel">
+            <div class="score-panel-top">
+              <span>本关已得</span>
+              <span class="target-line">目标 <b id="target-value">650</b></span>
+            </div>
+            <div class="score-number">
+              <strong id="score-value">0</strong>
+              <span class="score-pending" id="score-pending" hidden>+<b id="round-value">0</b><em>本轮</em></span>
+              <span class="score-target">/<em id="target-value-2">650</em></span>
+            </div>
+            <div class="score-breakdown" id="score-breakdown">
+              <span>已得 <b id="secured-value">0</b></span>
+              <span class="score-breakdown-pending" id="round-breakdown" hidden>本轮未计入 <b id="round-value-2">0</b></span>
+            </div>
+            <div class="progress-track">
+              <div class="progress-fill is-pending" id="score-progress-pending"></div>
+              <div class="progress-fill" id="score-progress"></div>
+              <i class="progress-shine"></i>
+            </div>
+            <div class="score-bust" id="score-bust" hidden></div>
+            <div class="score-panel-bottom">
+              <span id="opponent-inline">对手：灰爪</span>
+              <span id="reroll-inline">重投 ×5</span>
+            </div>
+          </div>
+
+          <div class="opponent" id="opponent">
+            <div class="opponent-chair" aria-hidden="true"></div>
+            <div class="opponent-aura"></div>
+            <div class="opponent-image-wrap"><img id="opponent-image" src="assets/portraits/minion-rat.svg" alt="对手画像"></div>
+            <div class="opponent-shadow"></div>
+            <div class="speech-bubble" id="speech-bubble"><span id="speech-text">吱……伯爵说，今天您会留下点比银币更香的东西。</span></div>
+            <div class="opponent-plate" id="opponent-plate">
+              <span class="opponent-kicker" id="opponent-kicker">腐牙的鼠仆</span>
+              <strong id="opponent-name">灰爪</strong>
+              <span class="boss-badge" id="boss-badge" hidden><svg><use href="#i-skull"></use></svg><span id="boss-effect-name">鼠群分食</span></span>
+            </div>
+            <div class="boss-effect-card" id="boss-effect-card" hidden>
+              <span>庄家特权</span><b id="boss-effect-title">鼠群分食</b><p id="boss-effect-desc"></p>
+            </div>
+          </div>
+
+          <div class="cup-zone" id="cup-zone">
+            <div class="cup-drag" id="cup" role="button" tabindex="0" aria-label="握住骰桶左右拖动，松手投掷">
+              <div class="cup-vessel" id="cup-vessel">
+                <div class="cup-glow"></div>
+                <img id="cup-image" src="assets/cups/oak.svg" alt="骰桶">
+              </div>
+              <div class="cup-hint"><svg><use href="#i-hand"></use></svg><span>左右拖动，松手投掷</span></div>
+              <div class="cup-badge" id="cup-badge">旧橡木桶</div>
+            </div>
+          </div>
+
+          <div class="dice-zone">
+            <div class="dice-tray-head">
+              <span id="throw-label">等待落骰</span>
+              <span class="dice-count" id="dice-count">6 颗骰子</span>
+            </div>
+            <div class="dice-tray" id="dice-tray" aria-live="polite"></div>
+            <div class="combo-preview" id="combo-preview">
+              <span class="combo-placeholder">选择要计分的骰子</span>
+            </div>
+          </div>
+
+          <div class="action-dock" id="action-dock"></div>
+
+          <button class="auto-roll" id="auto-roll" data-action="auto-roll">
+            <span class="auto-icon"><svg><use href="#i-cup"></use></svg></span>
+            <span><b>自动摇骰</b><em>点击或按空格</em></span>
+          </button>
+
+          <div class="danger-strip" id="danger-strip" hidden>
+            <span>重投已耗尽。你可以先使用物品，再计分并结算本关。</span>
+            <button class="mini-button" data-action="forfeit">结束本关</button>
+          </div>
+        </section>
+
+        <aside class="rail">
+          <section class="rail-card objective-card">
+            <header class="rail-card-head"><span>本关契约</span><span class="rail-rune">✦</span></header>
+            <div class="objective-level"><span id="objective-level">第一关</span><b id="objective-name">灰爪</b><em id="objective-role">腐牙的鼠仆</em></div>
+            <div class="objective-stats">
+              <div><span>目标</span><b id="objective-target">650</b></div>
+              <div><span>奖励</span><b><svg><use href="#i-coin"></use></svg><span id="objective-reward">16</span></b></div>
+              <div><span>骰子</span><b id="objective-dice">6</b></div>
+            </div>
+            <p class="objective-taunt" id="objective-taunt">“吱……伯爵说，今天您会留下点比银币更香的东西。”</p>
+          </section>
+
+          <section class="rail-card roll-card">
+            <header class="rail-card-head"><span>重投与骰桶</span><span class="rail-note" id="reroll-note">剩余 5 次</span></header>
+            <div class="reroll-row" id="reroll-row"></div>
+            <div class="barrel-row">
+              <div class="barrel-thumb"><img id="barrel-thumb" src="assets/cups/oak.svg" alt=""></div>
+              <div class="barrel-copy"><b id="barrel-name">旧橡木桶</b><span id="barrel-short">没有额外效果</span></div>
+              <button class="mini-button" id="gesture-button" data-action="open-gesture" hidden><svg><use href="#i-gesture"></use></svg>仪式</button>
+            </div>
+            <div class="roll-hint" id="roll-hint">首掷免费。摇桶或点击右侧自动摇骰。</div>
+          </section>
+
+          <section class="rail-card items-card">
+            <header class="rail-card-head"><span>随身物品</span><span class="rail-note" id="item-slot-note">0 / 4</span></header>
+            <div class="active-items" id="active-items"></div>
+            <div class="passive-items" id="passive-items"></div>
+          </section>
+
+          <section class="rail-card sets-card">
+            <header class="rail-card-head"><span>骰子套组</span><button class="rail-link" data-action="open-compendium">图鉴</button></header>
+            <div class="set-list" id="set-list"></div>
+          </section>
+
+          <section class="rail-card log-card">
+            <header class="rail-card-head"><span>赌桌记录</span><span class="rail-note">LIVE</span></header>
+            <div class="game-log" id="game-log"></div>
+          </section>
+        </aside>
+      </div>
+    </section>
+  </div>
+
+  <div id="overlay-root"></div>
+  <div id="toast-stack" class="toast-stack" aria-live="polite"></div>
+  <div id="tooltip" class="floating-tooltip" hidden></div>
+
+  <template id="dice-card-template">
+    <article class="dice-card">
+      <div class="dice-card-head"><span class="rarity-label"></span><span class="set-label"></span></div>
+      <div class="card-die-visual"></div>
+      <h4 class="dice-card-name"></h4>
+      <p class="dice-card-flavor"></p>
+      <div class="probability-bars"></div>
+      <div class="dice-card-bonus"></div>
+      <div class="dice-card-foot"><span class="price"></span><button class="buy-button">购入</button></div>
+    </article>
+  </template>
+
+  <script type="module" src="src/app.js"></script>
+</body>
+</html>

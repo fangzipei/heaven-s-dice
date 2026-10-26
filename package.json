@@ -1,0 +1,16 @@
+{
+  "name": "heavens-dice",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "A Kingdom Come: Deliverance 2 inspired rogue dice game.",
+  "scripts": {
+    "dev": "node server.js",
+    "start": "node server.js",
+    "test": "node --test tests/scoring.test.mjs tests/engine.test.mjs tests/content.test.mjs",
+    "simulate": "node tools/balance.mjs 500"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

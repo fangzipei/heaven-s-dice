@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="120" height="120" viewBox="0 0 120 120">
+  <defs>
+    <radialGradient id="bg" cx=".5" cy=".42" r=".62">
+      <stop offset="0" stop-color="#d9825f" stop-opacity=".28"/>
+      <stop offset="1" stop-color="#0b0907" stop-opacity=".96"/>
+    </radialGradient>
+    <filter id="glow" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="5"/></filter>
+  </defs>
+  <circle cx="60" cy="60" r="53" fill="url(#bg)" stroke="#d9825f" stroke-opacity=".5" stroke-width="1.5"/>
+  <circle cx="60" cy="60" r="45" fill="none" stroke="#d9825f" stroke-opacity=".18" stroke-width="1"/>
+  <circle cx="60" cy="60" r="48" fill="none" stroke="#d9825f" stroke-opacity=".12" stroke-width="6" stroke-dasharray="1 7"/>
+  <g transform="translate(60 58) scale(1.15)"><path d="M-8 -25 L8 -25 L8 -10 L18 4 L16 24 L-16 24 L-18 4 L-8 -10Z" fill="none" stroke="#f0a273" stroke-width="2.5"/><path d="M-16 8 L16 8 L14 23 L-14 23Z" fill="#a83e3e" opacity=".65"/><path d="M-9 -25 L-9 -32 L9 -32 L9 -25" fill="none" stroke="#f0a273" stroke-width="2"/><circle cx="-6" cy="14" r="2" fill="#ffd7b8"/><circle cx="5" cy="18" r="1.5" fill="#ffd7b8"/></g>
+  <path d="M22 88 Q60 108 98 88" fill="none" stroke="#d9825f" stroke-opacity=".22" stroke-width="1"/>
+</svg>

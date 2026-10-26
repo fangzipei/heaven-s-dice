@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="240" height="300" viewBox="0 0 240 300">
+  <defs>
+    <linearGradient id="cupBody" x1=".2" y1="0" x2=".8" y2="1">
+      <stop offset="0" stop-color="#2f5b42"/>
+      <stop offset=".52" stop-color="#10251a"/>
+      <stop offset="1" stop-color="#2f5b42"/>
+    </linearGradient>
+    <linearGradient id="rim" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#a9c486"/><stop offset=".45" stop-color="#d4c07b"/>
+      <stop offset="1" stop-color="#10251a"/>
+    </linearGradient>
+    <radialGradient id="cupShadow" cx=".5" cy=".5" r=".5">
+      <stop offset="0" stop-color="#000" stop-opacity=".65"/><stop offset="1" stop-color="#000" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="softGlow" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="8"/></filter>
+  </defs>
+  <ellipse cx="122" cy="262" rx="84" ry="22" fill="url(#cupShadow)"/>
+  <ellipse cx="120" cy="208" rx="58" ry="14" fill="#000" opacity=".32"/>
+  <path d="M58 54 Q56 70 62 92 L84 226 Q90 246 120 246 Q150 246 156 226 L178 92 Q184 70 182 54Z" fill="url(#cupBody)" stroke="#0c0907" stroke-width="2"/>
+  <path d="M73 60 Q71 84 78 104 L98 222 Q104 233 120 233 L120 64Z" fill="#fff" opacity=".06"/>
+  <path d="M-38 -36 Q-16 -16 0 -36 Q16 -56 38 -36 M-40 6 Q-18 26 0 6 Q18 -14 40 6 M-38 46 Q-16 66 0 46 Q16 26 38 46" fill="none" stroke="#0a1a12" stroke-opacity=".65" stroke-width="2"/>
+  <ellipse cx="120" cy="54" rx="62" ry="18" fill="url(#rim)" stroke="#0a0705" stroke-width="2"/>
+  <ellipse cx="120" cy="54" rx="50" ry="12" fill="#080604"/>
+  <ellipse cx="120" cy="51" rx="44" ry="8" fill="#d4c07b" opacity=".12"/>
+  <path d="M62 92 Q120 106 178 92" fill="none" stroke="#31251a" stroke-width="13"/>
+  <path d="M62 92 Q120 106 178 92" fill="none" stroke="#a9c486" stroke-opacity=".5" stroke-width="2"/>
+  <path d="M85 216 Q120 228 155 216" fill="none" stroke="#31251a" stroke-width="10"/>
+  <path d="M85 216 Q120 228 155 216" fill="none" stroke="#a9c486" stroke-opacity=".38" stroke-width="1.5"/>
+  <g transform="translate(120 154)"><g fill="none" stroke="#d4c07b" stroke-width="2.4" opacity=".8">
+          <path d="M-20 18 C-2 12 10 14 15 2 C19 -8 6 -14 -3 -8 C-13 -1 -7 12 5 12 C18 12 24 2 19 -9"/>
+          <circle cx="19" cy="-9" r="2.5" fill="#d4c07b"/><path d="M21 -11 L28 -16 M21 -8 L28 -4"/>
+        </g></g>
+  <circle cx="120" cy="154" r="36" fill="#d4c07b" opacity=".06" filter="url(#softGlow)"/>
+  <path d="M68 118 Q72 172 94 220" fill="none" stroke="#fff" stroke-opacity=".11" stroke-width="3"/>
+  <path d="M170 106 Q166 164 148 216" fill="none" stroke="#000" stroke-opacity=".3" stroke-width="5"/>
+  <g fill="#d4c07b" opacity=".4"><circle cx="58" cy="54" r="2"/><circle cx="182" cy="54" r="2"/></g>
+</svg>

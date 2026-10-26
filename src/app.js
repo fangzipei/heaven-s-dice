@@ -1,0 +1,2526 @@
+import {
+  BARRELS, BARREL_BY_ID, BOSSES, DICE, DICE_BY_ID, DICE_SETS, ITEMS,
+  ITEM_BY_ID, LEVELS, LEVEL_COUNT, MINIONS, RARITIES, TABLES, STANDARD_DIE,
+  activeSetBonuses, chapterForLevel, getLevelConfig, getOpponent, getTable,
+} from './data.js';
+import * as Engine from './engine.js';
+import { SCORING_ROWS, analyzeSelection } from './scoring.js';
+
+/* ═══════════════════════════════════════════════════════════════════
+   Tiny helpers
+   ═══════════════════════════════════════════════════════════════════ */
+const $ = (selector, root = document) => root.querySelector(selector);
+const $$ = (selector, root = document) => Array.from(root.querySelectorAll(selector));
+const h = (value) => String(value ?? '')
+  .replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;')
+  .replaceAll('"', '&quot;').replaceAll("'", '&#39;');
+const num = (value) => Number(value || 0).toLocaleString('zh-CN');
+const pct = (value) => `${Math.round(value * 1000) / 10}%`;
+const clamp = (n, min, max) => Math.max(min, Math.min(max, n));
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+const setCss = (el, name, value) => el?.style?.setProperty(name, value);
+const rarityOf = (item) => RARITIES[item?.rarity] || RARITIES.common;
+
+const PIP_MAP = {
+  1: [4], 2: [0, 8], 3: [0, 4, 8], 4: [0, 2, 6, 8],
+  5: [0, 2, 4, 6, 8], 6: [0, 2, 3, 5, 6, 8],
+};
+
+const app = {
+  run: null,
+  busy: false,
+  rolling: false,
+  introOpen: false,
+  shopOpen: false,
+  screen: 'start',
+  soundEnabled: true,
+  compendiumTab: 'dice',
+  pendingReplace: null,
+  speechTimer: null,
+  rollTimer: null,
+  overlayTimer: null,
+  bustTimer: null,
+  cupCueTimer: null,
+  gestureCleanup: null,
+  gestureReset: null,
+  cupHoldStarted: false,
+  cupHoldPromise: null,
+  cupInverted: false,
+  cupAnimating: false,
+  resultShown: false,
+};
+
+function readSoundPref() {
+  try {
+    const value = localStorage.getItem('heavens-dice-sound');
+    return value === null ? true : value === '1';
+  } catch { return true; }
+}
+function saveSoundPref(value) {
+  try { localStorage.setItem('heavens-dice-sound', value ? '1' : '0'); } catch { /* ignore */ }
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   Sound — all synthesised, no assets
+   ═══════════════════════════════════════════════════════════════════ */
+class SoundKit {
+  constructor() {
+    this.ctx = null;
+    this.enabled = true;
+    this.lastRattle = 0;
+  }
+  setEnabled(value) { this.enabled = value; }
+  async unlock() {
+    if (!this.enabled) return;
+    try {
+      if (!this.ctx) this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+      if (this.ctx.state === 'suspended') await this.ctx.resume();
+    } catch { /* audio is optional */ }
+  }
+  tone(freq, duration = .12, type = 'sine', gain = .045, when = 0) {
+    if (!this.enabled || !this.ctx) return;
+    const ctx = this.ctx;
+    const osc = ctx.createOscillator();
+    const amp = ctx.createGain();
+    osc.type = type;
+    osc.frequency.setValueAtTime(freq, ctx.currentTime + when);
+    amp.gain.setValueAtTime(0.0001, ctx.currentTime + when);
+    amp.gain.exponentialRampToValueAtTime(gain, ctx.currentTime + when + .012);
+    amp.gain.exponentialRampToValueAtTime(.0001, ctx.currentTime + when + duration);
+    osc.connect(amp).connect(ctx.destination);
+    osc.start(ctx.currentTime + when);
+    osc.stop(ctx.currentTime + when + duration + .03);
+  }
+  noise(duration = .08, gain = .04, when = 0, freq = 1200) {
+    if (!this.enabled || !this.ctx) return;
+    const ctx = this.ctx;
+    const length = Math.max(1, Math.floor(ctx.sampleRate * duration));
+    const buffer = ctx.createBuffer(1, length, ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < length; i += 1) {
+      data[i] = (Math.random() * 2 - 1) * (1 - i / length) ** 2;
+    }
+    const source = ctx.createBufferSource();
+    source.buffer = buffer;
+    const filter = ctx.createBiquadFilter();
+    filter.type = 'bandpass';
+    filter.frequency.value = freq;
+    filter.Q.value = .8;
+    const amp = ctx.createGain();
+    amp.gain.value = gain;
+    source.connect(filter).connect(amp).connect(ctx.destination);
+    source.start(ctx.currentTime + when);
+  }
+  click() { this.tone(430 + Math.random() * 90, .055, 'triangle', .025); }
+  dice(count = 6) {
+    for (let i = 0; i < Math.min(10, count + 3); i += 1) {
+      this.noise(.06 + Math.random() * .04, .035, i * .035 + Math.random() * .02, 800 + Math.random() * 1200);
+    }
+    this.tone(118, .18, 'sine', .03, .06);
+  }
+  rattle() {
+    const now = performance.now();
+    if (now - this.lastRattle < 75) return;
+    this.lastRattle = now;
+    this.noise(.035, .018, 0, 1700 + Math.random() * 900);
+  }
+  score(value = 300) {
+    const base = 330;
+    this.tone(base, .12, 'triangle', .035);
+    this.tone(base * 1.25, .14, 'triangle', .028, .07);
+    this.tone(base * 1.5, .2, 'sine', .025, .14);
+    if (value > 800) this.tone(base * 2, .28, 'sine', .025, .22);
+  }
+  item() { this.tone(620, .1, 'triangle', .028); this.tone(930, .2, 'sine', .02, .07); }
+  gesture() {
+    [392, 523, 659, 784, 1046].forEach((f, i) => this.tone(f, .24, 'sine', .022, i * .075));
+  }
+  win() {
+    [261.6, 329.6, 392, 523.2].forEach((f, i) => this.tone(f, .8, 'triangle', .03, i * .13));
+    this.tone(130.8, 1.2, 'sine', .025, .02);
+  }
+  lose() {
+    this.tone(196, .5, 'sine', .03);
+    this.tone(146.8, .8, 'sine', .025, .2);
+    this.tone(98, 1.1, 'triangle', .02, .36);
+  }
+}
+const sound = new SoundKit();
+
+/* ═══════════════════════════════════════════════════════════════════
+   Boot
+   ═══════════════════════════════════════════════════════════════════ */
+document.addEventListener('DOMContentLoaded', () => {
+  app.soundEnabled = readSoundPref();
+  sound.setEnabled(app.soundEnabled);
+  updateSoundButtons();
+  bindGlobalEvents();
+  bindCupDrag();
+  bindTooltip();
+  bindSceneParallax();
+  renderStartDecor();
+});
+
+function bindSceneParallax() {
+  const scene = $('#scene');
+  if (!scene || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  let frame = null;
+  const reset = () => {
+    if (frame) cancelAnimationFrame(frame);
+    frame = null;
+    scene.style.setProperty('--cam-x', '1.2deg');
+    scene.style.setProperty('--cam-y', '-1.6deg');
+    scene.style.setProperty('--shift-x', '0px');
+    scene.style.setProperty('--shift-y', '0px');
+  };
+  scene.addEventListener('pointermove', (event) => {
+    if (event.pointerType === 'touch') return;
+    if (frame) return;
+    frame = requestAnimationFrame(() => {
+      frame = null;
+      const rect = scene.getBoundingClientRect();
+      const nx = clamp((event.clientX - rect.left) / rect.width - .5, -.5, .5);
+      const ny = clamp((event.clientY - rect.top) / rect.height - .5, -.5, .5);
+      scene.style.setProperty('--cam-y', `${(nx * 2.4).toFixed(2)}deg`);
+      scene.style.setProperty('--cam-x', `${(-ny * 1.4).toFixed(2)}deg`);
+      scene.style.setProperty('--shift-x', `${(nx * 12).toFixed(1)}px`);
+      scene.style.setProperty('--shift-y', `${(ny * 7).toFixed(1)}px`);
+    });
+  });
+  scene.addEventListener('pointerleave', reset);
+  scene.addEventListener('pointercancel', reset);
+}
+
+function renderStartDecor() {
+  const cup = $('.hero-cup img');
+  if (cup) cup.src = 'assets/cups/astral.svg';
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   Global events
+   ═══════════════════════════════════════════════════════════════════ */
+function bindGlobalEvents() {
+  document.addEventListener('click', (event) => {
+    hideTooltip();
+    const die = event.target.closest('[data-die-uid]');
+    if (die && !die.disabled && app.run?.phase === 'selecting' && !app.busy && !app.introOpen) {
+      sound.unlock();
+      if (Engine.toggleDie(app.run, die.dataset.dieUid)) {
+        sound.click();
+        renderGame();
+      }
+      return;
+    }
+    const target = event.target.closest('[data-action]');
+    if (!target) return;
+    const action = target.dataset.action;
+    if (target.matches('button') && target.disabled) return;
+    sound.unlock();
+    sound.click();
+    handleAction(action, target, event);
+  });
+
+  document.addEventListener('keydown', (event) => {
+    if (event.defaultPrevented) return;
+    if (event.key === 'Escape') {
+      if (app.overlayDismissible) {
+        closeOverlay();
+        event.preventDefault();
+      }
+      return;
+    }
+    if (app.introOpen || app.shopOpen || $('.overlay')) return;
+    if (event.target.matches('input, textarea, select')) return;
+    if (event.code === 'Space') {
+      if (['ready', 'dead', 'hot'].includes(app.run?.phase)) {
+        event.preventDefault();
+        beginRoll();
+      }
+    } else if (event.key === '1' && app.run?.phase === 'selecting') {
+      event.preventDefault();
+      handleScore(app.run.rerolls > 0 ? 'continue' : 'bank');
+    } else if (event.key === '2' && app.run?.phase === 'selecting' && app.run.rerolls > 0) {
+      event.preventDefault();
+      handleScore('reroll');
+    }
+  });
+}
+
+async function handleAction(action, target) {
+  switch (action) {
+    case 'start-run':
+    case 'restart-run':
+      startRun();
+      break;
+    case 'go-home':
+      requestHome();
+      break;
+    case 'confirm-home':
+      closeOverlay();
+      resetToStart();
+      break;
+    case 'open-rules':
+      openRules();
+      break;
+    case 'close-overlay':
+      closeOverlay();
+      break;
+    case 'open-compendium':
+      openCompendium(target.dataset.tab || app.compendiumTab);
+      break;
+    case 'switch-compendium-tab':
+      switchCompendiumTab(target.dataset.tab);
+      break;
+    case 'toggle-sound':
+      toggleSound();
+      break;
+    case 'toggle-rail':
+      $('#game-screen .rail')?.classList.toggle('is-open');
+      break;
+    case 'auto-roll':
+    case 'manual-roll':
+      beginRoll();
+      break;
+    case 'cue-cup':
+      pulseCup();
+      showToast('按住左侧骰桶左右拖动，松手投掷。');
+      break;
+    case 'score-continue':
+      handleScore('continue');
+      break;
+    case 'score-reroll':
+      handleScore('reroll');
+      break;
+    case 'score-bank':
+      handleScore('bank');
+      break;
+    case 'use-item':
+      useItem(target.dataset.itemId);
+      break;
+    case 'open-gesture':
+      openGesture();
+      break;
+    case 'forfeit':
+      forfeitRun();
+      break;
+    case 'close-intro':
+      app.introOpen = false;
+      closeOverlay();
+      renderGame();
+      break;
+    case 'go-shop':
+      goToShop();
+      break;
+    case 'leave-shop':
+      leaveShop();
+      break;
+    case 'refresh-shop':
+      refreshShop(target.dataset.section);
+      break;
+    case 'buy-die':
+      buyDie(Number(target.dataset.index));
+      break;
+    case 'buy-barrel':
+      buyBarrel(Number(target.dataset.index));
+      break;
+    case 'buy-item':
+      buyItem(Number(target.dataset.index));
+      break;
+    case 'confirm-replace':
+      confirmReplace(target.dataset.bagUid);
+      break;
+    case 'cancel-replace':
+      app.pendingReplace = null;
+      closeOverlay();
+      break;
+    case 'retry-level':
+      retryLevel();
+      break;
+    case 'gesture-reset':
+      if (app.gestureReset) app.gestureReset();
+      break;
+    case 'dismiss-tip':
+      hideTooltip();
+      break;
+    default:
+      break;
+  }
+}
+
+function toggleSound() {
+  app.soundEnabled = !app.soundEnabled;
+  sound.setEnabled(app.soundEnabled);
+  saveSoundPref(app.soundEnabled);
+  updateSoundButtons();
+  if (app.soundEnabled) {
+    sound.unlock().then(() => sound.click());
+  }
+}
+function updateSoundButtons() {
+  $$('[data-action="toggle-sound"]').forEach((button) => {
+    button.classList.toggle('is-muted', !app.soundEnabled);
+    const use = $('use', button);
+    if (use) use.setAttribute('href', app.soundEnabled ? '#i-volume' : '#i-muted');
+    button.setAttribute('aria-label', app.soundEnabled ? '关闭声音' : '开启声音');
+  });
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   Run lifecycle
+   ═══════════════════════════════════════════════════════════════════ */
+function startRun() {
+  closeOverlay();
+  closeShopScreen();
+  app.run = Engine.createRun();
+  app.screen = 'game';
+  app.busy = false;
+  app.rolling = false;
+  app.resultShown = false;
+  $('#start-screen').hidden = true;
+  $('#game-screen').hidden = false;
+  setupLevelScene(true);
+  renderGame();
+  sound.unlock();
+  showLevelIntro();
+}
+
+function resetToStart() {
+  closeOverlay();
+  closeShopScreen();
+  app.run = null;
+  app.busy = false;
+  app.rolling = false;
+  app.screen = 'start';
+  app.resultShown = false;
+  $('#start-screen').hidden = false;
+  $('#game-screen').hidden = true;
+  window.scrollTo({ top: 0, behavior: 'instant' });
+}
+
+function requestHome() {
+  if (!app.run) {
+    resetToStart();
+    return;
+  }
+  openOverlay(`
+    <div class="modal result-modal" style="width:min(480px,100%);padding:38px">
+      <p class="modal-kicker">LEAVE THE TABLE</p>
+      <h2 style="font-size:27px;margin-top:6px">要离开这张赌桌吗？</h2>
+      <p class="result-sub">当前这一局的骰子、银币与契约都会消失。</p>
+      <div class="modal-actions" style="margin-top:24px">
+        <button class="secondary-button" data-action="close-overlay">继续赌</button>
+        <button class="primary-button" data-action="confirm-home">离开并重来</button>
+      </div>
+    </div>
+  `, { dismissible: true });
+}
+
+function setupLevelScene(force = false) {
+  if (!app.run) return;
+  app.resultShown = false;
+  hideTooltip();
+  clearToasts();
+  const table = getTable(app.run.level);
+  const opponent = getOpponent(app.run.level);
+  const isBoss = Boolean(getLevelConfig(app.run.level).boss);
+  const sceneArt = $('#scene-art');
+  const scene = $('#scene');
+  scene.dataset.table = table.id;
+  setCss(scene, '--table-accent', table.accent);
+  $('#room-back').style.backgroundImage = `url("assets/rooms/${table.art}.svg")`;
+  $('#chapter-tag').innerHTML = `<span>${h(table.subtitle.split(' · ')[0])}</span><b>${h(table.subtitle.split(' · ')[1] || '')}</b>`;
+  const opponentEl = $('#opponent');
+  opponentEl.classList.toggle('is-boss', isBoss);
+  opponentEl.style.setProperty('--boss-accent', opponent.accent || '#c25b5b');
+  const image = $('#opponent-image');
+  image.src = `assets/portraits/${opponent.art}.svg`;
+  image.alt = opponent.name;
+  $('#opponent-name').textContent = opponent.name;
+  $('#opponent-kicker').textContent = isBoss ? `第 ${app.run.level} 关 · 庄家` : opponent.title;
+  $('#opponent-inline').textContent = `对手：${opponent.name}`;
+  $('#boss-badge').hidden = !isBoss;
+  $('#boss-effect-card').hidden = !isBoss;
+  if (isBoss) {
+    $('#boss-effect-name').textContent = opponent.effectName;
+    $('#boss-effect-title').textContent = opponent.effectName;
+    $('#boss-effect-desc').textContent = opponent.effectDesc;
+  }
+  const cup = Engine.getBarrel(app.run);
+  $('#cup-image').src = `assets/cups/${cup.art}.svg`;
+  $('#cup-badge').textContent = cup.name;
+  $('#barrel-thumb').src = `assets/cups/${cup.art}.svg`;
+  setSpeech(introLine(opponent, app.run.level, isBoss));
+  renderTopbar();
+  if (force) {
+    sceneArt.animate([{ opacity: .2 }, { opacity: 1 }], { duration: 700, easing: 'ease-out' });
+  }
+}
+
+function showLevelIntro() {
+  if (!app.run) return;
+  const run = app.run;
+  const opponent = getOpponent(run.level);
+  const table = getTable(run.level);
+  const cfg = getLevelConfig(run.level);
+  const isBoss = Boolean(cfg.boss);
+  const chapter = chapterForLevel(run.level);
+  const roman = ['I', 'II', 'III', 'IV', 'V'][chapter];
+  const reward = projectedReward();
+  const line = introLine(opponent, run.level, isBoss);
+  const effect = isBoss ? `
+    <div class="intro-effect">
+      <span>庄家特权</span>
+      <b>${h(opponent.effectName)}</b>
+      <p>${h(opponent.effectDesc)}</p>
+    </div>` : '';
+  app.introOpen = true;
+  openOverlay(`
+    <div class="modal intro-modal ${isBoss ? 'is-boss-intro' : ''}" role="dialog" aria-modal="true" aria-label="第 ${run.level} 关">
+      <div class="intro-portrait">
+        <img src="assets/portraits/${opponent.art}.svg" alt="${h(opponent.name)}">
+      </div>
+      <div class="intro-body">
+        <div class="intro-eyebrow"><i></i>${isBoss ? 'DEALER’S TABLE' : 'A CHALLENGER APPEARS'} · ${isBoss ? '庄家' : '小兵'}<i></i></div>
+        <h2 class="modal-title">${h(opponent.name)}</h2>
+        <p class="intro-role">${h(isBoss ? opponent.title : opponent.title)} · ${h(table.name)}</p>
+        <p class="intro-quote">“${h(line)}”</p>
+        ${effect}
+        <div class="intro-stats">
+          <div class="intro-stat"><span>目标分数</span><b>${num(run.target)}</b></div>
+          <div class="intro-stat"><span>胜利奖励</span><b>${num(reward)} <small style="font-size:10px;color:#8d7c62">银币</small></b></div>
+          <div class="intro-stat ${isBoss ? 'boss' : ''}"><span>重投次数</span><b>${run.rerolls}</b></div>
+          <div class="intro-stat"><span>章节</span><b>${roman}</b></div>
+        </div>
+        ${run.bossBoons ? `<p class="intro-role" style="margin-top:-12px;margin-bottom:18px;font-size:10px;color:#c5a96e">已夺取 ${run.bossBoons} 枚庄家徽记 · 每关额外 ${run.bossBoons} 次重投。</p>` : ''}
+        <div class="intro-actions">
+          <button class="primary-button" data-action="close-intro">入座应战 <svg><use href="#i-arrow"></use></svg></button>
+          <button class="text-button" data-action="open-rules">查看计分规则 <span>↗</span></button>
+        </div>
+        ${run.level === 1 ? '<p class="intro-role" style="margin-top:15px;font-size:10px;color:#8f7d63">门房赠礼：一枚「幸运币」，每关可使用一次，立即 +150 分。</p>' : ''}
+        <div class="intro-tableline"></div>
+      </div>
+    </div>
+  `, { dismissible: false });
+}
+
+function projectedReward() {
+  if (!app.run) return 0;
+  const cfg = getLevelConfig(app.run.level);
+  const sets = Engine.setCounts(app.run);
+  let reward = cfg.reward;
+  if ((sets.crown?.count || 0) >= 4) reward += 12;
+  if (app.run.passiveItems.includes('gold_cuff')) reward += 12;
+  return reward;
+}
+
+function goToShop() {
+  if (!app.run) return;
+  if (app.run.phase !== 'won') return;
+  closeOverlay();
+  const shop = Engine.openShop(app.run);
+  if (!shop) { showToast('市集没有开门。', 'error'); return; }
+  openShopScreen();
+}
+
+function leaveShop() {
+  if (!app.run) return;
+  const next = app.run.level + 1;
+  const result = Engine.leaveShop(app.run);
+  if (!result.ok) { showToast(result.error, 'error'); return; }
+  closeShopScreen();
+  setupLevelScene(true);
+  renderGame();
+  if (next <= LEVEL_COUNT) showLevelIntro();
+}
+
+function retryLevel() {
+  if (!app.run) return;
+  const result = Engine.retryLevel(app.run);
+  if (!result.ok) { showToast(result.error, 'error'); return; }
+  closeOverlay();
+  closeShopScreen();
+  app.busy = false;
+  app.rolling = false;
+  app.resultShown = false;
+  setupLevelScene(true);
+  renderGame();
+  showToast('你重新坐回桌前。半数银币留在了上一局。', 'good');
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   Rendering — game
+   ═══════════════════════════════════════════════════════════════════ */
+function renderGame() {
+  if (!app.run) return;
+  const run = app.run;
+  renderTopbar();
+  renderScorePanel();
+  renderRail();
+  renderDiceTray();
+  renderComboPreview();
+  renderActionDock();
+  renderAutoButton();
+  renderDangerStrip();
+  renderOpponentPlate();
+}
+
+function renderTopbar() {
+  const run = app.run;
+  if (!run) return;
+  $('#coin-value').textContent = num(run.coins);
+  const table = getTable(run.level);
+  $('#chapter-label').textContent = `${table.subtitle}`;
+  $('#level-label').textContent = `第 ${run.level} / ${LEVEL_COUNT} 关`;
+  const track = $('#level-track');
+  track.innerHTML = LEVELS.map((entry) => {
+    const boss = Boolean(entry.boss);
+    const className = [
+      'level-pip', boss ? 'is-boss' : '',
+      entry.level < run.level ? 'is-past' : '',
+      entry.level === run.level ? 'is-current' : '',
+    ].filter(Boolean).join(' ');
+    return `<span class="${className}" title="第 ${entry.level} 关${boss ? ' · 庄家' : ''}"></span>`;
+  }).join('');
+}
+
+function renderScorePanel() {
+  const run = app.run;
+  const round = Math.max(0, run.roundScore || 0);
+  const secured = Math.max(0, run.score - round);
+  $('#score-value').textContent = num(secured);
+  $('#secured-value').textContent = num(secured);
+  $('#target-value').textContent = num(run.target);
+  $('#target-value-2').textContent = num(run.target);
+  $('#score-pending').hidden = round <= 0;
+  $('#round-value').textContent = num(round);
+  $('#round-breakdown').hidden = round <= 0;
+  $('#round-value-2').textContent = num(round);
+  const target = Math.max(1, run.target);
+  const securedProgress = clamp((secured / target) * 100, 0, 100);
+  const totalProgress = clamp((run.score / target) * 100, 0, 100);
+  $('#score-progress').style.width = `${securedProgress}%`;
+  $('#score-progress-pending').style.width = `${totalProgress}%`;
+  $('#reroll-inline').textContent = `重投 ×${run.rerolls}`;
+  $('#score-panel').classList.toggle('is-danger', run.rerolls <= 0 && run.score < run.target);
+  if (round > 0 || run.throwNumber === 0 || run.phase === 'selecting') {
+    $('#score-bust').hidden = true;
+    $('#score-panel').classList.remove('is-bust');
+  }
+}
+
+function showBustNotice(lost) {
+  const panel = $('#score-panel');
+  const note = $('#score-bust');
+  if (!panel || !note) return;
+  note.hidden = false;
+  note.textContent = `本轮 ${num(lost)} 分作废`;
+  panel.classList.remove('is-bust');
+  void panel.offsetWidth;
+  panel.classList.add('is-bust');
+  showToast(`没有可计分的组合，本轮 ${num(lost)} 分作废。`, 'error');
+  clearTimeout(app.bustTimer);
+  app.bustTimer = setTimeout(() => {
+    note.hidden = true;
+    panel.classList.remove('is-bust');
+  }, 2800);
+}
+
+function renderOpponentPlate() {
+  const run = app.run;
+  const opponent = getOpponent(run.level);
+  const isBoss = Boolean(getLevelConfig(run.level).boss);
+  $('#opponent-name').textContent = opponent.name;
+  $('#opponent-kicker').textContent = isBoss ? `第 ${run.level} 关 · 庄家` : opponent.title;
+  $('#boss-badge').hidden = !isBoss;
+  $('#boss-effect-card').hidden = !isBoss;
+  if (isBoss) {
+    $('#boss-effect-name').textContent = opponent.effectName;
+    $('#boss-effect-title').textContent = opponent.effectName;
+    $('#boss-effect-desc').textContent = opponent.effectDesc;
+  }
+}
+
+function renderRail() {
+  const run = app.run;
+  const opponent = getOpponent(run.level);
+  const isBoss = Boolean(getLevelConfig(run.level).boss);
+  $('#objective-level').textContent = `第 ${run.level} 关`;
+  $('#objective-name').textContent = opponent.name;
+  $('#objective-role').textContent = opponent.title;
+  $('#objective-target').textContent = num(run.target);
+  $('#objective-reward').textContent = num(projectedReward());
+  $('#objective-dice').textContent = run.bag.length;
+  const taunt = $('#objective-taunt');
+  if (isBoss) {
+    taunt.innerHTML = `<b style="color:#d29b8c;font-weight:400">${h(opponent.effectName)}</b> · ${h(opponent.effectDesc)}`;
+  } else {
+    taunt.textContent = `“${opponent.taunts[0]}”`;
+  }
+  $('#reroll-note').textContent = run.bossBoons
+    ? `剩余 ${run.rerolls} 次 · 徽记 +${run.bossBoons}`
+    : `剩余 ${run.rerolls} 次`;
+  const maxTokens = Math.max(run.maxRerolls, run.rerolls, 1);
+  $('#reroll-row').innerHTML = Array.from({ length: Math.min(12, maxTokens) }, (_, index) => {
+    const active = index < run.rerolls;
+    const extra = index >= 5;
+    return `<span class="reroll-token ${active ? '' : 'is-spent'} ${extra ? 'is-extra' : ''}" title="${active ? '可用重投' : '已消耗'}"></span>`;
+  }).join('') + `<span class="reroll-count">${run.rerolls}<small style="color:#6f6352;font-size:8px"> / ${run.maxRerolls}</small></span>`;
+
+  const barrel = Engine.getBarrel(run);
+  $('#barrel-name').textContent = barrel.name;
+  $('#barrel-short').textContent = barrel.short;
+  $('#barrel-thumb').src = `assets/cups/${barrel.art}.svg`;
+  const gestureButton = $('#gesture-button');
+  if (barrel.gesture) {
+    gestureButton.hidden = false;
+    const used = run.flags.gestureUsedThisThrow || (barrel.gesture === 'circle' && run.flags.vortexUsed);
+    gestureButton.disabled = used || run.phase === 'won' || run.phase === 'run-won' || run.phase === 'lost' || app.busy;
+    gestureButton.innerHTML = `<svg><use href="#i-gesture"></use></svg>${used ? '已完成' : '画阵'}`;
+  } else {
+    gestureButton.hidden = true;
+  }
+  renderRollHint();
+  renderItems();
+  renderSets();
+  renderLog();
+}
+
+function renderRollHint() {
+  const run = app.run;
+  const hint = $('#roll-hint');
+  if (run.phase === 'ready') {
+    hint.innerHTML = '<strong>首掷免费。</strong>拖动左侧骰桶左右摇晃，松手投掷；也可点击右侧自动摇骰。';
+  } else if (run.phase === 'hot') {
+    hint.innerHTML = '<strong>全骰！</strong>六颗骰子全部归位，可免费重投全部骰子。';
+  } else if (run.phase === 'dead') {
+    hint.innerHTML = run.rerolls > 0
+      ? `本掷无分可计。<strong>重投会消耗 1 次</strong>，剩余 ${run.rerolls} 次。`
+      : '本掷无分可计，重投已经耗尽。可以使用物品，或结束本关。';
+  } else if (run.phase === 'selecting') {
+    hint.innerHTML = run.rerolls > 0
+      ? `重投剩余骰子，或重投全部六颗。二者各消耗 1 次，剩余 <strong>${run.rerolls}</strong> 次。`
+      : '重投已耗尽。计分后本关将直接结算。';
+  } else if (run.phase === 'reroll-pending') {
+    hint.textContent = '骰子正在重新落桌……';
+  } else if (run.phase === 'won' || run.phase === 'run-won') {
+    hint.textContent = '赌局已结束。';
+  } else if (run.phase === 'lost') {
+    hint.textContent = '这一局已经结束。';
+  }
+}
+
+function renderItems() {
+  const run = app.run;
+  const active = run.activeItems;
+  const container = $('#active-items');
+  const slots = [];
+  for (let i = 0; i < Engine.ACTIVE_ITEM_SLOTS; i += 1) {
+    const id = active[i];
+    if (!id) {
+      slots.push('<div class="item-slot is-empty" aria-hidden="true"></div>');
+      continue;
+    }
+    const item = ITEM_BY_ID[id];
+    const charges = run.itemCharges[id] || 0;
+    const check = Engine.canUseItem(run, id);
+    slots.push(`
+      <button class="item-slot" data-action="use-item" data-item-id="${h(id)}" data-item-tip="${h(id)}"
+        ${check.ok ? '' : 'disabled'} title="${h(item.name)}" aria-label="使用${h(item.name)}">
+        <img src="assets/items/${item.icon}.svg" alt="">
+        <span class="charge">${charges > 0 ? charges : '×'}</span>
+        <span class="item-name">${h(item.name)}</span>
+      </button>`);
+  }
+  container.innerHTML = slots.join('');
+  $('#item-slot-note').textContent = `${active.length} / ${Engine.ACTIVE_ITEM_SLOTS}`;
+  const passives = run.passiveItems;
+  const passiveEl = $('#passive-items');
+  if (!passives.length) {
+    passiveEl.innerHTML = '<span class="passive-empty">还没有被动物品 · <button data-action="open-compendium" data-tab="items">查看物品</button></span>';
+  } else {
+    passiveEl.innerHTML = passives.map((id) => {
+      const item = ITEM_BY_ID[id];
+      return `<span class="passive-chip" data-item-tip="${h(id)}"><img src="assets/items/${item.icon}.svg" alt="">${h(item.name)}</span>`;
+    }).join('');
+  }
+}
+
+function renderSets() {
+  const run = app.run;
+  const counts = Engine.setCounts(run);
+  $('#set-list').innerHTML = Object.values(DICE_SETS).map((set) => {
+    const count = counts[set.id]?.count || 0;
+    const tier = counts[set.id]?.tier || 0;
+    const pips = Array.from({ length: 4 }, (_, i) => `<i class="${i < count ? 'on' : ''}"></i>`).join('');
+    let text = count === 0 ? '还差 2 枚激活 2 件套' : '再集 1 枚激活 2 件套';
+    if (tier >= 4) text = `4 件：${set.bonuses[1].text}`;
+    else if (tier >= 2) text = `2 件已激活 · 再集 ${4 - count} 枚解锁 4 件`;
+
+    return `
+      <div class="set-row ${tier >= 2 ? 'is-active' : ''} ${count >= 4 ? 'has-four' : ''}"
+           style="color:${set.color}" data-set-tip="${set.id}">
+        <span class="set-icon">${h(set.name[0])}</span>
+        <div class="set-copy"><b>${h(set.name)}</b><span>${h(text)}</span></div>
+        <span class="set-pips" title="${count} / 4">${pips}</span>
+      </div>`;
+  }).join('');
+}
+
+function renderLog() {
+  const log = app.run.log.slice(0, 5);
+  $('#game-log').innerHTML = log.map((line) => `
+    <div class="log-line type-${h(line.type)}"><i></i><span>${h(line.text)}</span></div>
+  `).join('') || '<div class="log-line"><i></i><span>骰子已经摆好，等你落座。</span></div>';
+}
+
+function dieSpecFor(die) {
+  return DICE_BY_ID[die.dieId] || STANDARD_DIE;
+}
+
+function dieMark(spec) {
+  if (spec.id === 'standard') return '';
+  if (spec.demon) return '魔';
+  const set = DICE_SETS[spec.setId];
+  return set ? set.name[0] : '';
+}
+
+const FACE_ORDER = ['front', 'back', 'right', 'left', 'top', 'bottom'];
+
+function pipsHtml(value) {
+  // Explicit grid cells matter: CSS Grid auto-placement would collapse a
+  // diagonal 3 into three pips in the first row. Place each pip by row/column.
+  const positions = PIP_MAP[value] || [];
+  return `<div class="pip-grid">${Array.from({ length: 9 }, (_, i) => positions.includes(i)
+    ? `<span class="pip" style="grid-row:${Math.floor(i / 3) + 1};grid-column:${(i % 3) + 1}"></span>` : '').join('')}</div>`;
+}
+
+function faceValuesFor(value) {
+  // Keep the rolled value on the camera-facing face; the other faces use the
+  // opposite pair and two remaining standard pairs so the visible top/side
+  // faces still read as a legal die.
+  const pairs = [[1, 6], [2, 5], [3, 4]];
+  const frontPair = pairs.find((pair) => pair.includes(value)) || pairs[0];
+  const otherPairs = pairs.filter((pair) => pair !== frontPair);
+  return {
+    front: value,
+    back: frontPair[0] + frontPair[1] - value,
+    top: otherPairs[0][0],
+    bottom: otherPairs[0][1],
+    right: otherPairs[1][0],
+    left: otherPairs[1][1],
+  };
+}
+
+function dieFacesHtml(value, concealed = false) {
+  const values = faceValuesFor(value || 1);
+  return FACE_ORDER.map((face) => `
+    <div class="die-face face-${face}">
+      ${concealed ? '<span class="die-rune">✦</span>' : pipsHtml(values[face])}
+    </div>`).join('');
+}
+
+function renderDiceTray() {
+  const run = app.run;
+  const tray = $('#dice-tray');
+  if (!tray) return;
+  const available = Engine.availableDice(run);
+  const selectedCount = run.selected.length;
+  tray.classList.toggle('has-selection', selectedCount > 0);
+  tray.innerHTML = run.dice.map((die, index) => {
+    const spec = dieSpecFor(die);
+    const hidden = die.value == null;
+    const selected = run.selected.includes(die.uid);
+    const scored = die.scored;
+    const classes = [
+      'die', `rarity-${spec.rarity || 'common'}`,
+      hidden ? 'is-hidden' : '', selected ? 'is-selected' : '',
+      scored ? 'is-scored' : '', spec.demon ? 'is-demon' : '',
+      app.rolling && !hidden && !scored ? 'is-rolling' : '',
+    ].filter(Boolean).join(' ');
+    const disabled = scored || app.busy || run.phase !== 'selecting';
+    const label = hidden ? '未掷出的骰子' : `${spec.name}，${die.value} 点`;
+    return `
+      <button class="${classes}" data-die-uid="${h(die.uid)}" data-die-tip="${h(spec.id)}"
+        ${disabled ? 'disabled' : ''} aria-pressed="${selected}" aria-label="${h(label)}"
+        style="animation-delay:${app.rolling ? index * 45 : 0}ms;">
+        <span class="die-roller"><span class="die-cube">${dieFacesHtml(die.value, hidden)}</span></span>
+        ${hidden ? '<span class="die-mark" style="left:50%;top:50%;transform:translate(-50%,-50%);font-size:12px;color:rgba(231,190,104,.7)">✦</span>' : `
+          <span class="die-mark">${h(dieMark(spec))}</span>
+          <span class="die-check">${scored ? '◆' : '✓'}</span>
+        `}
+      </button>`;
+  }).join('');
+  const stateLabel = run.phase === 'ready'
+    ? '等待落骰'
+    : run.phase === 'hot'
+      ? '全骰归位'
+      : run.phase === 'dead'
+        ? '无分可计'
+        : run.phase === 'selecting'
+          ? '选择骰子'
+          : run.phase === 'reroll-pending'
+            ? '选择重投方式'
+            : '本关结束';
+  const throwLabel = run.throwNumber ? `第 ${run.throwNumber} 掷 · ${stateLabel}` : stateLabel;
+  const throwNode = $('#throw-label');
+  throwNode.textContent = selectedCount && run.phase === 'selecting'
+    ? `${throwLabel} · 已选 ${selectedCount} 颗`
+    : throwLabel;
+  throwNode.classList.toggle('is-active', selectedCount > 0);
+  const availableCount = available.filter((d) => !d.scored).length;
+  const countNode = $('#dice-count');
+  countNode.textContent = run.phase === 'hot'
+    ? `${run.dice.length} 颗骰子 · 全骰`
+    : selectedCount && run.phase === 'selecting'
+      ? `${run.dice.length} 颗骰子 · 已选 ${selectedCount} 颗`
+      : `${run.dice.length} 颗骰子 · 剩余 ${availableCount} 可掷`;
+  countNode.classList.toggle('is-active', selectedCount > 0);
+}
+
+function renderComboPreview() {
+  const run = app.run;
+  const preview = $('#combo-preview');
+  if (!preview) return;
+  if (run.phase === 'ready') {
+    preview.innerHTML = '<span class="combo-placeholder">1 与 5 总能计分 · 三连、四连与顺子会带来大分</span>';
+    return;
+  }
+  if (run.phase === 'hot') {
+    preview.innerHTML = '<span class="combo-label">全骰归位</span><span class="combo-total">六颗骰子免费重投 <em>HOT DICE</em></span>';
+    return;
+  }
+  if (run.phase === 'reroll-pending') {
+    preview.innerHTML = '<span class="combo-label">准备重投</span><span class="combo-total">选择自己摇桶，或让系统重投 <em>等待操作</em></span>';
+    return;
+  }
+  if (run.phase === 'dead') {
+    preview.innerHTML = '<span class="combo-warning">没有合法计分组合。重投剩余骰子，或使用物品改变骰面。</span>';
+    return;
+  }
+  if (run.phase !== 'selecting') {
+    preview.innerHTML = '<span class="combo-placeholder">等待下一步。</span>';
+    return;
+  }
+  const selected = Engine.selectedDice(run);
+  if (!selected.length) {
+    preview.innerHTML = '<span class="combo-placeholder">选择要计分的骰子 · 1 和 5 总能计分</span>';
+    return;
+  }
+  const result = Engine.buildScore(run, 'reroll');
+  if (!result.valid) {
+    preview.innerHTML = `<span class="combo-warning">${h(result.error)}</span>`;
+    return;
+  }
+  const combos = result.analysis.combos.map((combo) => `<span class="combo-pill">${h(combo.label)}<b>+${num(combo.points)}</b></span>`).join('');
+  const breakdown = result.breakdown;
+  const extras = [];
+  if (breakdown.flatAdd) extras.push(`加算 +${num(breakdown.flatAdd)}`);
+  if (breakdown.multipliers.length) extras.push(breakdown.multipliers.map((m) => `${h(m.label)}`).join(' · '));
+  preview.innerHTML = `${combos}<span class="combo-total">+${num(result.total)}<em>预计 · 计分</em></span>${extras.length ? `<span class="combo-placeholder" style="font-size:8px">${h(extras.join(' · '))}</span>` : ''}`;
+}
+
+function renderActionDock() {
+  const dock = $('#action-dock');
+  if (!dock) return;
+  const run = app.run;
+  if (app.busy) {
+    dock.innerHTML = `
+      <div class="action-dock-inner">
+        <div class="action-hint">${app.cupAnimating ? '骰桶摇动中 · 准备落骰' : '骰子正在落桌…'}</div>
+        <div class="action-buttons">
+          <button class="score-action" disabled>
+            <span class="action-icon"><svg><use href="#i-die"></use></svg></span>
+            <span class="action-copy"><b>${app.cupAnimating ? '摇骰中' : '结算中'}</b><em>听，木头和骨头在说话</em></span>
+            <span class="action-points">—</span>
+          </button>
+        </div>
+      </div>`;
+    return;
+  }
+  const phase = run.phase;
+  if (phase === 'won' || phase === 'run-won' || phase === 'lost' || phase === 'shop') {
+    dock.innerHTML = '<div class="action-dock-inner"><div class="action-hint">本关已结束。</div></div>';
+    return;
+  }
+  if (phase === 'reroll-pending') {
+    const all = run.flags.rerollAll;
+    const remaining = run.dice.filter((die) => !die.scored).length;
+    dock.innerHTML = `
+      <div class="action-dock-inner">
+        <div class="action-hint">已计分 · ${all ? '全部骰子已归位' : `剩余 ${remaining} 颗骰子待重投`} · 自己摇桶或系统重投</div>
+        <div class="action-buttons">
+          <button class="score-action primary" data-action="cue-cup">
+            <span class="action-icon"><svg><use href="#i-cup"></use></svg></span>
+            <span class="action-copy"><b>自己摇骰桶</b><em>按住左侧骰桶左右拖动，松手投掷</em></span>
+          </button>
+          <button class="score-action" data-action="auto-roll">
+            <span class="action-icon"><svg><use href="#i-die"></use></svg></span>
+            <span class="action-copy"><b>${all ? '系统全骰重投' : '系统重投'}</b><em>命令骰桶自己摇 · 消耗 1 次（剩 ${run.rerolls}）</em></span>
+            <span class="action-points">−1<small>重投</small></span>
+          </button>
+        </div>
+      </div>`;
+    return;
+  }
+  if (phase === 'ready') {
+    dock.innerHTML = `
+      <div class="action-dock-inner">
+        <div class="action-hint">首掷免费 · 也可以拖动左侧骰桶，松手投掷</div>
+        <div class="action-buttons">
+          <button class="score-action primary single-action" data-action="manual-roll">
+            <span class="action-icon"><svg><use href="#i-cup"></use></svg></span>
+            <span class="action-copy"><b>摇动骰桶</b><em>六颗骰子已经就位</em></span>
+          </button>
+        </div>
+      </div>`;
+    return;
+  }
+  if (phase === 'hot') {
+    dock.innerHTML = `
+      <div class="action-dock-inner">
+        <div class="action-hint">全骰 · 免费重投全部骰子，不消耗重投次数</div>
+        <div class="action-buttons">
+          <button class="score-action primary single-action" data-action="manual-roll">
+            <span class="action-icon"><svg><use href="#i-spark"></use></svg></span>
+            <span class="action-copy"><b>全骰重投</b><em>让六颗骰子重新落桌</em></span>
+            <span class="action-points">FREE<small>免费</small></span>
+          </button>
+        </div>
+      </div>`;
+    return;
+  }
+  if (phase === 'dead') {
+    const canReroll = run.rerolls > 0;
+    dock.innerHTML = `
+      <div class="action-dock-inner">
+        <div class="action-hint">${canReroll ? `没有可计分的组合 · 重投消耗 1 次（剩余 ${run.rerolls}）` : '没有可计分的组合，重投已经耗尽'}</div>
+        <div class="action-buttons">
+          <button class="score-action primary single-action" data-action="manual-roll" ${canReroll ? '' : 'disabled'}>
+            <span class="action-icon"><svg><use href="#i-cup"></use></svg></span>
+            <span class="action-copy"><b>${canReroll ? '重投剩余骰子' : '重投已耗尽'}</b><em>${canReroll ? '消耗 1 次重投' : '使用物品或结束本关'}</em></span>
+            <span class="action-points">${canReroll ? `−1<small>重投</small>` : '—'}</span>
+          </button>
+        </div>
+      </div>`;
+    return;
+  }
+  if (phase === 'selecting') {
+    const selected = Engine.selectedDice(run);
+    const preview = Engine.getScorePreview(run);
+    const valid = preview.valid && selected.length > 0;
+    const noTokens = run.rerolls <= 0;
+    const invalidHint = selected.length ? '所选骰子无法计分' : '先选择要计分的骰子';
+    const cont = valid ? num(preview.totalContinue) : '—';
+    const rer = valid ? num(preview.totalReroll) : '—';
+    const bank = valid ? num(preview.totalBank) : '—';
+    if (noTokens) {
+      dock.innerHTML = `
+        <div class="action-dock-inner">
+          <div class="action-hint">${valid ? '重投已耗尽 · 计分后本关结算' : h(invalidHint)}</div>
+          <div class="action-buttons">
+            <button class="score-action primary single-action" data-action="score-bank" ${valid ? '' : 'disabled'}>
+              <span class="action-icon"><svg><use href="#i-spark"></use></svg></span>
+              <span class="action-copy"><b>计分并结算</b><em>重投耗尽 · 不再重投，直接结算本关</em></span>
+              <span class="action-points">+${bank}<small>计分</small></span>
+            </button>
+          </div>
+        </div>`;
+      return;
+    }
+    dock.innerHTML = `
+      <div class="action-dock-inner">
+        <div class="action-hint">${valid ? '选择重投范围 · 二者各消耗 1 次' : h(invalidHint)}</div>
+        <div class="action-buttons">
+          <button class="score-action" data-action="score-continue" ${valid ? '' : 'disabled'}>
+            <span class="action-icon"><svg><use href="#i-die"></use></svg></span>
+            <span class="action-copy"><b>计分并继续</b><em>计分后重投剩余骰子 · 消耗 1 次（剩 ${run.rerolls}）</em></span>
+            <span class="action-points">+${cont}<small>计分</small></span>
+          </button>
+          <button class="score-action primary" data-action="score-reroll" ${valid ? '' : 'disabled'}>
+            <span class="action-icon"><svg><use href="#i-cup"></use></svg></span>
+            <span class="action-copy"><b>计分并重投</b><em>计分后全部六颗骰子重新投 · 消耗 1 次</em></span>
+            <span class="action-points">+${rer}<small>计分</small></span>
+          </button>
+        </div>
+      </div>`;
+  }
+}
+
+function renderAutoButton() {
+  const run = app.run;
+  const button = $('#auto-roll');
+  if (!run) return;
+  const can = !app.busy && (run.phase === 'ready' || run.phase === 'hot' || run.phase === 'reroll-pending'
+    || (run.phase === 'dead' && run.rerolls > 0));
+  button.disabled = !can;
+  let label = '自动摇骰';
+  let sub = '点击或按空格';
+  if (run.phase === 'hot') { label = '全骰重投'; sub = '本次免费'; }
+  else if (run.phase === 'reroll-pending') {
+    label = run.flags.rerollAll ? '系统全骰重投' : '系统重投';
+    sub = `消耗 1 次 · 剩 ${run.rerolls}`;
+  } else if (run.phase === 'dead') { label = '自动重投'; sub = `消耗 1 次 · 剩 ${run.rerolls}`; }
+  else if (run.phase === 'ready') { sub = '首掷免费 · 空格'; }
+  else if (run.phase === 'selecting') { sub = '先选择骰子'; }
+  $('b', button).textContent = label;
+  $('em', button).textContent = sub;
+  button.classList.toggle('is-pulsing', run.phase === 'ready' && !app.busy);
+}
+
+function renderDangerStrip() {
+  const run = app.run;
+  const strip = $('#danger-strip');
+  if (!run) return;
+  const show = run.rerolls <= 0 && !['won', 'run-won', 'lost', 'shop', 'hot'].includes(run.phase);
+  strip.hidden = !show;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   Roll / score interactions
+   ═══════════════════════════════════════════════════════════════════ */
+function prefersReducedMotion() {
+  return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+}
+
+function cupDiceToGather(run) {
+  if (run.flags.rerollAll || run.flags.hotDice) return run.dice.slice();
+  return run.dice.filter((die) => !die.scored);
+}
+
+function dieElement(uid) {
+  return $(`.die[data-die-uid="${CSS.escape(uid)}"]`);
+}
+
+async function slowSpinTableDice(run) {
+  if (prefersReducedMotion() || run.stats.levelRolls === 0) return;
+  // All six readable dice turn on the table; the cup then takes only the
+  // ones that are actually being rerolled.
+  const elements = run.dice
+    .filter((die) => die.value != null)
+    .map((die) => dieElement(die.uid))
+    .filter(Boolean);
+  const gatherUids = new Set(cupDiceToGather(run).map((die) => die.uid));
+  if (!elements.length) return;
+  const animations = [];
+  elements.forEach((element, index) => {
+    const roller = $('.die-roller', element);
+    if (!roller) return;
+    element.classList.add('is-rerolling');
+    animations.push(roller.animate([
+      { transform: 'rotateY(0deg) translateY(0)' },
+      { transform: 'rotateY(360deg) translateY(-3px)' },
+    ], {
+      duration: 500,
+      delay: index * 20,
+      easing: 'cubic-bezier(.36,0,.3,1)',
+    }).finished.catch(() => {}));
+  });
+  await Promise.all(animations);
+  // Keep gathered dice full until they vanish into the cup. Dice that stay
+  // set aside return to their dimmed state after the spin.
+  elements.forEach((element) => {
+    if (!gatherUids.has(element.dataset.dieUid)) element.classList.remove('is-rerolling');
+  });
+}
+
+async function gatherDiceToCup(run) {
+  if (prefersReducedMotion()) return;
+  const cupImage = $('#cup-image');
+  if (!cupImage) return;
+  const cupRect = cupImage.getBoundingClientRect();
+  const mouthX = cupRect.left + cupRect.width / 2;
+  const mouthY = cupRect.top + cupRect.height * .15;
+  const elements = cupDiceToGather(run)
+    .map((die) => dieElement(die.uid))
+    .filter(Boolean);
+  const animations = [];
+  elements.forEach((element, index) => {
+    const rect = element.getBoundingClientRect();
+    const dx = mouthX - (rect.left + rect.width / 2);
+    const dy = mouthY - (rect.top + rect.height / 2);
+    element.style.pointerEvents = 'none';
+    const animation = element.animate([
+      { transform: 'translate(0, 0) scale(1) rotate(0deg)', opacity: 1 },
+      { transform: `translate(${dx * .55}px, ${dy * .35 - 24}px) scale(.72) rotate(110deg)`, opacity: 1, offset: .55 },
+      { transform: `translate(${dx}px, ${dy}px) scale(.12) rotate(240deg)`, opacity: 0 },
+    ], {
+      duration: 340,
+      delay: index * 18,
+      easing: 'cubic-bezier(.45,0,.2,1)',
+      fill: 'forwards',
+    });
+    animations.push(animation.finished.catch(() => {}));
+  });
+  await Promise.all(animations);
+  elements.forEach((element) => { element.style.opacity = '0'; });
+}
+
+function pulseCup() {
+  const cup = $('#cup');
+  if (!cup) return;
+  cup.classList.remove('is-cue');
+  void cup.offsetWidth;
+  cup.classList.add('is-cue');
+  clearTimeout(app.cupCueTimer);
+  app.cupCueTimer = setTimeout(() => cup.classList.remove('is-cue'), 1400);
+}
+
+function stopCupShake() {
+  $('#cup')?.classList.remove('is-shaking');
+}
+
+async function invertCup() {
+  const cup = $('#cup');
+  const vessel = $('#cup-vessel');
+  if (!cup || !vessel) return;
+  stopCupShake();
+  cup.classList.add('is-ritual', 'is-inverted');
+  app.cupInverted = true;
+  vessel.style.transform = 'rotate(180deg) translateY(-7px)';
+  await sleep(prefersReducedMotion() ? 30 : 300);
+}
+
+function rightCup() {
+  const cup = $('#cup');
+  const vessel = $('#cup-vessel');
+  if (!cup || !vessel) return;
+  app.cupInverted = false;
+  cup.classList.remove('is-inverted', 'is-shaking');
+  vessel.style.transform = 'rotate(0deg) translateY(0px)';
+  setTimeout(() => cup.classList.remove('is-ritual'), 380);
+}
+
+function resetCupVisuals() {
+  const cup = $('#cup');
+  const vessel = $('#cup-vessel');
+  cup?.classList.remove('is-shaking', 'is-inverted', 'is-ritual', 'is-dragging', 'is-cue');
+  if (vessel) vessel.style.transform = '';
+  app.cupInverted = false;
+  app.cupAnimating = false;
+  app.cupHoldStarted = false;
+  app.cupHoldPromise = null;
+}
+
+async function performCupRoll({ free = false, prepared = false } = {}) {
+  const run = app.run;
+  if (!run) return;
+  const previousPhase = run.phase;
+  try {
+    if (!prepared) {
+      await slowSpinTableDice(run);
+      await gatherDiceToCup(run);
+      const cup = $('#cup');
+      cup?.classList.add('is-ritual', 'is-shaking');
+      sound.rattle();
+      await sleep(prefersReducedMotion() ? 0 : 300);
+      await invertCup();
+    } else if (!app.cupInverted) {
+      await invertCup();
+    } else {
+      stopCupShake();
+    }
+    const result = Engine.rollDice(run, { free: free || run.phase === 'hot' });
+    if (!result.ok) {
+      resetCupVisuals();
+      app.busy = false;
+      app.rolling = false;
+      renderGame();
+      showToast(result.error, 'error');
+      return;
+    }
+    app.rolling = true;
+    sound.dice();
+    rightCup();
+    renderGame();
+    if (result.bust) showBustNotice(result.bust);
+    await sleep(680);
+    app.busy = false;
+    app.rolling = false;
+    app.cupAnimating = false;
+    app.cupHoldStarted = false;
+    app.cupHoldPromise = null;
+    $('#cup')?.classList.remove('is-ritual');
+    renderGame();
+    if (run.phase === 'lost') showDefeat();
+    else if (run.phase === 'dead') speakRandomTaunt(0.35);
+    else if (previousPhase !== 'hot' && Math.random() < .24) speakRandomTaunt(0.24);
+  } catch (error) {
+    console.error(error);
+    resetCupVisuals();
+    app.busy = false;
+    app.rolling = false;
+    renderGame();
+    showToast('骰桶卡住了，再试一次。', 'error');
+  }
+}
+
+function beginRoll({ free = false } = {}) {
+  if (!app.run || app.busy || app.introOpen) return;
+  const run = app.run;
+  const allowedNormal = ['ready', 'dead', 'hot', 'reroll-pending'].includes(run.phase);
+  if (!allowedNormal && !free) return;
+  if (run.phase === 'selecting' && !free) return;
+  if (run.rerolls <= 0 && run.phase !== 'hot' && run.phase !== 'ready' && !free) {
+    showToast('没有剩余重投次数。', 'error');
+    return;
+  }
+  sound.unlock();
+  app.busy = true;
+  app.rolling = false;
+  app.cupAnimating = true;
+  $('#cup')?.classList.remove('is-cue');
+  renderGame();
+  performCupRoll({ free: free || run.phase === 'hot' });
+}
+
+/**
+ * Starts the cup/shake half of a manual drag: dice gather into the cup, then
+ * the cup inverts and keeps rattling while held. Release pours and rolls.
+ */
+function startCupHold() {
+  if (!app.run || app.busy || app.introOpen) return false;
+  const run = app.run;
+  if (!['ready', 'dead', 'hot', 'reroll-pending'].includes(run.phase)) return false;
+  if (run.phase === 'dead' && run.rerolls <= 0) return false;
+  sound.unlock();
+  app.busy = true;
+  app.rolling = false;
+  app.cupInverted = false;
+  app.cupAnimating = true;
+  app.cupHoldStarted = true;
+  const cup = $('#cup');
+  cup?.classList.remove('is-shaking', 'is-inverted', 'is-cue');
+  const vessel = $('#cup-vessel');
+  if (vessel) vessel.style.transform = '';
+  renderGame();
+  cup?.classList.add('is-ritual');
+  app.cupHoldPromise = (async () => {
+    if (prefersReducedMotion()) return;
+    await slowSpinTableDice(run);
+    if (!app.cupHoldStarted) return;
+    await gatherDiceToCup(run);
+    if (!app.cupHoldStarted) return;
+    cup.classList.add('is-shaking');
+    sound.rattle();
+    await sleep(320);
+    if (!app.cupHoldStarted) return;
+    await invertCup();
+    if (!app.cupHoldStarted) {
+      resetCupVisuals();
+      return;
+    }
+    cup.classList.add('is-shaking');
+    sound.rattle();
+  })().catch((error) => {
+    console.error(error);
+    resetCupVisuals();
+    app.busy = false;
+    renderGame();
+  });
+  return true;
+}
+
+function cancelCupHold() {
+  if (!app.cupHoldStarted) return;
+  resetCupVisuals();
+  app.busy = false;
+  app.rolling = false;
+  app.cupAnimating = false;
+  renderGame();
+}
+
+function handleScore(action) {
+  if (!app.run || app.busy || app.introOpen) return;
+  const run = app.run;
+  if (run.phase !== 'selecting') return;
+  const selected = Engine.selectedDice(run);
+  if (!selected.length) { showToast('先选择要计分的骰子。'); return; }
+  const preview = Engine.getScorePreview(run);
+  if (!preview.valid) { showToast(preview.error, 'error'); return; }
+  if (action !== 'bank' && run.rerolls <= 0) { showToast('没有剩余重投次数。', 'error'); return; }
+  const rect = selected[0] ? $(`[data-die-uid="${CSS.escape(selected[0].uid)}"]`)?.getBoundingClientRect() : null;
+  const result = Engine.applyScore(run, action);
+  if (!result.ok) { showToast(result.error, 'error'); return; }
+  app.busy = true;
+  sound.score(result.total);
+  showScoreFloat(result.total, rect);
+  renderGame();
+  speakOnScore(result.total, run);
+  clearTimeout(app.rollTimer);
+  app.rollTimer = setTimeout(() => {
+    app.busy = false;
+    renderGame();
+    if (result.won || run.phase === 'won' || run.phase === 'run-won') {
+      setTimeout(() => showVictory(), 420);
+    } else if (result.hot) {
+      showHotBurst();
+      renderGame();
+    } else if (run.phase === 'lost') {
+      showDefeat();
+    } else if (result.reroll) {
+      // Do not auto-roll here. The score has been applied, but the player
+      // chooses the next throw: cup by hand or the right-side auto button.
+      pulseCup();
+    } else if (run.phase === 'dead') {
+      speakRandomTaunt(0.35);
+    }
+  }, 520);
+}
+
+function showScoreFloat(total, rect) {
+  const el = document.createElement('div');
+  el.className = 'score-float';
+  const x = rect ? rect.left + rect.width / 2 : window.innerWidth / 2;
+  const y = rect ? rect.top - 10 : window.innerHeight / 2;
+  el.style.left = `${x}px`;
+  el.style.top = `${y}px`;
+  el.innerHTML = `+${num(total)}<small>SCORE</small>`;
+  document.body.append(el);
+  setTimeout(() => el.remove(), 1400);
+}
+
+function showHotBurst() {
+  const burst = document.createElement('div');
+  burst.className = 'hot-burst';
+  burst.innerHTML = '<span>全骰 · HOT DICE</span>';
+  $('#scene')?.append(burst);
+  sound.win();
+  setTimeout(() => burst.remove(), 1700);
+}
+
+function speakOnScore(total, run) {
+  if (total >= 700 || run.score >= run.target * .75) {
+    const opponent = getOpponent(run.level);
+    const lines = opponent.taunts || [];
+    if (lines.length) setSpeech(lines[Math.floor(Math.random() * lines.length)]);
+  }
+}
+
+function speakRandomTaunt(probability = .3) {
+  if (!app.run || Math.random() > probability) return;
+  const opponent = getOpponent(app.run.level);
+  const lines = opponent.taunts || [];
+  if (lines.length) setSpeech(lines[Math.floor(Math.random() * lines.length)]);
+}
+
+function setSpeech(text) {
+  const bubble = $('#speech-bubble');
+  const textEl = $('#speech-text');
+  if (!bubble || !textEl || !text) return;
+  clearTimeout(app.speechTimer);
+  bubble.classList.add('is-changing');
+  app.speechTimer = setTimeout(() => {
+    textEl.textContent = text;
+    bubble.classList.remove('is-changing');
+  }, 180);
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   Items
+   ═══════════════════════════════════════════════════════════════════ */
+function useItem(itemId) {
+  if (!app.run || app.busy || app.introOpen) return;
+  const check = Engine.canUseItem(app.run, itemId);
+  if (!check.ok) { showToast(check.error, 'error'); return; }
+  const result = Engine.useItem(app.run, itemId);
+  if (!result.ok) { showToast(result.error, 'error'); return; }
+  sound.item();
+  showToast(`${ITEM_BY_ID[itemId].name}：${ITEM_BY_ID[itemId].desc}`, 'good');
+  renderGame();
+  if (result.rerollFree) {
+    setTimeout(() => beginRoll({ free: true }), 380);
+  } else if (app.run.phase === 'won' || app.run.phase === 'run-won') {
+    setTimeout(() => showVictory(), 620);
+  } else if (app.run.phase === 'lost') {
+    setTimeout(() => showDefeat(), 500);
+  }
+}
+
+function forfeitRun() {
+  if (!app.run || app.busy) return;
+  const result = Engine.forfeit(app.run);
+  if (!result.ok) return;
+  renderGame();
+  showDefeat();
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   Cup drag — horizontal only, exactly as the brief asks
+   ═══════════════════════════════════════════════════════════════════ */
+function bindCupDrag() {
+  const cup = $('#cup');
+  if (!cup) return;
+  let dragging = false;
+  let pointerId = null;
+  let startX = 0;
+  let dx = 0;
+
+  const canDrag = () => app.run && !app.busy && !app.introOpen
+    && (app.run.phase === 'ready' || app.run.phase === 'hot' || app.run.phase === 'reroll-pending'
+      || (app.run.phase === 'dead' && app.run.rerolls > 0));
+
+  cup.addEventListener('pointerdown', (event) => {
+    if (!canDrag()) return;
+    event.preventDefault();
+    sound.unlock();
+    dragging = true;
+    pointerId = event.pointerId;
+    startX = event.clientX;
+    dx = 0;
+    try { cup.setPointerCapture(pointerId); } catch { /* pointerup fallback below */ }
+    cup.classList.add('is-dragging');
+  });
+
+  cup.addEventListener('pointermove', (event) => {
+    if (!dragging || event.pointerId !== pointerId) return;
+    dx = clamp(event.clientX - startX, -138, 138);
+    cup.style.transform = `translateX(${dx}px) rotate(${dx * .045}deg)`;
+    if (Math.abs(dx) > 8) {
+      sound.rattle();
+      if (!app.cupHoldStarted) startCupHold();
+    }
+  });
+
+  const finish = async (event) => {
+    if (!dragging) return;
+    dragging = false;
+    cup.classList.remove('is-dragging');
+    if (pointerId != null) {
+      try {
+        if (cup.hasPointerCapture(pointerId)) cup.releasePointerCapture(pointerId);
+      } catch { /* ignore */ }
+    }
+    const moved = Math.abs(dx) >= 12 || app.cupHoldStarted;
+    dx = 0;
+    if (event?.type === 'pointercancel' && app.cupHoldStarted) {
+      cup.style.transform = '';
+      cancelCupHold();
+      return;
+    }
+    if (app.cupHoldStarted) {
+      try { await app.cupHoldPromise; } catch { /* handled in startCupHold */ }
+      cup.style.transform = '';
+      if (!app.cupHoldStarted) return;
+      await performCupRoll({ prepared: true, free: app.run?.phase === 'hot' });
+      return;
+    }
+    cup.style.transform = '';
+    if (moved) beginRoll();
+    else {
+      cup.animate([
+        { transform: 'rotate(0deg)' }, { transform: 'rotate(-4deg)' },
+        { transform: 'rotate(4deg)' }, { transform: 'rotate(0deg)' },
+      ], { duration: 280, easing: 'ease-out' });
+      showToast('左右拖动骰桶，松手投掷。');
+    }
+  };
+  cup.addEventListener('pointerup', finish);
+  cup.addEventListener('pointercancel', finish);
+  window.addEventListener('pointerup', finish);
+  window.addEventListener('pointercancel', finish);
+
+  cup.addEventListener('keydown', (event) => {
+    if (event.key === 'Enter' || event.code === 'Space') {
+      event.preventDefault();
+      if (canDrag()) beginRoll();
+    }
+  });
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   Tooltips
+   ═══════════════════════════════════════════════════════════════════ */
+let tooltipCurrent = null;
+
+function bindTooltip() {
+  const tip = $('#tooltip');
+  if (!tip) return;
+  document.addEventListener('pointerover', (event) => {
+    const el = event.target.closest('[data-die-tip],[data-item-tip],[data-set-tip],[data-barrel-tip]');
+    if (!el) return;
+    if (tooltipCurrent === el) return;
+    tooltipCurrent = el;
+    const html = tooltipFor(el);
+    if (!html) return;
+    tip.innerHTML = html;
+    tip.hidden = false;
+    positionTooltip(event);
+  });
+  document.addEventListener('pointerout', (event) => {
+    if (!tooltipCurrent) return;
+    if (event.relatedTarget && tooltipCurrent.contains(event.relatedTarget)) return;
+    const next = event.relatedTarget?.closest?.('[data-die-tip],[data-item-tip],[data-set-tip],[data-barrel-tip]');
+    if (next === tooltipCurrent) return;
+    tooltipCurrent = null;
+    tip.hidden = true;
+  });
+  document.addEventListener('pointermove', (event) => {
+    if (!tooltipCurrent || tip.hidden) return;
+    positionTooltip(event);
+  });
+  document.addEventListener('scroll', () => { tooltipCurrent = null; tip.hidden = true; }, true);
+
+  function positionTooltip(event) {
+    const pad = 16;
+    const rect = tip.getBoundingClientRect();
+    let left = event.clientX + 18;
+    let top = event.clientY + 18;
+    if (left + rect.width + pad > window.innerWidth) left = event.clientX - rect.width - 18;
+    if (top + rect.height + pad > window.innerHeight) top = window.innerHeight - rect.height - pad;
+    tip.style.left = `${Math.max(pad, left)}px`;
+    tip.style.top = `${Math.max(pad, top)}px`;
+  }
+}
+
+function hideTooltip() {
+  tooltipCurrent = null;
+  const tip = $('#tooltip');
+  if (tip) tip.hidden = true;
+}
+
+function tooltipFor(el) {
+  if (el.dataset.dieTip) return dieTooltip(el.dataset.dieTip);
+  if (el.dataset.itemTip) return itemTooltip(el.dataset.itemTip);
+  if (el.dataset.setTip) return setTooltip(el.dataset.setTip);
+  if (el.dataset.barrelTip) return barrelTooltip(el.dataset.barrelTip);
+  return '';
+}
+
+function dieTooltip(dieId) {
+  const spec = DICE_BY_ID[dieId] || STANDARD_DIE;
+  const rarity = rarityOf(spec);
+  const set = spec.setId ? DICE_SETS[spec.setId] : null;
+  const barrel = app.run ? Engine.getBarrel(app.run) : BARRELS[0];
+  const probs = Engine.effectiveProbs(spec.id, barrel.id);
+  const bars = probs.map((p, i) => {
+    const height = Math.max(3, Math.round(p * 30));
+    return `<div class="tip-prob"><i style="height:${height}px"></i><span>${i + 1}</span><em>${Math.round(p * 100)}%</em></div>`;
+  }).join('');
+  return `
+    <h5>${h(spec.name)}</h5>
+    <div class="tip-sub">${h(rarity.name)}${set ? ` · ${h(set.name)}套组` : ' · 标准骰'}</div>
+    <p>${h(spec.desc)}</p>
+    <div class="tip-probs">${bars}</div>
+    <p style="color:#756755;font-size:8px">当前骰桶「${h(barrel.name)}」修正后的点数概率</p>
+    ${spec.bonus ? `<p class="tip-bonus">${h(spec.bonus.label)}</p>` : ''}
+    ${set ? `<p style="color:#8d7c64;font-size:8px">${h(set.motto)}</p>` : ''}
+  `;
+}
+
+function itemTooltip(itemId) {
+  const item = ITEM_BY_ID[itemId];
+  if (!item) return '';
+  const rarity = rarityOf(item);
+  return `
+    <h5>${h(item.name)}</h5>
+    <div class="tip-sub">${h(rarity.name)} · ${item.type === 'active' ? '主动物品' : '被动物品'}</div>
+    <p>${h(item.desc)}</p>
+    <p class="tip-bonus">${h(item.flavor)}</p>
+  `;
+}
+
+function setTooltip(setId) {
+  const set = DICE_SETS[setId];
+  if (!set) return '';
+  const counts = app.run ? Engine.setCounts(app.run) : { [setId]: { count: 0 } };
+  const count = counts[setId]?.count || 0;
+  return `
+    <h5>${h(set.name)}套组</h5>
+    <div class="tip-sub">${count} / 4 枚 · ${h(set.motto)}</div>
+    ${set.bonuses.map((bonus) => `<p class="${count >= bonus.pieces ? 'tip-bonus' : ''}">${count >= bonus.pieces ? '✦' : '◇'} ${bonus.pieces} 件：${h(bonus.text)}</p>`).join('')}
+  `;
+}
+
+function barrelTooltip(barrelId) {
+  const barrel = BARREL_BY_ID[barrelId];
+  if (!barrel) return '';
+  return `
+    <h5>${h(barrel.name)}</h5>
+    <div class="tip-sub">${h(rarityOf(barrel).name)} · ${barrel.type === 'gesture' ? '仪式骰桶' : barrel.type === 'probability' ? '概率骰桶' : '普通骰桶'}</div>
+    <p>${h(barrel.desc)}</p>
+    ${barrel.type === 'probability' ? `<p class="tip-bonus">偏向：${h(barrel.short)}</p>` : ''}
+    ${barrel.gesture ? '<p class="tip-bonus">完成仪式后，本次投掷获得加成。</p>' : ''}
+  `;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   Overlay plumbing
+   ═══════════════════════════════════════════════════════════════════ */
+function openOverlay(html, { dismissible = true } = {}) {
+  hideTooltip();
+  clearTimeout(app.overlayTimer);
+  if (app.gestureCleanup) { app.gestureCleanup(); app.gestureCleanup = null; }
+  app.gestureReset = null;
+  const root = $('#overlay-root');
+  root.innerHTML = `<div class="overlay" data-overlay>${html}</div>`;
+  app.overlayDismissible = dismissible;
+  const overlay = $('[data-overlay]', root);
+  overlay.addEventListener('pointerdown', (event) => {
+    if (event.target === overlay && app.overlayDismissible) closeOverlay();
+  });
+  const close = $('[data-action="close-overlay"]', root);
+  if (close) close.hidden = !dismissible;
+  requestAnimationFrame(() => {
+    const focusable = $('button.primary-button, [data-action="close-overlay"]', root);
+    focusable?.focus?.({ preventScroll: true });
+  });
+}
+
+function closeOverlay() {
+  const root = $('#overlay-root');
+  if (!root) return;
+  const overlay = $('.overlay', root);
+  if (!overlay) return;
+  app.overlayDismissible = false;
+  if (app.gestureCleanup) { app.gestureCleanup(); app.gestureCleanup = null; }
+  app.gestureReset = null;
+  overlay.classList.add('is-closing');
+  const shop = $('.shop-screen');
+  if (shop) shop.style.pointerEvents = 'none';
+  clearTimeout(app.overlayTimer);
+  app.overlayTimer = setTimeout(() => {
+    root.innerHTML = '';
+    if (shop) shop.style.pointerEvents = '';
+    app.pendingReplace = null;
+  }, 220);
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   Victory / defeat
+   ═══════════════════════════════════════════════════════════════════ */
+function showVictory() {
+  if (!app.run || app.resultShown) return;
+  app.resultShown = true;
+  const run = app.run;
+  const opponent = getOpponent(run.level);
+  const table = getTable(run.level);
+  const isFinal = run.phase === 'run-won' || run.level >= LEVEL_COUNT;
+  const reward = run.levelReward || { total: projectedReward(), bonuses: [] };
+  sound.win();
+  if (isFinal) {
+    const summary = Engine.runSummary(run);
+    openOverlay(`
+      <div class="modal result-modal">
+        <div class="result-sigil"><svg><use href="#i-spark"></use></svg></div>
+        <p class="modal-kicker">THE HOUSE HAS FALLEN</p>
+        <h2>天穹已破</h2>
+        <p class="result-sub">你击败了钻石天使，赢下了整座天国骰局。</p>
+        <p class="result-quote">“${h(opponent.win)}”</p>
+        <div class="result-score">
+          <div><span>通关关卡</span><b>15 / 15</b></div>
+          <div><span>最高单次计分</span><b>${num(summary.bestHit)}</b></div>
+          <div><span>银币</span><b><svg><use href="#i-coin"></use></svg>${num(summary.coins)}</b></div>
+        </div>
+        <div class="reward-breakdown">
+          <span>秘骰 ${run.bag.length} 枚</span>
+          <span>主动物品 ${run.activeItems.length}</span>
+          <span>被动物品 ${run.passiveItems.length}</span>
+          <span>重投 ${summary.rolls} 次落骰</span>
+        </div>
+        <div class="modal-actions">
+          <button class="secondary-button" data-action="confirm-home">返回首页</button>
+          <button class="primary-button" data-action="restart-run">再来一局 <svg><use href="#i-restart"></use></svg></button>
+        </div>
+      </div>
+    `, { dismissible: false });
+    return;
+  }
+  const next = run.level + 1;
+  const nextTable = getTable(next);
+  openOverlay(`
+    <div class="modal result-modal">
+      <div class="result-sigil"><svg><use href="#i-spark"></use></svg></div>
+      <p class="modal-kicker">TABLE CLEARED · ${h(table.subtitle)}</p>
+      <h2>${getLevelConfig(run.level).boss ? '庄家败北' : '本关告捷'}</h2>
+      <p class="result-sub">${h(opponent.name)}放下了骰子。第 ${run.level} 关达成。</p>
+      <p class="result-quote">“${h(opponent.win)}”</p>
+      <div class="result-score">
+        <div><span>本关得分</span><b>${num(run.score)}</b></div>
+        <div><span>目标</span><b>${num(run.target)}</b></div>
+        <div><span>奖励</span><b><svg><use href="#i-coin"></use></svg>${num(reward.total)}</b></div>
+      </div>
+      ${reward.bonuses?.length ? `<div class="reward-breakdown">${reward.bonuses.map((b) => `<span>${h(b.label)} <b>+${num(b.value)}</b></span>`).join('')}</div>` : ''}
+      ${getLevelConfig(run.level).boss ? '<div class="reward-breakdown"><span style="border-color:rgba(217,180,106,.3);color:#e2c887">夺下庄家徽记 <b>后续重投上限 +1</b></span></div>' : ''}
+      <p class="result-sub" style="font-size:10px;margin-top:-5px">下一站：${h(nextTable.name)} · 第 ${next} 关</p>
+      <div class="modal-actions">
+        <button class="primary-button" data-action="go-shop">前往市集 <svg><use href="#i-shop"></use></svg></button>
+      </div>
+    </div>
+  `, { dismissible: false });
+}
+
+function showDefeat() {
+  if (!app.run || app.resultShown) return;
+  app.resultShown = true;
+  const run = app.run;
+  const opponent = getOpponent(run.level);
+  sound.lose();
+  openOverlay(`
+    <div class="modal result-modal loss">
+      <div class="result-sigil"><svg><use href="#i-skull"></use></svg></div>
+      <p class="modal-kicker">THE HOUSE COLLECTS</p>
+      <h2>赌局结束</h2>
+      <p class="result-sub">${h(opponent.name)}收走了桌上的银币。你没能达到 ${num(run.target)} 分。</p>
+      <p class="result-quote">“${h(opponent.taunts?.[0] || opponent.intro)}”</p>
+      <div class="result-score">
+        <div><span>本关得分</span><b>${num(run.score)}</b></div>
+        <div><span>目标</span><b>${num(run.target)}</b></div>
+        <div><span>剩余银币</span><b><svg><use href="#i-coin"></use></svg>${num(run.coins)}</b></div>
+      </div>
+      <p class="result-sub" style="font-size:10px">卷土重来会保留骰子、骰桶与物品，但会失去一半银币。</p>
+      <div class="modal-actions">
+        <button class="secondary-button" data-action="confirm-home">离开赌桌</button>
+        <button class="secondary-button" data-action="restart-run">重新开始</button>
+        <button class="primary-button" data-action="retry-level">卷土重来 <svg><use href="#i-restart"></use></svg></button>
+      </div>
+    </div>
+  `, { dismissible: false });
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   Shop
+   ═══════════════════════════════════════════════════════════════════ */
+function openShopScreen() {
+  closeOverlay();
+  app.shopOpen = true;
+  let screen = $('.shop-screen');
+  if (screen) screen.remove();
+  screen = document.createElement('section');
+  screen.className = 'shop-screen';
+  document.body.append(screen);
+  renderShopScreen();
+}
+
+function closeShopScreen() {
+  $('.shop-screen')?.remove();
+  app.shopOpen = false;
+}
+
+function renderShopScreen() {
+  if (!app.run || !app.run.shop) return;
+  const screen = $('.shop-screen');
+  if (!screen) return;
+  const bodyScroll = $('.shop-body', screen)?.scrollTop || 0;
+  const run = app.run;
+  const shop = run.shop;
+  const nextLevel = run.level + 1;
+  const nextTable = getTable(nextLevel);
+  const reward = run.levelReward?.total ?? projectedReward();
+  const discount = Engine.setCounts(run).crown?.count >= 2;
+
+  screen.innerHTML = `
+    <header class="shop-head">
+      <div class="shop-title">
+        <div class="shop-title-icon"><svg><use href="#i-shop"></use></svg></div>
+        <div><h2>行商帐篷</h2><p>第 ${run.level} 关之后 · 下一站 ${h(nextTable.name)}</p></div>
+      </div>
+      <div class="shop-head-right">
+        <div class="shop-coin"><svg><use href="#i-coin"></use></svg>${num(run.coins)}<span>银币</span></div>
+        <button class="ghost-button" data-action="open-rules"><svg><use href="#i-help"></use></svg><span>规则</span></button>
+      </div>
+    </header>
+    <div class="shop-body">
+      <div class="shop-intro">
+        <p><b>“看一看，摸一摸，别问来路。”</b> 每关之间只有一次市集。骰子、骰桶和物品会改变你下一关能走多远。${discount ? '<span style="color:#d9b46a"> 王冠套组已让价格降低。</span>' : ''}</p>
+        <span class="rail-note">本关奖励已入袋：<b style="color:#e5c278">${num(reward)}</b> 银币</span>
+      </div>
+      <div class="shop-zones">
+        ${shopZone('dice', '骰子', '默认 2 枚 · 购入后替换骰袋中的骰子', shop.dice, renderDiceShopCard)}
+        ${shopZone('barrel', '骰桶', '默认 1 只 · 立即替换当前骰桶', shop.barrel, renderBarrelShopCard)}
+        ${shopZone('item', '物品', '默认 3 件 · 主动物品栏上限 4', shop.item, renderItemShopCard)}
+      </div>
+    </div>
+    <footer class="shop-footer">
+      <div class="loadout-strip">
+        <span class="loadout-label">当前骰袋</span>
+        <div class="loadout-dice">${run.bag.map((entry) => {
+          const spec = Engine.getDieSpec(entry.dieId);
+          return `<span class="mini-die rarity-${spec.rarity} ${spec.demon ? 'is-demon' : ''}" data-pips="${spec.demon ? '魔' : (spec.setId ? spec.name[0] : '骰')}" title="${h(spec.name)}"></span>`;
+        }).join('')}</div>
+        <span class="loadout-label" style="margin-left:8px">骰桶</span>
+        <div class="barrel-thumb" style="width:25px;height:32px"><img src="assets/cups/${Engine.getBarrel(run).art}.svg" alt=""></div>
+        <div class="loadout-items">${run.activeItems.concat(run.passiveItems).map((id) => `<img src="assets/items/${ITEM_BY_ID[id].icon}.svg" alt="${h(ITEM_BY_ID[id].name)}" title="${h(ITEM_BY_ID[id].name)}">`).join('')}</div>
+      </div>
+      <div class="shop-continue">
+        <button class="primary-button" data-action="leave-shop">前往第 ${nextLevel} 关 · ${h(nextTable.name)} <svg><use href="#i-arrow"></use></svg></button>
+      </div>
+    </footer>
+  `;
+  const body = $('.shop-body', screen);
+  if (body) body.scrollTop = bodyScroll;
+}
+
+function shopZone(section, title, subtitle, entries, cardRenderer) {
+  const cost = Engine.refreshCost(app.run, section);
+  const cards = entries.length
+    ? entries.map((entry, index) => cardRenderer(entry, index)).join('')
+    : `<div class="empty-stock"><svg><use href="#i-lock"></use></svg><span>这一栏已经空了。<br>${section === 'barrel' ? '你已收集所有骰桶。' : '没有更多货品。'}</span></div>`;
+  return `
+    <section class="shop-zone">
+      <header class="shop-zone-head">
+        <div><h3>${h(title)}</h3><p>${h(subtitle)}</p></div>
+        <button class="refresh-button" data-action="refresh-shop" data-section="${section}" ${app.run.coins < cost ? 'disabled' : ''}>
+          <svg><use href="#i-restart"></use></svg>刷新 <b>${cost}</b>
+        </button>
+      </header>
+      <div class="shop-grid ${section}">${cards}</div>
+    </section>`;
+}
+
+function renderDiceShopCard(entry, index) {
+  if (!entry || !entry.id) return emptyShopCard();
+  const spec = DICE_BY_ID[entry.id];
+  if (!spec) return emptyShopCard();
+  const rarity = rarityOf(spec);
+  const set = spec.setId ? DICE_SETS[spec.setId] : null;
+  const price = Engine.shopPrice(app.run, spec.price);
+  const affordable = app.run.coins >= price;
+  const full = app.run.bag.length >= Engine.getDiceCapacity(app.run);
+  const probs = Engine.effectiveProbs(spec.id, Engine.getBarrel(app.run).id);
+  const bars = probabilityBars(probs, spec.rarity);
+  return `
+    <article class="shop-card ${entry.sold ? 'is-sold' : ''}" style="--rarity:${rarity.color};--glow:${rarity.glow}">
+      <div class="card-topline"><span class="rarity-tag">${rarity.name}</span><span class="set-tag">${set ? h(set.name) + '套组' : '无套组'}</span></div>
+      <div class="card-art" data-die-tip="${h(spec.id)}">${artDieHtml(spec)}</div>
+      <h4>${h(spec.name)}</h4>
+      <div class="card-sub">${h(spec.desc)}</div>
+      ${bars}
+      ${spec.bonus ? `<div class="card-bonus">${h(spec.bonus.label)}</div>` : '<div class="card-bonus" style="opacity:.4">没有额外骰面特性</div>'}
+      <div class="card-foot">
+        <span class="price-tag"><svg><use href="#i-coin"></use></svg>${num(price)}<small>${full ? '需替换' : '购入'}</small></span>
+        <button class="buy-button" data-action="buy-die" data-index="${index}" ${entry.sold || !affordable ? 'disabled' : ''}>${affordable ? '购入' : '银币不足'}</button>
+      </div>
+      ${entry.sold ? '<span class="sold-stamp">SOLD</span>' : ''}
+    </article>`;
+}
+
+function renderBarrelShopCard(entry, index) {
+  if (!entry || !entry.id) return emptyShopCard();
+  const barrel = BARREL_BY_ID[entry.id];
+  if (!barrel) return emptyShopCard();
+  const rarity = rarityOf(barrel);
+  const price = Engine.shopPrice(app.run, barrel.price);
+  const affordable = app.run.coins >= price;
+  return `
+    <article class="shop-card ${entry.sold ? 'is-sold' : ''}" style="--rarity:${rarity.color};--glow:${rarity.glow};min-height:306px" data-barrel-tip="${h(barrel.id)}">
+      <div class="card-topline"><span class="rarity-tag">${rarity.name}</span><span class="set-tag">${barrel.type === 'gesture' ? '仪式' : barrel.type === 'probability' ? '概率' : '普通'}</span></div>
+      <div class="card-art"><img class="art-cup" src="assets/cups/${barrel.art}.svg" alt="${h(barrel.name)}"></div>
+      <h4>${h(barrel.name)}</h4>
+      <div class="card-sub">${h(barrel.short)}</div>
+      <div class="card-desc">${h(barrel.desc)}</div>
+      <div class="card-foot">
+        <span class="price-tag"><svg><use href="#i-coin"></use></svg>${num(price)}<small>换上</small></span>
+        <button class="buy-button" data-action="buy-barrel" data-index="${index}" ${entry.sold || !affordable ? 'disabled' : ''}>${affordable ? '换上' : '银币不足'}</button>
+      </div>
+      ${entry.sold ? '<span class="sold-stamp">SOLD</span>' : ''}
+    </article>`;
+}
+
+function renderItemShopCard(entry, index) {
+  if (!entry || !entry.id) return emptyShopCard();
+  const item = ITEM_BY_ID[entry.id];
+  if (!item) return emptyShopCard();
+  const rarity = rarityOf(item);
+  const price = Engine.shopPrice(app.run, item.price);
+  const affordable = app.run.coins >= price;
+  const full = item.type === 'active' && app.run.activeItems.length >= Engine.ACTIVE_ITEM_SLOTS;
+  return `
+    <article class="shop-card ${entry.sold ? 'is-sold' : ''}" style="--rarity:${rarity.color};--glow:${rarity.glow};min-height:306px" data-item-tip="${h(item.id)}">
+      <div class="card-topline"><span class="rarity-tag">${rarity.name}</span><span class="set-tag">${item.type === 'active' ? '主动' : '被动'}</span></div>
+      <div class="card-art"><img src="assets/items/${item.icon}.svg" alt="${h(item.name)}" style="width:64px;height:64px"></div>
+      <h4>${h(item.name)}</h4>
+      <div class="card-sub">${item.type === 'active' ? '主动物品 · 每关一次' : '被动物品 · 永久生效'}</div>
+      <div class="card-desc">${h(item.desc)}</div>
+      <div class="card-foot">
+        <span class="price-tag"><svg><use href="#i-coin"></use></svg>${num(price)}<small>购入</small></span>
+        <button class="buy-button" data-action="buy-item" data-index="${index}" ${entry.sold || !affordable || full ? 'disabled' : ''}>${full ? '栏位已满' : affordable ? '购入' : '银币不足'}</button>
+      </div>
+      ${entry.sold ? '<span class="sold-stamp">SOLD</span>' : ''}
+    </article>`;
+}
+
+function emptyShopCard() {
+  return '<div class="empty-stock"><svg><use href="#i-lock"></use></svg><span>空货位</span></div>';
+}
+
+function artDieHtml(spec) {
+  const demon = spec.demon;
+  const probs = spec.probs || STANDARD_DIE.probs;
+  const bestFace = probs.indexOf(Math.max(...probs)) + 1;
+  const positions = PIP_MAP[bestFace] || [4];
+  return `<div class="art-die ${demon ? 'is-demon' : ''}" style="background:${demoDieGradient(spec)};border-color:${demon ? 'rgba(212,94,79,.72)' : 'rgba(255,255,255,.4)'}">
+    <div class="mini-pips">${Array.from({ length: 9 }, (_, i) => positions.includes(i) ? `<span class="mini-pip" style="grid-row:${Math.floor(i / 3) + 1};grid-column:${(i % 3) + 1};${demon ? 'background:#b95c50' : ''}"></span>` : '').join('')}</div>
+  </div>`;
+}
+
+function demoDieGradient(spec) {
+  if (spec.demon) return 'linear-gradient(145deg,#5b2323,#1b0c0d)';
+  if (spec.rarity === 'legendary') return 'linear-gradient(145deg,#f7e4ad,#a9792e)';
+  if (spec.rarity === 'epic') return 'linear-gradient(145deg,#e4d2eb,#83649d)';
+  if (spec.rarity === 'rare') return 'linear-gradient(145deg,#d6e7ed,#6d95a6)';
+  return 'linear-gradient(145deg,#ead7b3,#b99b6f)';
+}
+
+function probabilityBars(probs, rarity) {
+  return `<div class="prob-bars">${probs.map((p, i) => {
+    const height = Math.max(3, Math.round(p * 34));
+    return `<div class="prob-bar" style="--rarity:${rarityOf({ rarity }).color}"><i style="height:${height}px"></i><span>${i + 1}</span><em>${Math.round(p * 100)}%</em></div>`;
+  }).join('')}</div>`;
+}
+
+function refreshShop(section) {
+  if (!app.run) return;
+  const result = Engine.refreshSection(app.run, section);
+  if (!result.ok) { showToast(result.error, 'error'); return; }
+  sound.click();
+  renderShopScreen();
+  showToast(`刷新${Engine.sectionLabel(section)}，花费 ${result.cost} 银币。`);
+}
+
+function buyDie(index) {
+  if (!app.run) return;
+  const result = Engine.buyDie(app.run, index);
+  if (!result.ok) {
+    if (result.needReplace) {
+      app.pendingReplace = { index, die: result.die, price: result.price };
+      showReplaceModal();
+    } else {
+      showToast(result.error, 'error');
+    }
+    return;
+  }
+  sound.item();
+  renderShopScreen();
+  showToast(`购入「${result.die.name}」，花费 ${result.price} 银币。`, 'good');
+}
+
+function buyBarrel(index) {
+  if (!app.run) return;
+  const result = Engine.buyBarrel(app.run, index);
+  if (!result.ok) { showToast(result.error, 'error'); return; }
+  sound.item();
+  renderShopScreen();
+  showToast(`换上「${result.barrel.name}」。`, 'good');
+}
+
+function buyItem(index) {
+  if (!app.run) return;
+  const result = Engine.buyItem(app.run, index);
+  if (!result.ok) { showToast(result.error, 'error'); return; }
+  sound.item();
+  renderShopScreen();
+  showToast(`购入「${result.item.name}」，花费 ${result.price} 银币。`, 'good');
+}
+
+function showReplaceModal() {
+  if (!app.run || !app.pendingReplace) return;
+  const { die, price } = app.pendingReplace;
+  const options = app.run.bag.map((entry) => {
+    const spec = Engine.getDieSpec(entry.dieId);
+    const rarity = rarityOf(spec);
+    return `
+      <button class="replace-option" data-action="confirm-replace" data-bag-uid="${h(entry.uid)}">
+        <div class="art-die" style="background:${demoDieGradient(spec)};width:45px;height:45px;margin:5px auto 7px;border-radius:8px"></div>
+        <b>${h(spec.name)}</b><span>${rarity.name}${spec.setId ? ` · ${DICE_SETS[spec.setId].name}` : ''}</span>
+      </button>`;
+  }).join('');
+  openOverlay(`
+    <div class="modal" style="width:min(620px,100%);padding:36px 38px">
+      <p class="modal-kicker">DICE BAG FULL</p>
+      <h2 class="modal-title" style="font-size:28px;margin-top:5px">骰袋已满</h2>
+      <p class="modal-text" style="margin-top:8px">要购入「${h(die.name)}」（${num(price)} 银币），请选择一枚被替换的骰子。被替换的骰子将离开本局。</p>
+      <div class="replace-grid">${options}</div>
+      <div class="modal-actions"><button class="secondary-button" data-action="cancel-replace">取消</button></div>
+    </div>
+  `, { dismissible: true });
+}
+
+function confirmReplace(bagUid) {
+  if (!app.run || !app.pendingReplace) return;
+  const { index } = app.pendingReplace;
+  const result = Engine.buyDie(app.run, index, bagUid);
+  if (!result.ok) { showToast(result.error, 'error'); return; }
+  app.pendingReplace = null;
+  closeOverlay();
+  sound.item();
+  renderShopScreen();
+  showToast(`购入「${result.die.name}」并替换了旧骰。`, 'good');
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   Gesture minigame
+   ═══════════════════════════════════════════════════════════════════ */
+function openGesture() {
+  if (!app.run || app.busy) return;
+  const barrel = Engine.getBarrel(app.run);
+  if (!barrel.gesture) return;
+  if (app.run.flags.gestureUsedThisThrow) { showToast('本次投掷已经完成过仪式。'); return; }
+  if (barrel.gesture === 'circle' && app.run.flags.vortexUsed) { showToast('旋涡桶的额外重投每关只能获得一次。'); return; }
+  closeOverlay();
+  const isStar = barrel.gesture === 'pentagram';
+  const nodes = isStar ? starNodes() : [];
+  const nodeHtml = nodes.map((node, i) => `<span class="gesture-node" data-node="${i}" style="left:${node.x}%;top:${node.y}%"><i></i><b style="position:absolute;font-size:7px;transform:rotate(-45deg);color:inherit">${node.order + 1}</b></span>`).join('');
+  openOverlay(`
+    <div class="modal gesture-modal">
+      <div class="gesture-head">
+        <p class="modal-kicker">RITUAL OF ${isStar ? 'THE FIVE POINTS' : 'THE VORTEX'}</p>
+        <h2>${isStar ? '五芒星仪式' : '旋涡仪式'}</h2>
+        <p>${isStar ? '依次连接五颗星点：顶 → 右下 → 左上 → 右上 → 左下 → 回到顶。' : '从任意位置开始，顺时针画满一整圈。'}完成后，本次投掷获得加成。</p>
+      </div>
+      <div class="gesture-board-wrap">
+        <div class="gesture-board" id="gesture-board">
+          <canvas id="gesture-canvas"></canvas>
+          <div class="gesture-guide"></div>
+          <div class="gesture-center-mark"></div>
+          <div class="gesture-nodes">${nodeHtml}</div>
+        </div>
+      </div>
+      <div class="gesture-status" id="gesture-status">${isStar ? '从任意星点开始，沿五角星描线。' : '在圆盘内顺时针画一圈。'}</div>
+      <div class="gesture-actions">
+        <button class="secondary-button" data-action="gesture-reset">重新描绘</button>
+        <button class="secondary-button" data-action="close-overlay">先不画</button>
+      </div>
+    </div>
+  `, { dismissible: true });
+  requestAnimationFrame(() => initGestureBoard(isStar, nodes));
+}
+
+function starNodes() {
+  const positions = [
+    { x: 50, y: 9 }, { x: 90, y: 37 }, { x: 76, y: 87 }, { x: 24, y: 87 }, { x: 10, y: 37 },
+  ];
+  // Star path order: top -> lower-right -> upper-left -> upper-right -> lower-left.
+  const order = [0, 2, 4, 1, 3];
+  return positions.map((pos, index) => ({ ...pos, index, order: order.indexOf(index) }));
+}
+
+function initGestureBoard(isStar, nodes) {
+  const board = $('#gesture-board');
+  const canvas = $('#gesture-canvas');
+  if (!board || !canvas) return;
+  const status = $('#gesture-status');
+  const ctx = canvas.getContext('2d');
+  const dpr = Math.min(2, window.devicePixelRatio || 1);
+  let drawing = false;
+  let points = [];
+  let nodeHits = [];
+  let totalPositive = 0;
+  let totalNegative = 0;
+  let lastAngle = null;
+  let radiusSamples = [];
+  let finished = false;
+
+  const resize = () => {
+    const rect = board.getBoundingClientRect();
+    canvas.width = Math.round(rect.width * dpr);
+    canvas.height = Math.round(rect.height * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    redraw();
+  };
+  const localPoint = (event) => {
+    const rect = board.getBoundingClientRect();
+    return { x: event.clientX - rect.left, y: event.clientY - rect.top, w: rect.width, h: rect.height };
+  };
+  const redraw = () => {
+    const rect = board.getBoundingClientRect();
+    ctx.clearRect(0, 0, rect.width, rect.height);
+    if (points.length < 2) return;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.strokeStyle = 'rgba(255,216,137,.9)';
+    ctx.shadowColor = 'rgba(255,193,86,.8)';
+    ctx.shadowBlur = 14;
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(points[0].x, points[0].y);
+    for (let i = 1; i < points.length; i += 1) ctx.lineTo(points[i].x, points[i].y);
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+    ctx.strokeStyle = 'rgba(255,239,195,.4)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+  };
+  const reset = () => {
+    if (finished) return;
+    points = [];
+    nodeHits = [];
+    totalPositive = 0;
+    totalNegative = 0;
+    lastAngle = null;
+    radiusSamples = [];
+    $$('.gesture-node', board).forEach((node) => node.classList.remove('is-lit'));
+    status.textContent = isStar ? '从任意星点开始，沿五角星描线。' : '在圆盘内顺时针画一圈。';
+    status.className = 'gesture-status';
+    redraw();
+  };
+  app.gestureReset = reset;
+  window.addEventListener('resize', resize);
+
+  const registerNodeHits = (point) => {
+    if (!isStar) return;
+    for (const node of nodes) {
+      const nx = (node.x / 100) * point.w;
+      const ny = (node.y / 100) * point.h;
+      const distance = Math.hypot(point.x - nx, point.y - ny);
+      if (distance < 38) {
+        if (nodeHits.at(-1) !== node.index) {
+          nodeHits.push(node.index);
+          const el = $(`.gesture-node[data-node="${node.index}"]`, board);
+          el?.classList.add('is-lit');
+          sound.tone(520 + node.order * 55, .1, 'sine', .015);
+        }
+      }
+    }
+  };
+
+  const pointerDown = (event) => {
+    if (finished) return;
+    event.preventDefault();
+    drawing = true;
+    points = [];
+    nodeHits = [];
+    totalPositive = 0;
+    totalNegative = 0;
+    lastAngle = null;
+    radiusSamples = [];
+    $$('.gesture-node', board).forEach((node) => node.classList.remove('is-lit'));
+    const point = localPoint(event);
+    points.push(point);
+    registerNodeHits(point);
+    board.setPointerCapture(event.pointerId);
+    redraw();
+  };
+  const pointerMove = (event) => {
+    if (!drawing) return;
+    event.preventDefault();
+    const point = localPoint(event);
+    const prev = points.at(-1);
+    if (prev && Math.hypot(point.x - prev.x, point.y - prev.y) < 2) return;
+    points.push(point);
+    registerNodeHits(point);
+    if (!isStar) {
+      const cx = point.w / 2;
+      const cy = point.h / 2;
+      const dx = point.x - cx;
+      const dy = point.y - cy;
+      const radius = Math.hypot(dx, dy);
+      radiusSamples.push(radius);
+      const angle = Math.atan2(dy, dx);
+      if (lastAngle != null) {
+        let delta = angle - lastAngle;
+        while (delta > Math.PI) delta -= Math.PI * 2;
+        while (delta < -Math.PI) delta += Math.PI * 2;
+        if (delta > 0) totalPositive += delta;
+        else totalNegative += Math.abs(delta);
+      }
+      lastAngle = angle;
+    }
+    redraw();
+  };
+  const pointerUp = (event) => {
+    if (!drawing) return;
+    drawing = false;
+    if (board.hasPointerCapture?.(event.pointerId)) board.releasePointerCapture(event.pointerId);
+    if (isStar) evaluateStar(); else evaluateCircle();
+  };
+
+  function evaluateStar() {
+    const seq = nodeHits.slice();
+    if (seq.length >= 5) {
+      const complete = starSequenceValid(seq);
+      if (complete) {
+        finishSuccess('五芒星闭合，星辉落在骰面上。');
+      } else {
+        finishFail('星线没有依次穿过所有星点。再试一次。');
+      }
+    } else {
+      finishFail('星线还未完成，需要连接全部五颗星点。');
+    }
+  }
+
+  function evaluateCircle() {
+    const minRadius = board.getBoundingClientRect().width * .2;
+    const maxRadius = board.getBoundingClientRect().width * .48;
+    const inBand = radiusSamples.length && radiusSamples.every((r) => r >= minRadius * .65 && r <= maxRadius * 1.1);
+    if (totalPositive >= Math.PI * 1.55 && totalNegative < totalPositive * .35 && inBand) {
+      finishSuccess('旋涡闭合，骰桶开始自行转动。');
+    } else if (totalNegative > totalPositive) {
+      finishFail('方向反了。顺时针再画一次。');
+    } else {
+      finishFail('圈还没有画满。保持在一个圆上，顺时针画一整圈。');
+    }
+  }
+
+  function finishSuccess(message) {
+    if (finished) return;
+    finished = true;
+    status.textContent = message;
+    status.className = 'gesture-status is-success';
+    sound.gesture();
+    const result = Engine.applyGesture(app.run, isStar ? 'pentagram' : 'circle');
+    setTimeout(() => {
+      if (result.ok) {
+        closeOverlay();
+        renderGame();
+        showToast(result.message, 'good');
+      } else {
+        finished = false;
+        status.textContent = result.error;
+        status.className = 'gesture-status is-fail';
+      }
+    }, 850);
+  }
+  function finishFail(message) {
+    status.textContent = message;
+    status.className = 'gesture-status is-fail';
+    points = [];
+    nodeHits = [];
+    totalPositive = 0;
+    totalNegative = 0;
+    lastAngle = null;
+    redraw();
+    $$('.gesture-node', board).forEach((node) => node.classList.remove('is-lit'));
+  }
+
+  board.addEventListener('pointerdown', pointerDown);
+  board.addEventListener('pointermove', pointerMove);
+  board.addEventListener('pointerup', pointerUp);
+  board.addEventListener('pointercancel', pointerUp);
+  resize();
+  app.gestureCleanup = () => window.removeEventListener('resize', resize);
+}
+
+function starSequenceValid(seq) {
+  const unique = seq.filter((value, index) => value !== seq[index - 1]);
+  if (unique.length < 5) return false;
+  const first = unique[0];
+  const cycle = [];
+  let index = unique.indexOf(first);
+  if (index === -1) return false;
+  for (let i = 0; i < 5; i += 1) {
+    cycle.push(unique[(index + i) % unique.length]);
+  }
+  const pattern = [0, 2, 4, 1, 3];
+  const reversePattern = [...pattern].reverse();
+  const rotations = (arr) => Array.from({ length: 5 }, (_, r) => arr.map((_, i) => arr[(i + r) % 5]).join(','));
+  return rotations(pattern).includes(cycle.join(',')) || rotations(reversePattern).includes(cycle.join(','));
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   Rules
+   ═══════════════════════════════════════════════════════════════════ */
+function openRules() {
+  if (app.introOpen) app.introOpen = false;
+  const rows = SCORING_ROWS.map((row) => `<tr><td>${h(row.label)}<br><span style="font-size:8px;color:#6f6352">${h(row.detail)}</span></td><td>${h(row.points)}</td></tr>`).join('');
+  openOverlay(`
+    <div class="modal rules-modal">
+      <button class="modal-close" data-action="close-overlay" aria-label="关闭"><svg><use href="#i-close"></use></svg></button>
+      <div class="rules-head">
+        <div>
+          <p class="modal-kicker">THE RULES OF THE TABLE</p>
+          <h2>赌桌规矩</h2>
+          <p>采用《天国：拯救 2》的骰子计分。每关有目标分数，用六颗骰子和五次重投去够到它。没被计分的骰子才能重投；当六颗骰子全部计分，会触发“全骰”，六颗一起免费重投。</p>
+        </div>
+      </div>
+      <div class="rules-columns">
+        <div class="rules-section">
+          <h3>计分组合</h3>
+          <table class="scoring-table">${rows}</table>
+          <div class="rules-note">一次计分必须把所选骰子全部纳入合法组合。1 和 5 可以单颗计分；其他点数至少三颗才能计分。所有组合取最高合法分值。</div>
+          <h3 style="margin-top:18px">一掷的流程</h3>
+          <p>1. 摇动骰桶或点击自动摇骰。<br>2. 点击选择要计分的骰子。<br>3. 选择「计分并继续」，计分后把选中骰放一边、重投剩余骰子；或「计分并重投」，计分后把全部六颗骰子重新投。两者各消耗 1 次重投。<br>4. 六颗骰子全部计分会触发「全骰」，免费重投全部骰子。<br>5. 没有重投次数时，按钮变为「计分并结算」，得分后本关结束。</p>
+          <div class="rules-note">开局有 5 次重投。每击败一位庄家，你会夺下他的徽记：后续关卡重投上限 +1。门房还会送你一枚每关都能使用的幸运币。</div>
+        </div>
+        <div class="rules-section">
+          <h3>五位庄家</h3>
+          ${BOSSES.map((boss) => `
+            <div class="rule-boss">
+              <b>${h(boss.name)}<span>${h(boss.title)} · 第 ${boss.level} 关</span></b>
+              <p>${h(boss.effectName)}：${h(boss.effectDesc)}</p>
+            </div>`).join('')}
+          <h3 style="margin-top:16px">装备与市集</h3>
+          <p>骰子有各自的点数概率与套组效果，20 枚秘骰分为普通、稀有、史诗、传说。鼠标移到骰子上查看六面概率。骰桶分为概率偏向与仪式加成两类，点「画阵」完成星阵或旋涡，能为本次投掷争取优势。</p>
+          <p>每关之后进入市集：骰子区默认 2 件、骰桶区 1 件、物品区 3 件，刷新均需银币。主动物品每关恢复一次，被动物品永久生效。</p>
+          <div class="rules-note">提示：空格投掷，数字键 1 / 2 分别使用「计分并继续」「计分并重投」。“计分并继续”会触发金冠赌王的抽成。</div>
+        </div>
+      </div>
+      <div class="rules-footer">
+        <span>“运气是赌桌上唯一诚实的谎言。”</span>
+        <button class="primary-button" data-action="close-overlay">看懂了</button>
+      </div>
+    </div>
+  `, { dismissible: true });
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   Compendium
+   ═══════════════════════════════════════════════════════════════════ */
+function openCompendium(tab = app.compendiumTab) {
+  if (app.introOpen) app.introOpen = false;
+  app.compendiumTab = tab;
+  const tabs = [
+    ['dice', '秘骰 20'], ['barrels', '骰桶 6'], ['items', '物品 10'], ['tables', '赌桌 5'], ['bosses', '庄家与小兵'],
+  ];
+  openOverlay(`
+    <div class="modal compendium-modal">
+      <button class="modal-close" data-action="close-overlay" aria-label="关闭"><svg><use href="#i-close"></use></svg></button>
+      <header class="compendium-head">
+        <div><p class="modal-kicker">THE GAMBLER'S ARCHIVE</p><h2>赌徒图鉴</h2><p>五张桌子，二十枚秘骰，六只骰桶，十件物品，以及坐在对面的那些东西。</p></div>
+        <span class="rail-note">收录内容 · 可随时查阅</span>
+      </header>
+      <div class="compendium-tabs">${tabs.map(([id, label]) => `<button class="compendium-tab ${id === tab ? 'is-active' : ''}" data-action="switch-compendium-tab" data-tab="${id}">${h(label)}</button>`).join('')}</div>
+      <div class="compendium-body" id="compendium-body">${compendiumBody(tab)}</div>
+    </div>
+  `, { dismissible: true });
+}
+
+function switchCompendiumTab(tab) {
+  hideTooltip();
+  app.compendiumTab = tab;
+  $$('.compendium-tab').forEach((el) => el.classList.toggle('is-active', el.dataset.tab === tab));
+  const body = $('#compendium-body');
+  if (body) body.innerHTML = compendiumBody(tab);
+}
+
+function compendiumBody(tab) {
+  if (tab === 'dice') {
+    return `<p class="compendium-intro">每一枚秘骰都像一张有偏向的牌：点数概率不同，且归属于五个套组之一。同套组集齐 2 枚与 4 枚会解锁额外效果。</p>
+      <div class="compendium-grid">${DICE.map((spec) => {
+        const rarity = rarityOf(spec);
+        const set = DICE_SETS[spec.setId];
+        const bars = probabilityBars(spec.probs, spec.rarity);
+        return `<article class="compendium-card compendium-die" style="--rarity:${rarity.color};--glow:${rarity.glow}" data-die-tip="${h(spec.id)}">
+          <div class="card-topline"><span class="rarity-tag">${rarity.name}</span><span class="set-tag">${h(set.name)}套组</span></div>
+          <div class="comp-art"><div class="card-art" style="height:74px">${artDieHtml(spec)}</div></div>
+          <h4>${h(spec.name)}</h4>
+          <div class="comp-sub">${h(spec.desc)}</div>
+          ${bars}
+          <p>${h(spec.bonus?.label || spec.flavor)}</p>
+        </article>`;
+      }).join('')}</div>`;
+  }
+  if (tab === 'barrels') {
+    return `<p class="compendium-intro">骰桶决定骰子怎样离手。三只偏向特定点数，两只要求你先在桌上画出一个仪式。默认的旧橡木桶不偏不倚。</p>
+      <div class="compendium-grid">${BARRELS.map((barrel) => {
+        const rarity = rarityOf(barrel);
+        return `<article class="compendium-card barrel-compendium" style="--rarity:${rarity.color};--glow:${rarity.glow}" data-barrel-tip="${h(barrel.id)}">
+          <div class="card-topline"><span class="rarity-tag">${rarity.name}</span><span class="set-tag">${barrel.type === 'gesture' ? '仪式' : barrel.type === 'probability' ? '概率' : '普通'}</span></div>
+          <div class="comp-art"><img src="assets/cups/${barrel.art}.svg" alt="${h(barrel.name)}"></div>
+          <h4>${h(barrel.name)}</h4>
+          <div class="comp-sub">${h(barrel.short)}</div>
+          <p>${h(barrel.desc)}</p>
+        </article>`;
+      }).join('')}</div>`;
+  }
+  if (tab === 'items') {
+    return `<p class="compendium-intro">八件主动物品，两件被动物品。主动物品每关恢复一次，不占用骰子，但会占用你的判断力。</p>
+      <div class="compendium-grid">${ITEMS.map((item) => {
+        const rarity = rarityOf(item);
+        return `<article class="compendium-card item-compendium" style="--rarity:${rarity.color};--glow:${rarity.glow}" data-item-tip="${h(item.id)}">
+          <div class="card-topline"><span class="rarity-tag">${rarity.name}</span><span class="set-tag">${item.type === 'active' ? '主动' : '被动'}</span></div>
+          <div class="comp-art"><img src="assets/items/${item.icon}.svg" alt="${h(item.name)}"></div>
+          <h4>${h(item.name)}</h4>
+          <div class="comp-sub">${h(item.desc)}</div>
+          <p>${h(item.flavor)}</p>
+        </article>`;
+      }).join('')}</div>`;
+  }
+  if (tab === 'tables') {
+    return `<p class="compendium-intro">五张赌桌，五种材质。关卡越深，桌面越昂贵，坐在对面的东西也越不像人。每张桌子都由三名对手看守：两名小兵，一名庄家。</p>
+      <div class="compendium-grid tables-grid">
+        ${TABLES.map((table) => `<article class="compendium-card table-comp-card" style="--rarity:${table.accent};--glow:${table.glow};min-height:280px;overflow:hidden">
+          <div class="comp-table-bg" style="background-image:url('assets/tables/${table.art}.svg')"></div>
+          <div class="comp-table-content">
+            <div class="comp-sub">第 ${table.group * 3 + 1}–${table.group * 3 + 3} 关 · ${h(table.material)}</div>
+            <h4>${h(table.name)}</h4>
+            <p style="color:${table.accent};font-size:9px;margin-top:3px">${h(table.subtitle)}</p>
+            <p>${h(table.desc)}</p>
+          </div>
+        </article>`).join('')}
+      </div>`;
+  }
+  if (tab === 'bosses') {
+    return `<p class="compendium-intro">每一位庄家都有一句自己的规矩。前两关由小兵看守，第三关庄家亲自落座。击败他们，桌子就会换成下一种材质。</p>
+      <h3 style="font-family:var(--serif);font-weight:400;font-size:18px;color:#e4cd9f;margin:8px 0 12px;letter-spacing:.1em">五位庄家</h3>
+      <div class="compendium-grid bosses-grid">
+        ${BOSSES.map((boss) => `<article class="compendium-card boss-compendium-card" style="--rarity:${boss.accent};--glow:${boss.accent}33">
+          <img class="comp-portrait" src="assets/portraits/${boss.art}.svg" alt="${h(boss.name)}">
+          <div class="comp-content">
+            <div class="comp-sub">第 ${boss.level} 关 · ${h(boss.title)}</div>
+            <h4>${h(boss.name)}</h4>
+            <div class="effect"><b>${h(boss.effectName)}</b><p>${h(boss.effectDesc)}</p></div>
+            <p style="color:#8f7f69;font-size:8px">“${h(boss.intro)}”</p>
+          </div>
+        </article>`).join('')}
+      </div>
+      <h3 style="font-family:var(--serif);font-weight:400;font-size:18px;color:#e4cd9f;margin:22px 0 12px;letter-spacing:.1em">五位小兵</h3>
+      <div class="compendium-grid minions-grid">
+        ${MINIONS.map((minion) => `<article class="compendium-card" style="--rarity:${minion.accent};--glow:${minion.accent}22;overflow:hidden;min-height:250px">
+          <img src="assets/portraits/${minion.art}.svg" alt="${h(minion.name)}" style="position:absolute;right:-8%;bottom:-2%;width:78%;opacity:.62;-webkit-mask-image:linear-gradient(180deg,#000 65%,transparent);mask-image:linear-gradient(180deg,#000 65%,transparent)">
+          <div style="position:relative;z-index:2;max-width:64%">
+            <div class="comp-sub">${h(minion.title)}</div>
+            <h4>${h(minion.name)}</h4>
+            <p style="font-size:8px">“${h(minion.intro)}”</p>
+          </div>
+        </article>`).join('')}
+      </div>`;
+  }
+  return '';
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   Toast
+   ═══════════════════════════════════════════════════════════════════ */
+function showToast(text, type = '') {
+  const stack = $('#toast-stack');
+  if (!stack) return;
+  const toast = document.createElement('div');
+  toast.className = `toast ${type ? `is-${type}` : ''}`;
+  toast.textContent = text;
+  stack.append(toast);
+  setTimeout(() => toast.classList.add('is-out'), 2400);
+  setTimeout(() => toast.remove(), 2800);
+}
+
+function clearToasts() {
+  const stack = $('#toast-stack');
+  if (stack) stack.innerHTML = '';
+}
+
+function introLine(opponent, level, isBoss) {
+  if (isBoss) return opponent.intro;
+  const chapterSlot = (level - 1) % 3;
+  if (chapterSlot === 0) return opponent.intro;
+  return opponent.taunts[(chapterSlot - 1) % opponent.taunts.length] || opponent.intro;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   Debug / testing hooks (harmless in production)
+   ═══════════════════════════════════════════════════════════════════ */
+window.HeavensDice = {
+  get run() { return app.run; },
+  get app() { return app; },
+  Engine,
+  start: startRun,
+  roll: beginRoll,
+  score: handleScore,
+  render: renderGame,
+  setup: setupLevelScene,
+  intro: showLevelIntro,
+  shop: openShopScreen,
+  victory: showVictory,
+  defeat: showDefeat,
+  openCompendium,
+  openRules,
+  showVictory,
+  showDefeat,
+  setLevel(level) {
+    if (!app.run) return false;
+    app.run.level = clamp(Number(level) || 1, 1, LEVEL_COUNT);
+    app.run.shop = null;
+    Engine.initLevel(app.run);
+    setupLevelScene(true);
+    renderGame();
+    return true;
+  },
+};
