@@ -61,6 +61,15 @@ await js(`window.HeavensDice.setLevel(15); window.HeavensDice.render()`); await 
 await js(`(() => { const r=window.HeavensDice.run; r.phase='selecting'; r.dice.forEach((d,i)=>{d.value=[3,3,3,2,4,6][i];d.blank=false;d.scored=false}); r.selected=r.dice.slice(0,3).map(d=>d.uid); window.HeavensDice.render(); })()`); await sleep(250);
 reports.seraph = await js(`({boss:document.querySelector('#opponent-name')?.textContent,preview:document.querySelector('#combo-preview')?.innerText,total:window.HeavensDice.Engine.getScorePreview(window.HeavensDice.run).total,rerolls:window.HeavensDice.run.rerolls})`);
 
+await js(`window.HeavensDice.setLevel(2); window.HeavensDice.render()`); await sleep(300);
+await js(`(() => { const r=window.HeavensDice.run; if(!r.activeItems.includes('boss_ward')) r.activeItems.push('boss_ward'); r.itemCharges.boss_ward=1; r.phase='ready'; window.HeavensDice.render(); })()`); await sleep(250);
+reports.wardOwned = await js(`({slot:!!document.querySelector('[data-action="use-item"][data-item-id="boss_ward"]'),label:document.querySelector('[data-action="use-item"][data-item-id="boss_ward"]')?.innerText})`);
+await js(`document.querySelector('[data-action="use-item"][data-item-id="boss_ward"]').click()`); await sleep(350);
+reports.wardArmed = await js(`({armed:window.HeavensDice.run.bossWardArmed,owned:window.HeavensDice.run.activeItems.includes('boss_ward'),toast:document.querySelector('.toast')?.textContent})`);
+await js(`window.HeavensDice.setLevel(3); window.HeavensDice.render()`); await sleep(350);
+reports.wardBoss = await js(`({disabled:window.HeavensDice.run.flags.bossDisabled,effectKey:window.HeavensDice.Engine.bossEffectKey(window.HeavensDice.run),status:document.querySelector('#boss-effect-desc')?.textContent})`);
+await shot('boss-ward', '33-boss-ward.png');
+
 reports.errors = events.filter((e) => e.method === 'Runtime.exceptionThrown' || (e.method === 'Log.entryAdded' && e.params.entry.level === 'error')).map((e) => e.params.exceptionDetails?.exception?.description || e.params.entry?.text);
 console.log(JSON.stringify(reports, null, 2));
 ws.close(); edge.kill();

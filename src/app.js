@@ -1823,7 +1823,7 @@ function itemTooltip(itemId) {
   const rarity = rarityOf(item);
   return `
     <h5>${h(item.name)}</h5>
-    <div class="tip-sub">${h(rarity.name)} · ${item.type === 'active' ? '主动物品' : '被动物品'}</div>
+    <div class="tip-sub">${h(rarity.name)} · ${item.consumable ? '一次性物品' : item.type === 'active' ? '主动物品' : '被动物品'}</div>
     <p>${h(item.desc)}</p>
     <p class="tip-bonus">${h(item.flavor)}</p>
   `;
@@ -2083,7 +2083,7 @@ function renderSellShelf(run) {
     return `<article class="sell-card" style="--rarity:${rarity.color}">
       <img src="assets/items/${item.icon}.svg" alt="${h(item.name)}">
       <div class="sell-copy">
-        <div class="sell-tags"><span>${item.type === 'active' ? '主动' : '被动'}</span><b>${rarity.name}</b></div>
+        <div class="sell-tags"><span>${item.consumable ? '一次性' : item.type === 'active' ? '主动' : '被动'}</span><b>${rarity.name}</b></div>
         <strong>${h(item.name)}</strong>
         <em>${check.ok ? `半价回收 +${price}` : h(check.error)}</em>
       </div>
@@ -2180,7 +2180,7 @@ function renderItemShopCard(entry, index) {
       <div class="card-topline"><span class="rarity-tag">${rarity.name}</span><span class="set-tag">${item.type === 'active' ? '主动' : '被动'}</span></div>
       <div class="card-art"><img src="assets/items/${item.icon}.svg" alt="${h(item.name)}" style="width:64px;height:64px"></div>
       <h4>${h(item.name)}</h4>
-      <div class="card-sub">${item.type === 'active' ? '主动物品 · 每关一次' : '被动物品 · 永久生效'}</div>
+      <div class="card-sub">${item.consumable ? '一次性物品 · 使用后消失' : item.type === 'active' ? '主动物品 · 每关一次' : '被动物品 · 永久生效'}</div>
       <div class="card-desc">${h(item.desc)}</div>
       <div class="card-foot">
         <span class="price-tag"><svg><use href="#i-coin"></use></svg>${num(price)}<small>购入</small></span>
@@ -2719,7 +2719,7 @@ function tutorialHtml() {
         <div class="tut-cards">
           <div class="tut-card"><b>骰桶 · 6 只</b><p>初始橡木桶之外，3 只概率桶偏向某些点数，2 只仪式桶需要画阵。五芒星每关只能生效一次，要依次穿过五个星点；旋涡要顺时针画满约 288°。拖动骰桶的横向范围覆盖整张桌面。</p></div>
           <div class="tut-card"><b>骰子 · 20 枚</b><p>2 普通、10 稀有、5 史诗、3 传说。每枚骰子有自己的六面概率与套组；悬停可查看真实概率。同套组 2 / 4 件会触发套组奖励。</p></div>
-          <div class="tut-card"><b>物品 · 11 件</b><p>8 主动、3 被动。主动物品每关恢复一次；被动物品永久生效。丰饶骰袋 +1 骰、裂痕骰袋 -1 骰但计分 +25%，这两件整局各只能获取一次。幸运币开局自带，每关可用一次，立即 +150 分。</p></div>
+          <div class="tut-card"><b>物品 · 12 件</b><p>9 主动、3 被动。主动物品每关恢复一次；被动物品永久生效。丰饶骰袋 +1 骰、裂痕骰袋 -1 骰但计分 +25%，这两件整局各只能获取一次。幸运币开局自带，每关可用一次，立即 +150 分。静默赦令可以消除下一场庄家被动。</p></div>
           <div class="tut-card"><b>市集</b><p>每关之后进入：骰子 2 件、骰桶 1 件、物品 3 件。每次刷新都消耗银币；随身物品可以半价卖回，出售后不会再次上架。</p></div>
           <div class="tut-card"><b>赌桌 · 5 张</b><p>木头、青石、黑铁、黄金、钻石。每三关换一张桌子；从第 3 关起，庄家隔关落座。</p></div>
         </div>
@@ -2836,7 +2836,7 @@ function openCompendium(tab = app.compendiumTab) {
   }
   app.compendiumTab = tab;
   const tabs = [
-    ['dice', '秘骰 20'], ['barrels', '骰桶 8'], ['items', '物品 11'], ['tables', '赌桌 5'], ['bosses', '庄家与小兵'],
+    ['dice', '秘骰 20'], ['barrels', '骰桶 8'], ['items', `物品 ${ITEMS.length}`], ['tables', '赌桌 5'], ['bosses', '庄家与小兵'],
   ];
   openOverlay(`
     <div class="modal compendium-modal">
@@ -2904,12 +2904,12 @@ function compendiumBody(tab) {
       }).join('')}</div>`;
   }
   if (tab === 'items') {
-    return `<p class="compendium-intro">八件主动物品，三件被动物品。主动物品每关恢复一次，不占用骰子，但会占用你的判断力。丰饶骰袋与裂痕骰袋整局各只能获取一次。${compendiumProgress('items', ITEMS.length)}</p>
+    return `<p class="compendium-intro">九件主动物品，三件被动物品。主动物品每关恢复一次；静默赦令是一次性消耗品。丰饶骰袋与裂痕骰袋整局各只能获取一次。${compendiumProgress('items', ITEMS.length)}</p>
       <div class="compendium-grid">${ITEMS.map((item) => {
         if (!isDiscovered('items', item.id)) return compendiumLockedCard('这件物品');
         const rarity = rarityOf(item);
         return `<article class="compendium-card item-compendium" style="--rarity:${rarity.color};--glow:${rarity.glow}" data-item-tip="${h(item.id)}">
-          <div class="card-topline"><span class="rarity-tag">${rarity.name}</span><span class="set-tag">${item.type === 'active' ? '主动' : '被动'}</span></div>
+          <div class="card-topline"><span class="rarity-tag">${rarity.name}</span><span class="set-tag">${item.consumable ? '一次性' : item.type === 'active' ? '主动' : '被动'}</span></div>
           <div class="comp-art"><img src="assets/items/${item.icon}.svg" alt="${h(item.name)}"></div>
           <h4>${h(item.name)}</h4>
           <div class="comp-sub">${h(item.desc)}</div>

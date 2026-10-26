@@ -7,6 +7,7 @@ import {
   openShop, refreshSection, getBarrel, BASE_REROLLS, advanceLevel,
   buildScore, syncBag, getScorePreview, hasItemEverBeenTaken,
   activeBoss, isBossDieBlocked, handTypeOf, sellItem, canSellItem, itemSellPrice,
+  bossEffectKey,
 } from '../src/engine.js';
 import { makeRng } from '../src/engine.js';
 
@@ -416,6 +417,47 @@ test('selling a dice capacity passive keeps the bag legal', () => {
   assert.equal(canSellItem(state, 'dice_bag').ok, true);
   assert.equal(sellItem(state, 'dice_bag').ok, true);
   assert.equal(getDiceCapacity(state), 6);
+});
+
+test('non-unique items can be reacquired, unique items cannot', () => {
+  const state = fresh();
+  state.phase = 'shop';
+  state.coins = 500;
+  state.acquiredItemIds = ['glove', 'dice_bag'];
+  state.shop = { item: [
+    { kind: 'item', id: 'glove', sold: false },
+    { kind: 'item', id: 'dice_bag', sold: false },
+  ] };
+  assert.equal(buyItem(state, 0).ok, true);
+  assert.equal(buyItem(state, 1).ok, false);
+  assert.equal(state.activeItems.includes('glove'), true);
+});
+
+test('the one-shot boss ward cancels the next boss or the current boss before the first throw', () => {
+  const armed = fresh();
+  armed.level = 2;
+  initLevel(armed);
+  armed.activeItems.push('boss_ward');
+  armed.itemCharges.boss_ward = 1;
+  const use = useItem(armed, 'boss_ward');
+  assert.equal(use.ok, true);
+  assert.equal(armed.activeItems.includes('boss_ward'), false);
+  assert.equal(armed.bossWardArmed, true);
+  armed.level = 3;
+  initLevel(armed);
+  assert.equal(armed.flags.bossDisabled, true);
+  assert.equal(bossEffectKey(armed), null);
+
+  const direct = fresh();
+  direct.level = 13;
+  initLevel(direct);
+  direct.activeItems.push('boss_ward');
+  direct.itemCharges.boss_ward = 1;
+  const before = direct.rerolls;
+  assert.equal(useItem(direct, 'boss_ward').ok, true);
+  assert.equal(direct.flags.bossDisabled, true);
+  assert.equal(direct.rerolls, before + 1);
+  assert.equal(direct.activeItems.includes('boss_ward'), false);
 });
 
 test('boss roster covers seven levels and seven effects', () => {

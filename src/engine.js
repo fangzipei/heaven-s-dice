@@ -132,6 +132,7 @@ function resetLevelFlags(state) {
     rerollAll: false,
     bossLastType: null,
     bossLockedType: null,
+    bossDisabled: false,
   };
 }
 
@@ -140,10 +141,16 @@ export function activeBoss(state) {
   return getOpponent(state.level);
 }
 
+export function bossEffectKey(state) {
+  const boss = activeBoss(state);
+  if (!boss || state.flags?.bossDisabled) return null;
+  return boss.effectKey;
+}
+
 export function isBossDieBlocked(state, die) {
   if (!die) return true;
   if (die.blank) return true;
-  return activeBoss(state)?.effectKey === 'noSix' && die.value === 6;
+  return bossEffectKey(state) === 'noSix' && die.value === 6;
 }
 
 function scorableDice(state) {
@@ -178,15 +185,16 @@ export function handTypeName(type) {
 
 export function bossTypeStatus(state, type) {
   const boss = activeBoss(state);
-  if (!boss || !type) return { blocked: false, note: '' };
-  if (boss.effectKey === 'noRepeatType') {
+  const effectKey = bossEffectKey(state);
+  if (!boss || !type || !effectKey) return { blocked: false, note: '' };
+  if (effectKey === 'noRepeatType') {
     const last = state.flags?.bossLastType;
     return {
       blocked: Boolean(last && last === type),
       note: last ? `上一手为「${handTypeName(last)}」，本手不能重复。` : '第一手不受限制。',
     };
   }
-  if (boss.effectKey === 'singleTypeOnly') {
+  if (effectKey === 'singleTypeOnly') {
     const locked = state.flags?.bossLockedType;
     return {
       blocked: Boolean(locked && locked !== type),
@@ -199,14 +207,16 @@ export function bossTypeStatus(state, type) {
 export function bossStatusText(state) {
   const boss = activeBoss(state);
   if (!boss) return '';
-  if (boss.effectKey === 'blankNinth') {
+  if (state.flags?.bossDisabled) return '庄家效果已被静默赦令消除';
+  const effectKey = bossEffectKey(state);
+  if (effectKey === 'blankNinth') {
     const remainder = 9 - ((state.bossDiceRolled || 0) % 9);
     return `距离下一颗白骰还有 ${remainder} 颗`;
   }
-  if (boss.effectKey === 'noRepeatType') {
+  if (effectKey === 'noRepeatType') {
     return state.flags?.bossLastType ? `上一手：${handTypeName(state.flags.bossLastType)}` : '尚未计分';
   }
-  if (boss.effectKey === 'singleTypeOnly') {
+  if (effectKey === 'singleTypeOnly') {
     return state.flags?.bossLockedType ? `已锁定：${handTypeName(state.flags.bossLockedType)}` : '尚未锁定骰型';
   }
   return '';
@@ -234,11 +244,17 @@ export function initLevel(state) {
   for (const itemId of state.activeItems) {
     state.itemCharges[itemId] = ITEM_BY_ID[itemId]?.charges ?? 1;
   }
+  const opponent = getOpponent(state.level);
+  if (config.boss && state.bossWardArmed) {
+    state.bossWardArmed = false;
+    state.flags.bossDisabled = true;
+    pushLog(state, `静默赦令生效：${opponent.name} 的「${opponent.effectName}」被消除。`, 'good');
+  }
+  const effectKey = state.flags.bossDisabled ? null : opponent.effectKey;
   let rerolls = BASE_REROLLS + (state.bossBoons || 0);
   if (hasSetTier(state, 'raven', 2)) rerolls += 1;
-  const opponent = getOpponent(state.level);
-  if (config.boss && opponent.effectKey === 'rerollMinus') rerolls -= 1;
-  if (config.boss && opponent.effectKey === 'scoreTaxReroll') rerolls += 1;
+  if (config.boss && effectKey === 'rerollMinus') rerolls -= 1;
+  if (config.boss && effectKey === 'scoreTaxReroll') rerolls += 1;
   state.rerolls = Math.max(1, rerolls);
   state.maxRerolls = state.rerolls;
   state.levelStartRerolls = rerolls;
@@ -274,6 +290,7 @@ export function createRun({ rng = Math.random } = {}) {
     maxRerolls: BASE_REROLLS,
     phase: 'ready',
     bossBoons: 0,
+    bossWardArmed: false,
     flags: {},
     itemCharges: {},
     history: [],
@@ -355,14 +372,15 @@ export function buildScore(state, action = 'reroll') {
   }
 
   const boss = activeBoss(state);
+  const bossEffect = bossEffectKey(state);
   let scoringBase = analysis.base;
   let bossNote = '';
   let voided = false;
-  if (boss?.effectKey === 'minTripleScore') {
+  if (bossEffect === 'minTripleScore') {
     const eligible = analysis.combos.filter((combo) => combo.type === 'straight' || (combo.type === 'nkind' && combo.count >= 3));
     scoringBase = eligible.reduce((sum, combo) => sum + combo.points, 0);
     if (!eligible.length) bossNote = '本关只有 3 颗及以上骰子的组合计分；这一手得 0 分。';
-  } else if (boss?.effectKey === 'noRepeatType' || boss?.effectKey === 'singleTypeOnly') {
+  } else if (bossEffect === 'noRepeatType' || bossEffect === 'singleTypeOnly') {
     const type = handTypeOf(analysis);
     const status = bossTypeStatus(state, type);
     if (status.blocked) {
@@ -487,12 +505,12 @@ export function buildScore(state, action = 'reroll') {
 
   // Boss score taxes are applied after the player's own modifiers.
   let total = preBoss;
-  if (boss?.effectKey === 'scoreTaxReroll') {
+  if (bossEffect === 'scoreTaxReroll') {
     total = Math.round(total * 0.6);
     multipliers.push({ label: `${boss.name} · 四成归天`, value: 0.6 });
   }
   if (bossNote) notes.push({ label: `${boss.name} · ${bossNote}` });
-  if (voided || (boss?.effectKey === 'minTripleScore' && scoringBase === 0)) total = 0;
+  if (voided || (bossEffect === 'minTripleScore' && scoringBase === 0)) total = 0;
   if (voided) notes.push({ label: `${boss.name} · 本手不计分`, value: '×0' });
 
   const costs = [];
@@ -535,7 +553,7 @@ export function getScorePreview(state) {
 }
 
 function bossScoreAmount(state, amount) {
-  return activeBoss(state)?.effectKey === 'scoreTaxReroll' ? Math.round(amount * 0.6) : amount;
+  return bossEffectKey(state) === 'scoreTaxReroll' ? Math.round(amount * 0.6) : amount;
 }
 
 function addScore(state, amount, { round = false } = {}) {
@@ -698,8 +716,7 @@ export function rollDice(state, { free = false, rng = getRng(state) } = {}) {
   const toRoll = availableDice(state).filter((d) => d.value == null || !free || wasHot || rerollAll);
   const targets = toRoll.length ? toRoll : availableDice(state);
   const barrel = getBarrel(state);
-  const boss = activeBoss(state);
-  const blankNinth = boss?.effectKey === 'blankNinth';
+  const blankNinth = bossEffectKey(state) === 'blankNinth';
   const rollOne = (die) => {
     die.scored = false;
     die.blank = false;
@@ -770,10 +787,10 @@ export function applyScore(state, action) {
   const scoringDice = selectedDice(state);
   const scoringValues = scoringDice.map((d) => d.value);
   const total = chosen.total;
-  const boss = activeBoss(state);
-  if (boss?.effectKey === 'noRepeatType') {
+  const bossEffect = bossEffectKey(state);
+  if (bossEffect === 'noRepeatType') {
     state.flags.bossLastType = handTypeOf(chosen.analysis);
-  } else if (boss?.effectKey === 'singleTypeOnly' && !state.flags.bossLockedType) {
+  } else if (bossEffect === 'singleTypeOnly' && !state.flags.bossLockedType) {
     state.flags.bossLockedType = handTypeOf(chosen.analysis);
   }
   addScore(state, total, { round: true });
@@ -892,6 +909,20 @@ export function applyGesture(state, gesture) {
   return { ok: false, error: '未知仪式。' };
 }
 
+function disableBossEffectNow(state) {
+  const boss = activeBoss(state);
+  if (!boss || state.flags.bossDisabled) return;
+  if (boss.effectKey === 'rerollMinus') {
+    state.rerolls += 1;
+    state.maxRerolls += 1;
+  } else if (boss.effectKey === 'scoreTaxReroll') {
+    state.rerolls = Math.max(1, state.rerolls - 1);
+    state.maxRerolls = Math.max(1, state.maxRerolls - 1);
+  }
+  state.flags.bossDisabled = true;
+  pushLog(state, `静默赦令：${boss.name} 的「${boss.effectName}」被消除。`, 'good');
+}
+
 export function canUseItem(state, itemId) {
   const item = ITEM_BY_ID[itemId];
   if (!item || item.type !== 'active') return { ok: false, error: '这不是主动物品。' };
@@ -899,6 +930,14 @@ export function canUseItem(state, itemId) {
   if ((state.itemCharges[itemId] || 0) <= 0) return { ok: false, error: '本关已经使用过了。' };
   if (state.phase === 'won' || state.phase === 'run-won' || state.phase === 'lost' || state.phase === 'shop') {
     return { ok: false, error: '当前阶段不能使用物品。' };
+  }
+  if (itemId === 'boss_ward') {
+    if (state.bossWardArmed) return { ok: false, error: '下一场庄家已经被静默赦令保护。' };
+    const isBoss = getLevelConfig(state.level).boss;
+    if (isBoss && (state.flags.bossDisabled || state.stats.levelRolls > 0 || state.phase !== 'ready')) {
+      return { ok: false, error: '静默赦令只能在庄家关首掷前使用。' };
+    }
+    if (!isBoss && state.level >= LEVEL_COUNT) return { ok: false, error: '已经没有下一场庄家。' };
   }
   if (itemId === 'glove' && (state.phase !== 'selecting' || selectedDice(state).length !== 1)) {
     return { ok: false, error: '先选中恰好一颗骰子。' };
@@ -914,7 +953,15 @@ export function useItem(state, itemId) {
   if (!check.ok) return check;
   const item = ITEM_BY_ID[itemId];
 
-  if (itemId === 'lucky_coin') {
+  if (itemId === 'boss_ward') {
+    if (getLevelConfig(state.level).boss) {
+      disableBossEffectNow(state);
+      pushLog(state, '静默赦令展开：本关庄家被动当场失效。', 'good');
+    } else {
+      state.bossWardArmed = true;
+      pushLog(state, '静默赦令已封存：下一场庄家的被动将被消除。', 'good');
+    }
+  } else if (itemId === 'lucky_coin') {
     const gain = bossScoreAmount(state, 150);
     addScore(state, gain);
     pushLog(state, `幸运币翻面：+${gain} 分。`, 'item');
@@ -952,7 +999,12 @@ export function useItem(state, itemId) {
     pushLog(state, '血契签署：本关后续计分 +35%，每次计分后 -40 分。', 'item');
   }
 
-  state.itemCharges[itemId] = 0;
+  if (item.consumable) {
+    state.activeItems = state.activeItems.filter((id) => id !== itemId);
+    delete state.itemCharges[itemId];
+  } else {
+    state.itemCharges[itemId] = 0;
+  }
   finalizeStuck(state);
   return { ok: true, item };
 }
@@ -1006,8 +1058,11 @@ function barrelPool(state) {
 }
 
 function itemPool(state) {
-  const owned = new Set([...getOwnedItemIds(state), ...getAcquiredItemIds(state)]);
-  return ITEMS.filter((item) => !owned.has(item.id));
+  const owned = new Set(getOwnedItemIds(state));
+  const uniqueTaken = new Set(
+    getAcquiredItemIds(state).filter((id) => ITEM_BY_ID[id]?.unique),
+  );
+  return ITEMS.filter((item) => !owned.has(item.id) && !(item.unique && uniqueTaken.has(item.id)));
 }
 
 export function getOwnedItemIds(state) {

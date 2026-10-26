@@ -27,8 +27,8 @@ test('required dice rarity distribution and five four-piece sets', () => {
 });
 
 test('required item mix', () => {
-  assert.equal(ITEMS.length, 11);
-  assert.deepEqual(countBy(ITEMS, 'type'), { active: 8, passive: 3 });
+  assert.equal(ITEMS.length, 12);
+  assert.deepEqual(countBy(ITEMS, 'type'), { active: 9, passive: 3 });
 });
 
 test('once-only dice-capacity items are marked unique', () => {

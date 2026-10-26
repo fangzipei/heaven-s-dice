@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="120" height="120" viewBox="0 0 120 120">
+  <defs>
+    <radialGradient id="bg" cx=".5" cy=".42" r=".62">
+      <stop offset="0" stop-color="#d9c27a" stop-opacity=".3"/>
+      <stop offset="1" stop-color="#0b0907" stop-opacity=".96"/>
+    </radialGradient>
+    <linearGradient id="paper" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#f5ecd0"/><stop offset=".55" stop-color="#d9c79b"/><stop offset="1" stop-color="#a88b57"/>
+    </linearGradient>
+    <filter id="glow" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="5"/></filter>
+  </defs>
+  <circle cx="60" cy="60" r="53" fill="url(#bg)" stroke="#e4c77f" stroke-opacity=".55" stroke-width="1.5"/>
+  <circle cx="60" cy="60" r="45" fill="none" stroke="#e4c77f" stroke-opacity=".2" stroke-width="1"/>
+  <circle cx="60" cy="60" r="48" fill="none" stroke="#e4c77f" stroke-opacity=".14" stroke-width="6" stroke-dasharray="1 7"/>
+  <g transform="translate(60 60) rotate(-8)">
+    <path d="M-26 -31 L26 -31 L26 24 C26 34 16 38 0 34 C-16 38 -26 34 -26 24Z" fill="url(#paper)" stroke="#f1db9f" stroke-width="1.6"/>
+    <path d="M-26 -31 L-34 -24 L-26 -17 Z M26 -31 L34 -24 L26 -17 Z" fill="#cdb47c" stroke="#f1db9f" stroke-width="1"/>
+    <path d="M-18 -17 H18 M-18 -10 H14 M-18 -3 H17 M-18 4 H10" stroke="#77613d" stroke-width="1.4" opacity=".55"/>
+    <path d="M-14 17 L14 17" stroke="#77613d" stroke-width="1.2" opacity=".45"/>
+    <g transform="translate(0 14)">
+      <circle r="12" fill="#8d2e2a" stroke="#f2d69a" stroke-width="1.8"/>
+      <circle r="8" fill="none" stroke="#f2d69a" stroke-width=".8" opacity=".5"/>
+      <path d="M-5 -2 L-3 -7 L0 -3 L3 -7 L5 -2 L4 5 L-4 5Z" fill="none" stroke="#f8e4ae" stroke-width="1.1"/>
+      <path d="M-8 -7 L8 9" stroke="#f8e4ae" stroke-width="1.4" opacity=".85"/>
+    </g>
+  </g>
+  <g fill="#f5d68b">
+    <path d="M22 28l1.5 4 4 1.5-4 1.5-1.5 4-1.5-4-4-1.5 4-1.5z" opacity=".55"/>
+    <path d="M98 30l1.2 3.2 3.2 1.2-3.2 1.2-1.2 3.2-1.2-3.2-3.2-1.2 3.2-1.2z" opacity=".45"/>
+  </g>
+  <path d="M22 94 Q60 108 98 94" fill="none" stroke="#e4c77f" stroke-opacity=".25" stroke-width="1"/>
+</svg>
