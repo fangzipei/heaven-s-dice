@@ -1,0 +1,55 @@
+/* tests/helpers/stub-dom.mjs — 给 ui/ 渲染器用的极简 DOM 桩。
+ *
+ * 这些渲染器只用到 querySelector、textContent/innerHTML 与 classList，
+ * 不值得为它引一个 jsdom；浏览器端的真实渲染由 tools/ 的 CDP 脚本负责。
+ * 桩节点记下所有写入值，断言直接从 nodes 里读。 */
+
+function makeNode(selector) {
+  return {
+    selector,
+    textContent: '',
+    innerHTML: '',
+    hidden: false,
+    disabled: false,
+    title: '',
+    src: '',
+    className: '',
+    offsetWidth: 0,
+    children: [],
+    style: { width: '', setProperty() {} },
+    classList: {
+      toggles: [],
+      added: [],
+      removed: [],
+      toggle(name, on) { this.toggles.push(`${name}=${Boolean(on)}`); },
+      add(name) { this.added.push(name); },
+      remove(name) { this.removed.push(name); },
+    },
+    append(child) { this.children.push(child); },
+    _sub: new Map(),
+    querySelector(sub) {
+      if (!this._sub.has(sub)) this._sub.set(sub, makeNode(sub));
+      return this._sub.get(sub);
+    },
+  };
+}
+
+export function installDomStub() {
+  const nodes = new Map();
+  const nodeFor = (selector) => {
+    if (!nodes.has(selector)) nodes.set(selector, makeNode(selector));
+    return nodes.get(selector);
+  };
+  globalThis.document = {
+    querySelector: (selector) => nodeFor(selector),
+    querySelectorAll: () => [],
+    createElement: () => makeNode('created'),
+  };
+  return {
+    nodes,
+    node: nodeFor,
+    text: (selector) => nodeFor(selector).textContent,
+    html: (selector) => nodeFor(selector).innerHTML,
+    subText: (selector, sub) => nodeFor(selector).querySelector(sub).textContent,
+  };
+}

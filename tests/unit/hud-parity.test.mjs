@@ -18,42 +18,14 @@ import {
   renderItems, renderLog, renderOpponentPlate, renderRail, renderScorePanel,
   renderSets, renderTopbar, showBustNotice,
 } from '../../src/ui/hud.ts';
+import { installDomStub } from '../helpers/stub-dom.mjs';
 
-function makeNode(selector) {
-  return {
-    selector,
-    textContent: '',
-    innerHTML: '',
-    hidden: false,
-    disabled: false,
-    title: '',
-    src: '',
-    offsetWidth: 0,
-    children: [],
-    style: { width: '', setProperty() {} },
-    classList: {
-      toggles: [], added: [], removed: [],
-      toggle(name, on) { this.toggles.push(`${name}=${Boolean(on)}`); },
-      add(name) { this.added.push(name); },
-      remove(name) { this.removed.push(name); },
-    },
-    append(child) { this.children.push(child); },
-  };
-}
-
+let dom;
 let nodes;
 
 beforeAll(() => {
-  nodes = new Map();
-  const nodeFor = (selector) => {
-    if (!nodes.has(selector)) nodes.set(selector, makeNode(selector));
-    return nodes.get(selector);
-  };
-  globalThis.document = {
-    querySelector: (selector) => nodeFor(selector),
-    querySelectorAll: () => [],
-    createElement: () => makeNode('created'),
-  };
+  dom = installDomStub();
+  nodes = dom.nodes;
 });
 
 beforeAll(() => {
@@ -62,8 +34,8 @@ beforeAll(() => {
   app.rolling = false;
 });
 
-const text = (selector) => nodes.get(selector).textContent;
-const html = (selector) => nodes.get(selector).innerHTML;
+const text = (selector) => dom.text(selector);
+const html = (selector) => dom.html(selector);
 
 describe('HUD 渲染器搬到 ui/hud.ts 之后仍然写同样的文案', () => {
   test('顶栏：关卡序号与进度点', () => {
