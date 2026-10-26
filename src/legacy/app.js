@@ -9,7 +9,7 @@ import * as Engine from '../core/engine.ts';
 import { SCORING_ROWS, analyzeSelection } from '../core/scoring.ts';
 import { dieMotifSvg, dieSkinStyle } from '../render/dice-skins.ts';
 import { pipIndexes } from '../render/pip-layout.ts';
-import { motion } from './motion.js';
+import { motion } from '../render/motion.ts';
 import { sound } from '../platform/sound.ts';
 import {
   bindDiscovery, discoverLoadout, discoverShop, isDiscovered,
