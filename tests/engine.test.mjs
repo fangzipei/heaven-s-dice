@@ -7,9 +7,12 @@ import {
   openShop, refreshSection, getBarrel, BASE_REROLLS, advanceLevel,
   buildScore, syncBag, getScorePreview, hasItemEverBeenTaken,
   activeBoss, isBossDieBlocked, handTypeOf, sellItem, canSellItem, itemSellPrice,
-  bossEffectKey,
+  bossEffectKey, shopSlots, isFloatingScore,
 } from '../src/engine.js';
-import { makeRng } from '../src/engine.js';
+import { makeRng, cashOutValue } from '../src/engine.js';
+import {
+  REROLL_REFUND, overshootTier, OVERSHOOT_TIERS, LEVELS, getLevelConfig,
+} from '../src/data.js';
 
 function fresh(seed = 42) {
   return createRun({ rng: makeRng(seed) });
@@ -274,7 +277,12 @@ test('defeating a boss grants a permanent reroll boon', () => {
   assert.equal(state.phase, 'won');
   assert.equal(state.roundScore, 0);
   assert.equal(state.bossBoons, 1);
-  assert.equal(state.levelReward.total, 85);
+  // Base reward from the level table + every unspent reroll × 8 (the boss table
+  // may grant an extra token) + the 3× overshoot bounty, which 100 points
+  // against a 10 target hits.
+  assert.equal(state.levelReward.total, getLevelConfig(3).reward + state.rerolls * REROLL_REFUND + 140);
+  assert.ok(state.levelReward.bonuses.some((b) => b.label.includes('剩余重投')));
+  assert.ok(state.levelReward.bonuses.some((b) => b.label.includes('天胡')));
   openShop(state);
   leaveShop(state);
   assert.equal(state.level, 4);
@@ -311,20 +319,119 @@ test('vortex gesture grants one extra reroll per level', () => {
   assert.equal(second.ok, false);
 });
 
-test('target uses astral two-piece discount', () => {
+test('target is the level config and nothing else', () => {
   const state = fresh();
-  const base = targetForLevel(state, 8);
   state.bag[0].dieId = 'astral_dust';
   state.bag[1].dieId = 'astral_comet';
-  const discounted = targetForLevel(state, 8);
-  assert.equal(discounted, Math.ceil(base * 0.9));
+  assert.equal(targetForLevel(state, 8), LEVELS[7].target);
 });
 
-test('set-score barrel pays per selected die of its set', () => {
+test('wolf two-piece pays for every scored 3', () => {
+  const state = fresh();
+  state.bag[0].dieId = 'wolf_whelp';
+  state.bag[1].dieId = 'wolf_hunter';
+  syncBag(state);
+  initLevel(state);
+  forceRoll(state, [3, 3, 3, 1, 2, 4]);
+  state.selected = state.dice.filter((d) => d.value === 3).map((d) => d.uid);
+  const score = buildScore(state, 'reroll');
+  assert.equal(score.valid, true);
+  assert.equal(score.breakdown.base, 300);
+  assert.ok(score.breakdown.flats.some(
+    (flat) => flat.label === '狼裔 2 件 · 每颗 3 +60' && flat.value === 180,
+  ));
+});
+
+test('wolf four-piece adds the triple-three bonus', () => {
+  const state = fresh();
+  ['wolf_whelp', 'wolf_hunter', 'wolf_bloodmoon', 'wolf_alpha'].forEach((id, i) => {
+    state.bag[i].dieId = id;
+  });
+  syncBag(state);
+  initLevel(state);
+  forceRoll(state, [3, 3, 3, 1, 2, 4]);
+  state.selected = state.dice.filter((d) => d.value === 3).map((d) => d.uid);
+  const score = buildScore(state, 'reroll');
+  assert.ok(score.breakdown.flats.some(
+    (flat) => flat.label === '狼裔 4 件 · 三连 3 加成' && flat.value === 600,
+  ));
+});
+
+test('a demon joker cannot score alone but completes a triple', () => {
+  const state = fresh();
+  state.bag[0].dieId = 'demon_taxman';
+  syncBag(state);
+  initLevel(state);
+  forceRoll(state, [1, 1, 1, 2, 3, 4]);
+  state.dice[0].wild = true;
+  state.selected = [state.dice[0].uid];
+  assert.equal(buildScore(state, 'reroll').valid, false);
+  state.selected = state.dice.slice(0, 3).map((d) => d.uid);
+  const score = buildScore(state, 'reroll');
+  assert.equal(score.valid, true);
+  assert.equal(score.breakdown.base, 1000);
+});
+
+test('demon set bonus multiplies only when a joker is used', () => {
+  const state = fresh();
+  state.bag[0].dieId = 'demon_seal';
+  state.bag[1].dieId = 'demon_taxman';
+  syncBag(state);
+  initLevel(state);
+  forceRoll(state, [1, 1, 1, 2, 3, 4]);
+  state.dice[0].wild = true;
+  state.selected = state.dice.slice(0, 3).map((d) => d.uid);
+  const score = buildScore(state, 'reroll');
+  assert.ok(score.breakdown.multipliers.some((m) => m.value === 1.08));
+  assert.equal(score.total, Math.round(1000 * 1.08));
+});
+
+test('the glove turns a demon die into a joker', () => {
+  const state = fresh();
+  state.bag[0].dieId = 'demon_imp';
+  syncBag(state);
+  initLevel(state);
+  state.activeItems = ['glove'];
+  state.itemCharges.glove = 1;
+  forceRoll(state, [3, 1, 2, 4, 6, 6]);
+  state.selected = [state.dice[0].uid];
+  assert.equal(useItem(state, 'glove').ok, true);
+  assert.equal(state.dice[0].wild, true);
+  assert.equal(state.dice[0].value, 1);
+});
+
+test('face-score barrel pays per scored face plus a triple bonus', () => {
   const state = fresh();
   state.barrelId = 'wolf_totem';
-  forceRoll(state, [1, 1, 2, 3, 4, 6]);
-  // Single 1s score 100 each; only the two wolf dice should get the bonus.
+  syncBag(state);
+  initLevel(state);
+  forceRoll(state, [3, 3, 3, 1, 2, 4]);
+  state.selected = state.dice.filter((d) => d.value === 3).map((d) => d.uid);
+  const score = buildScore(state, 'reroll');
+  assert.equal(score.breakdown.base, 300);
+  assert.ok(score.breakdown.flats.some((f) => f.label.includes('狼图腾桶 · 3 颗 3') && f.value === 150));
+  assert.ok(score.breakdown.flats.some((f) => f.label.includes('狼图腾桶 · 三连 3') && f.value === 150));
+  assert.equal(score.total, 600);
+});
+
+test('wild-score barrel pays for each joker that was actually used', () => {
+  const state = fresh();
+  state.barrelId = 'demon_pact';
+  state.bag[0].dieId = 'crown_court';
+  syncBag(state);
+  initLevel(state);
+  forceRoll(state, [1, 1, 1, 2, 3, 4]);
+  state.dice[0].wild = true;
+  state.selected = state.dice.slice(0, 3).map((d) => d.uid);
+  const score = buildScore(state, 'reroll');
+  assert.equal(score.breakdown.base, 1000);
+  assert.ok(score.breakdown.flats.some((f) => f.label.includes('恶魔契桶') && f.value === 60));
+});
+
+test('face-score barrel pays nothing when its face was not scored', () => {
+  const state = fresh();
+  state.barrelId = 'wolf_totem';
+  // Single 1s score 100 each; the cup must not pay for wolf dice as such.
   state.bag[0].dieId = 'wolf_whelp';
   state.bag[1].dieId = 'wolf_bloodmoon';
   syncBag(state);
@@ -336,8 +443,7 @@ test('set-score barrel pays per selected die of its set', () => {
   const score = buildScore(state, 'reroll');
   assert.equal(score.valid, true);
   assert.equal(score.breakdown.base, 200);
-  assert.ok(score.breakdown.flats.some((flat) => flat.label.includes('狼图腾桶') && flat.value === 60));
-  assert.equal(score.total, 260);
+  assert.equal(score.total, 200);
 });
 
 test('once-only dice items cannot be taken twice, even if re-offered', () => {
@@ -392,12 +498,12 @@ test('owned items can be sold for half price only in the shop', () => {
   state.activeItems = ['glove'];
   state.itemCharges = { glove: 1 };
   state.coins = 10;
-  const expected = itemSellPrice({ price: 32 });
-  assert.equal(expected, 16);
+  const expected = itemSellPrice({ price: 65 });
+  assert.equal(expected, 32);
   assert.equal(canSellItem(state, 'glove').ok, true);
   const result = sellItem(state, 'glove');
   assert.equal(result.ok, true);
-  assert.equal(result.price, 11);
+  assert.equal(result.price, 32);
   assert.equal(state.coins, 10 + result.price);
   assert.equal(state.activeItems.includes('glove'), false);
   assert.equal(state.itemCharges.glove, undefined);
@@ -449,7 +555,7 @@ test('the one-shot boss ward cancels the next boss or the current boss before th
   assert.equal(bossEffectKey(armed), null);
 
   const direct = fresh();
-  direct.level = 13;
+  direct.level = 23; // 星税官 takes a token away, so the ward visibly hands it back
   initLevel(direct);
   direct.activeItems.push('boss_ward');
   direct.itemCharges.boss_ward = 1;
@@ -460,10 +566,10 @@ test('the one-shot boss ward cancels the next boss or the current boss before th
   assert.equal(direct.activeItems.includes('boss_ward'), false);
 });
 
-test('boss roster covers seven levels and seven effects', () => {
+test('boss roster covers eight levels and eight effects', () => {
   const state = fresh();
-  assert.deepEqual([3, 5, 7, 9, 11, 13, 15].map((level) => activeBoss({ ...state, level }).id),
-    ['rotfang', 'judge', 'soulsmith', 'ashclerk', 'gildedking', 'startax', 'seraph']);
+  assert.deepEqual([3, 6, 10, 14, 18, 23, 28, 33].map((level) => activeBoss({ ...state, level }).id),
+    ['rotfang', 'judge', 'soulsmith', 'ashclerk', 'gildedking', 'startax', 'suspensor', 'seraph']);
 });
 
 test('the rat blanks every ninth rolled die', () => {
@@ -482,7 +588,7 @@ test('the rat blanks every ninth rolled die', () => {
 
 test('the judge only lets three-die combinations score', () => {
   const state = fresh();
-  state.level = 5;
+  state.level = 6;
   initLevel(state);
   forceRoll(state, [5, 2, 3, 4, 6, 6]);
   state.selected = [state.dice[0].uid];
@@ -497,7 +603,7 @@ test('the judge only lets three-die combinations score', () => {
 
 test('the forge disables all sixes', () => {
   const state = fresh();
-  state.level = 7;
+  state.level = 10;
   initLevel(state);
   forceRoll(state, [6, 6, 1, 2, 3, 4]);
   assert.equal(isBossDieBlocked(state, state.dice[0]), true);
@@ -507,7 +613,7 @@ test('the forge disables all sixes', () => {
 
 test('the ash clerk rejects repeating the previous hand type', () => {
   const state = fresh();
-  state.level = 9;
+  state.level = 14;
   initLevel(state);
   forceRoll(state, [3, 3, 3, 2, 4, 6]);
   state.selected = state.dice.slice(0, 3).map((die) => die.uid);
@@ -521,7 +627,7 @@ test('the ash clerk rejects repeating the previous hand type', () => {
 
 test('the gilded king locks the first hand type for the level', () => {
   const state = fresh();
-  state.level = 11;
+  state.level = 18;
   initLevel(state);
   state.flags.bossLockedType = 'triple';
   forceRoll(state, [1, 2, 3, 4, 5, 6]);
@@ -532,14 +638,335 @@ test('the gilded king locks the first hand type for the level', () => {
 
 test('the star tax collector removes a reroll, the seraph taxes score and adds one', () => {
   const collector = fresh();
-  collector.level = 13;
+  collector.level = 23;
   initLevel(collector);
   assert.equal(collector.rerolls, BASE_REROLLS - 1);
   const seraph = fresh();
-  seraph.level = 15;
+  seraph.level = 33;
   initLevel(seraph);
   assert.equal(seraph.rerolls, BASE_REROLLS + 1);
   forceRoll(seraph, [3, 3, 3, 2, 4, 6]);
   seraph.selected = seraph.dice.slice(0, 3).map((die) => die.uid);
   assert.equal(buildScore(seraph, 'reroll').total, 180);
+});
+
+test('unspent rerolls cash out as coins on a level win', () => {
+  const state = fresh();
+  state.level = 1;
+  initLevel(state);
+  state.target = 100;
+  state.score = 100;
+  // Spend two of the five tokens, leave three on the table.
+  state.rerolls = 3;
+  const cash = cashOutValue(state);
+  assert.equal(cash.spare, 3);
+  assert.equal(cash.refund, 3 * REROLL_REFUND);
+  assert.equal(cash.tier, null);
+  advanceLevel(state);
+  assert.equal(state.levelReward.total, getLevelConfig(1).reward + 3 * REROLL_REFUND);
+  assert.ok(state.levelReward.bonuses.some((b) => b.label === `剩余重投 3 × ${REROLL_REFUND}`));
+});
+
+test('overshoot bounty pays the highest tier reached, not the sum of tiers', () => {
+  const state = fresh();
+  state.level = 2;
+  initLevel(state);
+  state.target = 500;
+  state.score = 1000; // exactly 2x, below the 3x tier
+  state.rerolls = 0;
+  const cash = cashOutValue(state);
+  assert.equal(cash.refund, 0);
+  assert.equal(cash.tier.key, 'sweep');
+  assert.equal(cash.tierValue, 60);
+  advanceLevel(state);
+  assert.equal(state.levelReward.total, getLevelConfig(2).reward + 60);
+  assert.equal(state.levelReward.bonuses.filter((b) => b.label.includes('目标')).length, 1);
+});
+
+test('a bare pass earns no overshoot bounty and no refund when rerolls are spent', () => {
+  const state = fresh();
+  state.level = 4;
+  initLevel(state);
+  state.target = 750;
+  state.score = 750;
+  state.rerolls = 0;
+  advanceLevel(state);
+  assert.equal(state.levelReward.total, getLevelConfig(4).reward);
+  assert.deepEqual(state.levelReward.bonuses, []);
+});
+
+/* ── one-shot consumables ─────────────────────────────────────────────── */
+
+test('courage is a one-shot that buys exactly one reroll', () => {
+  const state = fresh();
+  initLevel(state);
+  state.activeItems = ['courage'];
+  state.itemCharges.courage = 1;
+  const before = state.rerolls;
+  assert.equal(useItem(state, 'courage').ok, true);
+  assert.equal(state.rerolls, before + 1);
+  assert.equal(state.maxRerolls, before + 1);
+  assert.equal(state.activeItems.includes('courage'), false);
+  assert.equal(state.itemCharges.courage, undefined);
+});
+
+test('wager buys a reroll and marks the next score for ×1.6', () => {
+  const state = fresh();
+  initLevel(state);
+  state.activeItems = ['wager'];
+  state.itemCharges.wager = 1;
+  const before = state.rerolls;
+  assert.equal(useItem(state, 'wager').ok, true);
+  assert.equal(state.rerolls, before + 1);
+  assert.equal(state.flags.wagerMark, true);
+  assert.equal(state.activeItems.includes('wager'), false);
+
+  forceRoll(state, [1, 2, 3, 4, 6, 6]);
+  state.selected = [state.dice[0].uid];
+  assert.equal(getScorePreview(state).reroll.total, 160);
+  assert.equal(applyScore(state, 'continue').ok, true);
+  // The mark is spent, so the following hand scores face value again.
+  assert.equal(state.flags.wagerMark, false);
+  forceRoll(state, [1, 2, 3, 4, 6, 6]);
+  state.selected = [state.dice[0].uid];
+  assert.equal(getScorePreview(state).reroll.total, 100);
+});
+
+test('lucky powder pays 80, frees the reroll and vanishes', () => {
+  const state = fresh();
+  initLevel(state);
+  state.activeItems = ['powder'];
+  state.itemCharges.powder = 1;
+  rollDice(state, { rng: makeRng(7) });
+  const before = state.score;
+  const result = useItem(state, 'powder');
+  assert.equal(result.ok, true);
+  assert.equal(result.rerollFree, true);
+  assert.equal(state.score, before + 80);
+  assert.equal(state.activeItems.includes('powder'), false);
+});
+
+test('powder can only be used after a throw', () => {
+  const state = fresh();
+  initLevel(state);
+  state.activeItems = ['powder'];
+  state.itemCharges.powder = 1;
+  assert.equal(state.phase, 'ready');
+  assert.equal(canUseItem(state, 'powder').ok, false);
+  rollDice(state);
+  assert.equal(canUseItem(state, 'powder').ok, true);
+});
+
+test('salt absorbs exactly one bust and keeps the round alive', () => {
+  const state = fresh();
+  initLevel(state);
+  state.activeItems = ['salt'];
+  state.itemCharges.salt = 1;
+  assert.equal(useItem(state, 'salt').ok, true);
+  assert.equal(state.flags.saltGuard, true);
+  assert.equal(state.activeItems.includes('salt'), false);
+
+  state.score = 300;
+  state.roundScore = 100;
+  // 2 · 3 · 4 · 6 · 2 · 3 — no 1s, no 5s, no triple: a guaranteed bust.
+  const seq = [0.2, 0.35, 0.55, 0.9, 0.25, 0.4];
+  let i = 0;
+  const result = rollDice(state, { rng: () => seq[i++ % seq.length] });
+  assert.equal(result.ok, true);
+  assert.equal(result.bust, 0);
+  assert.equal(state.score, 300);
+  assert.equal(state.roundScore, 0);
+  assert.equal(state.flags.saltGuard, false);
+  assert.equal(state.lastBust.saved, 100);
+});
+
+test('a bust without salt still burns the provisional round', () => {
+  const state = fresh();
+  initLevel(state);
+  state.score = 300;
+  state.roundScore = 100;
+  const seq = [0.2, 0.35, 0.55, 0.9, 0.25, 0.4];
+  let i = 0;
+  const result = rollDice(state, { rng: () => seq[i++ % seq.length] });
+  assert.equal(result.bust, 100);
+  assert.equal(state.score, 200);
+});
+
+test('blood contract costs 100 points on every scoring action', () => {
+  const state = fresh();
+  initLevel(state);
+  state.activeItems = ['blood_contract'];
+  state.itemCharges.blood_contract = 1;
+  assert.equal(useItem(state, 'blood_contract').ok, true);
+  forceRoll(state, [1, 2, 3, 4, 6, 6]);
+  state.selected = [state.dice[0].uid];
+  const before = state.score;
+  assert.equal(applyScore(state, 'continue').ok, true);
+  // A bare ace scores 100, the contract adds +35% (135), then bills 100: 35.
+  assert.equal(state.score, before + Math.round(100 * 1.35) - 100);
+  assert.ok(state.log.some((entry) => entry.text.includes('血契') && entry.text.includes('100')));
+});
+
+/* ── shelf passives ───────────────────────────────────────────────────── */
+
+test('shelf passives each open one extra shop slot', () => {
+  const state = fresh();
+  assert.deepEqual(shopSlots(state), { dice: 2, barrel: 1, item: 3 });
+  state.passiveItems = ['shelf_dice'];
+  assert.equal(shopSlots(state).dice, 3);
+  state.passiveItems = ['shelf_barrel'];
+  assert.equal(shopSlots(state).barrel, 2);
+  state.passiveItems = ['shelf_item'];
+  assert.equal(shopSlots(state).item, 4);
+});
+
+test('a shelf passive really stocks the extra offer', () => {
+  const bare = fresh();
+  createShop(bare);
+  assert.equal(bare.shop.dice.length, 2);
+  assert.equal(bare.shop.barrel.length, 1);
+  assert.equal(bare.shop.item.length, 3);
+
+  const stocked = fresh();
+  stocked.passiveItems = ['shelf_dice', 'shelf_barrel', 'shelf_item'];
+  createShop(stocked);
+  assert.equal(stocked.shop.dice.length, 3);
+  assert.equal(stocked.shop.barrel.length, 2);
+  assert.equal(stocked.shop.item.length, 4);
+});
+
+/* ── any-triple dice ──────────────────────────────────────────────────── */
+
+test('any-triple dice pay whenever three of a kind lands', () => {
+  const state = fresh();
+  state.bag[0].dieId = 'even_twin';
+  syncBag(state);
+  initLevel(state);
+  forceRoll(state, [2, 2, 2, 1, 5, 6]);
+  state.selected = state.dice.slice(0, 3).map((die) => die.uid);
+  const score = buildScore(state, 'reroll');
+  assert.equal(score.valid, true);
+  assert.ok(score.breakdown.flats.some((flat) => flat.value === 520),
+    '双生骰 should add 520 on any triple');
+
+  // No triple, no bonus.
+  forceRoll(state, [2, 2, 1, 1, 5, 6]);
+  state.selected = state.dice.filter((die) => die.value === 1 || die.value === 5).map((die) => die.uid);
+  const flat = buildScore(state, 'reroll');
+  assert.ok(!flat.breakdown.flats.some((entry) => entry.value === 520));
+});
+
+/* ── 悬秤人：漂浮分 ───────────────────────────────────────────────────── */
+
+test('the suspensor keeps every point floating between throws', () => {
+  const state = fresh();
+  state.level = 28;
+  initLevel(state);
+  assert.equal(activeBoss(state).id, 'suspensor');
+  assert.equal(isFloatingScore(state), true);
+
+  forceRoll(state, [1, 5, 2, 3, 4, 6]);
+  state.selected = state.dice.filter((die) => die.value === 1).map((die) => die.uid);
+  applyScore(state, 'continue');
+  assert.equal(state.score, 100);
+  assert.equal(state.roundScore, 100, '整笔分数都押在桌上');
+
+  // 普通关里下一掷会把上一轮“确认”，漂浮关不会。
+  const seq = [0, 0, 0, 0, 0, 0]; // 六个 1：必定可计分
+  let i = 0;
+  state.phase = 'ready';
+  state.rerolls = 4;
+  rollDice(state, { free: true, rng: () => seq[i++ % seq.length] });
+  assert.equal(state.phase, 'selecting');
+  assert.equal(state.score, 100);
+  assert.equal(state.roundScore, 100, '掷出可计分的面也不确认漂浮分');
+
+  state.selected = state.dice.map((die) => die.uid);
+  applyScore(state, 'continue');
+  assert.equal(state.score, 1000 * 8 + 100, '六颗 1 = 8000，加上先前的 100');
+  assert.equal(state.roundScore, state.score);
+});
+
+test('a bust under the suspensor scatters the whole table', () => {
+  const state = fresh();
+  state.level = 28;
+  initLevel(state);
+  state.score = 250;
+  state.stats.levelScore = 250;
+  state.roundScore = 250;
+
+  // 2 · 3 · 4 · 6 · 2 · 3：没有 1、没有 5、没有三连——必翻。
+  const seq = [0.2, 0.35, 0.55, 0.9, 0.25, 0.4];
+  let i = 0;
+  state.phase = 'ready';
+  state.rerolls = 4;
+  const result = rollDice(state, { free: true, rng: () => seq[i++ % seq.length] });
+  assert.equal(result.bust, 250);
+  assert.equal(state.score, 0, '整桌清零，不只是本轮');
+  assert.equal(state.lastBust.floating, true);
+  assert.equal(state.roundScore, 0);
+});
+
+test('the same bust on a normal table only burns the round', () => {
+  const state = fresh();
+  initLevel(state);
+  state.score = 250;
+  state.roundScore = 100;
+  const seq = [0.2, 0.35, 0.55, 0.9, 0.25, 0.4];
+  let i = 0;
+  state.phase = 'ready';
+  state.rerolls = 4;
+  const result = rollDice(state, { free: true, rng: () => seq[i++ % seq.length] });
+  assert.equal(result.bust, 100);
+  assert.equal(state.score, 150, '此前的回合已经落袋');
+});
+
+test('floating points still pay the overshoot bounty once they settle', () => {
+  const state = fresh();
+  state.level = 28;
+  initLevel(state);
+  state.target = 100;
+  state.score = 400; // 4 倍目标 → 天胡
+  state.rerolls = 2;
+  assert.equal(cashOutValue(state).tier.key, 'miracle');
+  assert.equal(cashOutValue(state).total, 2 * REROLL_REFUND + 140);
+
+  // 赏金和分数在同一个时刻兑现：落秤（过关）时一起到账。
+  advanceLevel(state);
+  assert.equal(state.levelReward.total, getLevelConfig(28).reward + 2 * REROLL_REFUND + 140);
+});
+
+test('silencing the suspensor is enough to stop the floating', () => {
+  const state = fresh();
+  state.bossWardArmed = true;
+  state.level = 28;
+  initLevel(state);
+  assert.equal(state.flags.bossDisabled, true);
+  assert.equal(isFloatingScore(state), false);
+});
+
+test('a dealer level records the coefficient that paid it', () => {
+  const state = fresh();
+  state.level = 3;
+  initLevel(state);
+  state.target = 10;
+  state.score = 100;
+  state.rerolls = 0;
+  advanceLevel(state);
+  const cfg = getLevelConfig(3);
+  assert.equal(state.levelReward.base, cfg.reward);
+  assert.equal(state.levelReward.curveBase, cfg.curve.reward);
+  assert.equal(state.levelReward.bossPremium, cfg.reward - cfg.curve.reward);
+  assert.equal(state.levelReward.bossName, '腐牙伯爵');
+  assert.ok(state.levelReward.bossPremium > 0);
+
+  const minion = fresh();
+  minion.level = 4;
+  initLevel(minion);
+  minion.target = 10;
+  minion.score = 100;
+  minion.rerolls = 0;
+  advanceLevel(minion);
+  assert.equal(minion.levelReward.bossPremium, 0);
+  assert.equal(minion.levelReward.curveBase, minion.levelReward.base);
 });

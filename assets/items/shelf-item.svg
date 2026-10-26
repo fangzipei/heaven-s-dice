@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="120" height="120" viewBox="0 0 120 120">
+  <defs>
+    <radialGradient id="bg" cx=".5" cy=".42" r=".62">
+      <stop offset="0" stop-color="#c9b3dd" stop-opacity=".28"/>
+      <stop offset="1" stop-color="#0b0907" stop-opacity=".96"/>
+    </radialGradient>
+    <filter id="glow" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="5"/></filter>
+  </defs>
+  <circle cx="60" cy="60" r="53" fill="url(#bg)" stroke="#c9b3dd" stroke-opacity=".5" stroke-width="1.5"/>
+  <circle cx="60" cy="60" r="45" fill="none" stroke="#c9b3dd" stroke-opacity=".18" stroke-width="1"/>
+  <circle cx="60" cy="60" r="48" fill="none" stroke="#c9b3dd" stroke-opacity=".12" stroke-width="6" stroke-dasharray="1 7"/>
+  <g transform="translate(60 58) scale(1.15)"><path d="M-22 -22 L22 -22 M-22 0 L22 0 M-22 22 L22 22" stroke="#cbb7d9" stroke-width="2"/><path d="M-18 -22 L-18 22 M18 -22 L18 22" stroke="#cbb7d9" stroke-width="2"/><rect x="-13" y="-17" width="12" height="12" rx="1.5" fill="none" stroke="#e2cfee" stroke-width="1.5"/><rect x="2" y="-17" width="12" height="12" rx="1.5" fill="none" stroke="#e2cfee" stroke-width="1.5" opacity=".55"/><path d="M0 6 L3 14 L11 15 L5 21 L7 29 L0 25 L-7 29 L-5 21 L-11 15 L-3 14Z" fill="none" stroke="#e2cfee" stroke-width="1.4" transform="translate(0 -4) scale(.8)"/></g>
+  <path d="M22 88 Q60 108 98 88" fill="none" stroke="#c9b3dd" stroke-opacity=".22" stroke-width="1"/>
+</svg>

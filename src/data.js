@@ -25,193 +25,165 @@ export const RARITIES = {
 export const DICE_SETS = {
   wolf: {
     id: 'wolf', name: '狼裔', icon: 'wolf', color: '#d18a58',
-    motto: '群狼不掷孤骰。',
+    motto: '群狼咬住同一个数字：3。',
     bonuses: [
-      { pieces: 2, key: 'wolfSix', text: '每颗计分的 6 额外 +30 分。' },
-      { pieces: 4, key: 'wolfPack', text: '含三连或顺子的计分额外 +125 分。' },
+      { pieces: 2, key: 'wolfThree', text: '每颗计分的 3 额外 +60 分。' },
+      { pieces: 4, key: 'wolfTripleThree', text: '计分含三连 3 时额外 +600 分。' },
     ],
   },
-  raven: {
-    id: 'raven', name: '渡鸦', icon: 'raven', color: '#7fa6c9',
-    motto: '羽毛落下之前，命运已经开口。',
+  demon: {
+    id: 'demon', name: '恶魔', icon: 'demon', color: '#c05a6a',
+    motto: '它不掷点数，它借用别人的点数。',
     bonuses: [
-      { pieces: 2, key: 'ravenReroll', text: '每关开始获得 1 次额外重投。' },
-      { pieces: 4, key: 'ravenOne', text: '每颗计分的 1 额外 +60 分。' },
-    ],
-  },
-  serpent: {
-    id: 'serpent', name: '蝰蛇', icon: 'serpent', color: '#6fb28d',
-    motto: '顺流而下，咬住整条河。',
-    bonuses: [
-      { pieces: 2, key: 'serpentStraight', text: '顺子额外 +200 分。' },
-      { pieces: 4, key: 'serpentFive', text: '每颗计分的 5 额外 +60 分。' },
-    ],
-  },
-  crown: {
-    id: 'crown', name: '王冠', icon: 'crown', color: '#e3bd66',
-    motto: '规矩由戴冠的人来写。',
-    bonuses: [
-      { pieces: 2, key: 'crownDiscount', text: '商店所有价格 -15%。' },
-      { pieces: 4, key: 'crownTribute', text: '每关胜利额外获得 15 银币。' },
-    ],
-  },
-  astral: {
-    id: 'astral', name: '星穹', icon: 'astral', color: '#9c8be0',
-    motto: '骰子落桌之前，星辰已经落座。',
-    bonuses: [
-      { pieces: 2, key: 'astralTarget', text: '每关目标分数 -10%。' },
-      { pieces: 4, key: 'astralGlow', text: '所有计分 +20%。' },
+      { pieces: 2, key: 'demonPact', text: '计分使用了恶魔赖子时，本次计分 ×1.08。' },
+      { pieces: 4, key: 'demonLegion', text: '恶魔赖子参与计分时，本次计分 ×1.22（替代 2 件）。' },
     ],
   },
 };
-
 /*
  * Probability tables are literal face weights. They are normalised at roll
  * time. Every special die has a deliberate, readable tilt rather than an
  * invisible "luck" stat.
  */
 export const DICE = [
-  // ── Wolf 狼裔 (common 1 / rare 2 / epic 1) ──────────────────────────────
+  // ── 狼裔 · 5 枚：全部在把概率往 3 推 ─────────────────────────────────
   {
     id: 'wolf_whelp', name: '乳狼骰', setId: 'wolf', rarity: 'common',
-    probs: [0.20, 0.15, 0.15, 0.15, 0.15, 0.20],
-    flavor: '森林里第一颗掉落的乳牙，偏爱两端。',
-    desc: '1 与 6 略微更容易出现。', bonus: null,
+    probs: [0.20, 0.14, 0.20, 0.12, 0.19, 0.15],
+    flavor: '森林里第一颗掉落的乳牙，只认一个数字。',
+    desc: '1、5 各约 20%，3 也抬到 20%，中间点数薄。', bonus: null,
   },
   {
     id: 'wolf_hunter', name: '猎手骰', setId: 'wolf', rarity: 'rare',
-    probs: [0.15, 0.10, 0.10, 0.10, 0.25, 0.30],
-    flavor: '狼群追猎时，猎手总会把五枚爪印留在雪里。',
-    desc: '5、6 概率偏高。', bonus: { type: 'faceFlat', face: 5, value: 35, label: '猎印：此骰以 5 计分时 +35' },
+    probs: [0.20, 0.09, 0.31, 0.07, 0.21, 0.12],
+    flavor: '狼群追猎时，猎手总会把三枚爪印留在雪里。',
+    desc: '3 点概率 31%，1、5 各 20%。', bonus: null,
   },
   {
     id: 'wolf_bloodmoon', name: '血月骰', setId: 'wolf', rarity: 'rare',
-    probs: [0.10, 0.10, 0.10, 0.10, 0.20, 0.40],
+    probs: [0.20, 0.07, 0.33, 0.06, 0.22, 0.12],
     flavor: '月全食那晚，整片森林都听见了骨头里的回声。',
-    desc: '6 点概率极高（40%）。', bonus: { type: 'faceFlat', face: 6, value: 60, label: '血月：此骰以 6 计分时 +60' },
+    desc: '3 点概率 33%，1、5 各 20%。', bonus: null,
   },
   {
     id: 'wolf_alpha', name: '白狼王骰', setId: 'wolf', rarity: 'epic',
-    probs: [0.05, 0.20, 0.05, 0.10, 0.25, 0.35],
-    flavor: '它从不嚎叫。它只是看，群狼便知道该咬哪里。',
-    desc: '6 点概率 35%，2 点与 5 点也不低。',
-    bonus: { type: 'twoSixes', value: 180, label: '狼王：计分含两颗 6 时 +180' },
+    probs: [0.16, 0.10, 0.30, 0.10, 0.18, 0.16],
+    flavor: '它从不嚎叫。它只是看，群狼便知道该咬住哪一个数字。',
+    desc: '3 点 30%；计分含至少一颗 3 时 +260。',
+    bonus: { type: 'hasFace', face: 3, value: 260, label: '狼王：计分含至少一颗 3 时 +260' },
+  },
+  {
+    id: 'wolf_ancestor', name: '狼祖骰', setId: 'wolf', rarity: 'legendary',
+    probs: [0.16, 0.08, 0.34, 0.08, 0.16, 0.18],
+    flavor: '第一头狼的牙床。三这个数字，是它先咬出来的。',
+    desc: '3 点概率 34%；计分含至少一颗 3 时 +520。',
+    bonus: { type: 'hasFace', face: 3, value: 520, label: '狼祖：计分含至少一颗 3 时 +520' },
   },
 
-  // ── Raven 渡鸦 (common 1 / rare 2 / epic 1) ─────────────────────────────
+  // ── 恶魔 · 5 枚：掷出 1 就是赖子，不按 100 分算 ──────────────────────
   {
-    id: 'raven_feather', name: '渡鸦羽', setId: 'raven', rarity: 'common',
-    probs: [0.30, 0.14, 0.14, 0.14, 0.14, 0.14],
-    flavor: '一根落在绞架上的羽毛，摸起来比雪还冷。',
-    desc: '1 点概率显著偏高（30%）。', bonus: null,
+    id: 'demon_imp', name: '小恶魔骰', setId: 'demon', rarity: 'common',
+    probs: [0.13, 0.17, 0.18, 0.17, 0.18, 0.17],
+    flavor: '它在桌下轻轻碰你的膝盖，提醒你：一可以不是一。',
+    desc: '恶魔赖子 13%，其余面均衡。', bonus: null,
   },
   {
-    id: 'raven_nighteye', name: '夜瞳骰', setId: 'raven', rarity: 'rare',
-    probs: [0.25, 0.10, 0.10, 0.10, 0.25, 0.20],
-    flavor: '瞳孔里倒映的不是烛火，是尚未发生的死讯。',
-    desc: '1 与 5 更常见。', bonus: { type: 'faceFlat', face: 1, value: 60, label: '夜瞳：此骰以 1 计分时 +60' },
-  },
-  {
-    id: 'raven_death', name: '告死骰', setId: 'raven', rarity: 'rare',
-    probs: [0.20, 0.10, 0.10, 0.10, 0.10, 0.40],
-    flavor: '当它掷出六，钟楼会替某人敲响。',
-    desc: '6 点概率高达 40%。', bonus: { type: 'faceFlat', face: 6, value: 45, label: '丧钟：此骰以 6 计分时 +45' },
-  },
-  {
-    id: 'raven_thousand', name: '千目渡鸦', setId: 'raven', rarity: 'epic',
-    probs: [0.40, 0.12, 0.12, 0.12, 0.12, 0.12],
-    flavor: '它有三只眼，所以能同时看见你的骰子和你的谎。',
-    desc: '1 点概率极高（40%）。',
-    bonus: { type: 'hasOne', value: 100, label: '千目：计分含至少一颗 1 时 +100' },
-  },
-
-  // ── Serpent 蝰蛇 (rare 2 / epic 1 / legendary 1) ────────────────────────
-  {
-    id: 'serpent_scale', name: '蛇鳞骰', setId: 'serpent', rarity: 'rare',
-    probs: [0.15, 0.20, 0.15, 0.15, 0.20, 0.15],
-    flavor: '每一面鳞片的纹路都不同，就像每一笔赌债。',
-    desc: '2 与 5 略微更常见。', bonus: null,
-  },
-  {
-    id: 'serpent_fang', name: '毒牙骰', setId: 'serpent', rarity: 'rare',
-    probs: [0.05, 0.10, 0.10, 0.15, 0.35, 0.25],
-    flavor: '毒液干涸之后，牙反而更白。',
-    desc: '5 点概率 35%。', bonus: { type: 'faceFlat', face: 5, value: 60, label: '毒牙：此骰以 5 计分时 +60' },
-  },
-  {
-    id: 'serpent_hydra', name: '九头蛇之牙', setId: 'serpent', rarity: 'epic',
-    probs: [0.05, 0.20, 0.20, 0.20, 0.30, 0.05],
-    flavor: '砍掉一个头，会有两个头记住你的脸。',
-    desc: '2、3、4、5 组成顺子的概率更高。',
-    bonus: { type: 'straightFlat', value: 225, label: '九头：计分含顺子时 +225' },
-  },
-  {
-    id: 'serpent_devourer', name: '噬星之蛇', setId: 'serpent', rarity: 'legendary',
-    probs: [0.05, 0.25, 0.25, 0.05, 0.25, 0.15],
-    flavor: '它不吞月亮，它只把月亮当成一颗骰子。',
-    desc: '2、3、5 各 25%。',
-    bonus: { type: 'dieMultiplier', value: 1.20, label: '噬星：计分含此骰时，本次计分 ×1.20' },
-  },
-
-  // ── Crown 王冠 (rare 2 / epic 1 / legendary 1) ──────────────────────────
-  {
-    id: 'crown_court', name: '王庭骰', setId: 'crown', rarity: 'rare',
-    probs: [0.15, 0.15, 0.15, 0.15, 0.20, 0.20],
-    flavor: '宫廷里最公平的东西，是一张不记名的赌桌。',
-    desc: '5、6 略微更常见。', bonus: null,
-  },
-  {
-    id: 'crown_taxman', name: '税吏骰', setId: 'crown', rarity: 'rare',
-    probs: [0.35, 0.10, 0.10, 0.10, 0.25, 0.10],
+    id: 'demon_taxman', name: '税吏骰', setId: 'demon', rarity: 'rare',
+    probs: [0.14, 0.17, 0.17, 0.16, 0.18, 0.18],
     flavor: '税吏从不掷出运气，他只掷出应收的数目。',
-    desc: '1 点 35%，5 点 25%。', bonus: { type: 'faceFlat', face: 1, value: 40, label: '征税：此骰以 1 计分时 +40' },
+    desc: '恶魔赖子 14%，5、6 略高。', bonus: null,
   },
   {
-    id: 'crown_seal', name: '王之金玺', setId: 'crown', rarity: 'epic',
-    probs: [0.10, 0.10, 0.10, 0.10, 0.30, 0.30],
-    flavor: '盖下去的那一刻，连命运都要补缴印花税。',
-    desc: '5、6 各 30%。',
-    bonus: { type: 'fiveAndSix', value: 125, label: '金玺：计分同时含 5 与 6 时 +125' },
+    id: 'demon_seal', name: '契约之印', setId: 'demon', rarity: 'rare',
+    probs: [0.11, 0.17, 0.17, 0.17, 0.21, 0.17],
+    flavor: '盖下去的那一刻，连点数都要补缴印花税。',
+    desc: '恶魔赖子 11%，5 点偏高。', bonus: null,
   },
   {
-    id: 'crown_queen', name: '无冠女王', setId: 'crown', rarity: 'legendary', demon: true,
-    probs: [0.30, 0.10, 0.10, 0.10, 0.30, 0.10],
+    id: 'demon_queen', name: '无冠女王', setId: 'demon', rarity: 'epic',
+    probs: [0.14, 0.18, 0.18, 0.16, 0.18, 0.16],
     flavor: '她输掉了王冠，于是开始赢走别人的名字。',
-    desc: '1、5 各 30%。恶魔骰：计分含此骰 ×1.30；不含此骰时本次计分 ×0.80。',
-    bonus: { type: 'demon', included: 1.30, missing: 0.80, label: '恶魔契约：含此骰 ×1.30；不含则 ×0.80' },
+    desc: '恶魔赖子 14%；计分含此骰 ×1.18，场上但未选中 ×0.94。',
+    bonus: { type: 'demon', included: 1.18, missing: 0.94, label: '恶魔契约：含此骰 ×1.18；不含则 ×0.94' },
+  },
+  {
+    id: 'demon_devourer', name: '噬名者', setId: 'demon', rarity: 'legendary',
+    probs: [0.20, 0.14, 0.15, 0.13, 0.18, 0.20],
+    flavor: '它不吞骰子，它只把骰子的名字吃掉，留下一个空壳。',
+    desc: '恶魔赖子 20%；此骰作为赖子计分时 +140。',
+    bonus: { type: 'wildFlat', value: 140, label: '噬名：此骰作为恶魔赖子计分时 +140' },
   },
 
-  // ── Astral 星穹 (rare 2 / epic 1 / legendary 1) ─────────────────────────
+  // ── 无套组 · 10 枚：形状本身就是规则 ────────────────────────────────
   {
-    id: 'astral_dust', name: '星尘骰', setId: 'astral', rarity: 'rare',
-    probs: [0.10, 0.15, 0.20, 0.20, 0.15, 0.20],
-    flavor: '星尘落在袖口上，像一场没有人认领的雪。',
-    desc: '3、4、6 略微更常见。', bonus: null,
+    id: 'odd_eye', name: '孤影骰', setId: null, rarity: 'rare',
+    probs: [1 / 3, 0, 1 / 3, 0, 1 / 3, 0],
+    flavor: '它只掷出奇数。影子总是一半。',
+    desc: '只有 1、3、5 三种点数（各 1/3），永远不会掷出双数。', bonus: null,
   },
   {
-    id: 'astral_comet', name: '彗尾骰', setId: 'astral', rarity: 'rare',
-    probs: [0.05, 0.15, 0.25, 0.25, 0.15, 0.15],
-    flavor: '它每七十年回来一次，专程提醒你还有一笔债。',
-    desc: '3、4 更常见，容易凑出顺子。',
-    bonus: { type: 'straightFlat', value: 100, label: '彗尾：计分含顺子时 +100' },
+    id: 'even_twin', name: '双生骰', setId: null, rarity: 'epic',
+    probs: [0, 0.22, 0, 0.18, 0, 0.60],
+    flavor: '它只掷出偶数。成双的东西从不独自计分。',
+    desc: '只有 2、4、6（22% / 18% / 60%）；单颗不能计分，是纯组合骰，但三连极好凑。计分含任意三连时 +520。',
+    bonus: { type: 'anyTriple', value: 520, label: '双生：计分含任意三连时 +520' },
   },
   {
-    id: 'astral_core', name: '星核骰', setId: 'astral', rarity: 'epic',
-    probs: [0.10, 0.10, 0.20, 0.20, 0.10, 0.30],
-    flavor: '把一颗星压进骰子，它仍然记得怎样发光。',
-    desc: '6 点概率 30%。',
-    bonus: { type: 'faceFlat', face: 6, value: 65, label: '星核：此骰以 6 计分时 +65' },
+    id: 'polar', name: '阴阳骰', setId: null, rarity: 'rare',
+    probs: [0.30, 0, 0, 0, 0, 0.70],
+    flavor: '不是一，就是六。它拒绝中间的那些妥协。',
+    desc: '只有 1 和 6（30% / 70%）。', bonus: null,
   },
   {
-    id: 'astral_eye', name: '命运之眼', setId: 'astral', rarity: 'legendary',
-    probs: [0.25, 0.25, 0.20, 0.10, 0.10, 0.10],
-    flavor: '它不预测命运。它只是提前把答案翻过来。',
-    desc: '1、2 各 25%。计分含此骰时，每关第一次额外获得 1 次重投。',
-    bonus: { type: 'bonusReroll', value: 1, label: '窥命：计分含此骰时，每关首次 +1 重投' },
+    id: 'ladder', name: '拾级骰', setId: null, rarity: 'common',
+    probs: [0.14, 0.12, 0.14, 0.16, 0.22, 0.22],
+    flavor: '每一级都比上一级更重，像有人在楼梯上等你。',
+    desc: '概率沿 1→6 缓缓递增，5、6 各 22%。', bonus: null,
+  },
+  {
+    id: 'mirror', name: '照面骰', setId: null, rarity: 'rare',
+    probs: [0.25, 0.20, 0.05, 0.05, 0.20, 0.25],
+    flavor: '两面光亮，两面模糊，另外两面从没被人看清。',
+    desc: '1、6 各 25%，2、5 各 20%，3、4 各 5%。', bonus: null,
+  },
+  {
+    id: 'five_fold', name: '五福骰', setId: null, rarity: 'epic',
+    probs: [0.14, 0.12, 0.12, 0.10, 0.36, 0.16],
+    flavor: '五枚铜钱串在一起，掷出来的永远是五。',
+    desc: '5 点概率 36%；此骰以 5 计分时 +50。',
+    bonus: { type: 'faceFlat', face: 5, value: 50, label: '五福：此骰以 5 计分时 +50' },
+  },
+  {
+    id: 'hex', name: '六合骰', setId: null, rarity: 'epic',
+    probs: [0.10, 0.12, 0.10, 0.10, 0.28, 0.30],
+    flavor: '六面里有两面刻得特别深，骰子自己也知道。',
+    desc: '5、6 各 28% / 30%；计分同时含 5 与 6 时 +300。',
+    bonus: { type: 'fiveAndSix', value: 300, label: '六合：计分同时含 5 与 6 时 +300' },
+  },
+  {
+    id: 'echo', name: '回声骰', setId: null, rarity: 'epic',
+    probs: [1 / 6, 1 / 6, 1 / 6, 1 / 6, 1 / 6, 1 / 6],
+    flavor: '它把上一次落桌的声音也一起掷了出来。',
+    desc: '六面均衡；计分含此骰时，本次计分 ×1.14。',
+    bonus: { type: 'dieMultiplier', value: 1.14, label: '回声：计分含此骰时 ×1.14' },
+  },
+  {
+    id: 'ace', name: '双煞骰', setId: null, rarity: 'legendary',
+    probs: [0.30, 0.06, 0.06, 0.06, 0.30, 0.22],
+    flavor: '只掷一和五。这两面，是赌桌上唯一能单独换钱的面。',
+    desc: '1、5 各 30%；此骰以 1 计分时 +120。',
+    bonus: { type: 'faceFlat', face: 1, value: 120, label: '双煞：此骰以 1 计分时 +120' },
+  },
+  {
+    id: 'jack', name: '骰王', setId: null, rarity: 'legendary',
+    probs: [1 / 6, 1 / 6, 1 / 6, 1 / 6, 1 / 6, 1 / 6],
+    flavor: '它看起来毫无偏私。可它记得每一个三连。',
+    desc: '六面完全均衡；计分含任意三连时 +340（靠组合吃饭，不靠点数偏好）。',
+    bonus: { type: 'anyTriple', value: 340, label: '骰王：计分含任意三连时 +340' },
   },
 ];
 
-const DIE_PRICE_BY_RARITY = { common: 12, rare: 24, epic: 45, legendary: 70 };
+const DIE_PRICE_BY_RARITY = { common: 35, rare: 70, epic: 130, legendary: 210 };
 for (const die of DICE) die.price = DIE_PRICE_BY_RARITY[die.rarity] || 30;
 
 export const DICE_BY_ID = Object.fromEntries(DICE.map((d) => [d.id, d]));
@@ -232,43 +204,43 @@ export const BARRELS = [
   },
   {
     id: 'lead', name: '铅心桶', rarity: 'rare', type: 'probability',
-    art: 'lead', price: 35, bias: [1.35, 1, 1, 1, 1.30, 1],
+    art: 'lead', price: 70, bias: [1.35, 1, 1, 1, 1.30, 1],
     desc: '桶底灌了铅，也灌了赌徒的贪心。1 与 5 的出现率提高。',
     short: '1、5 概率 +',
   },
   {
     id: 'serpent', name: '蛇纹桶', rarity: 'rare', type: 'probability',
-    art: 'serpent', price: 35, bias: [0.70, 1.30, 1.25, 1.25, 1, 1],
+    art: 'serpent', price: 70, bias: [0.70, 1.30, 1.25, 1.25, 1, 1],
     desc: '鳞片在掌心下滑动。2、3、4 的出现率提高，1 更少。',
     short: '2、3、4 概率 + / 1 概率 −',
   },
   {
     id: 'astral', name: '星象桶', rarity: 'epic', type: 'probability',
-    art: 'astral', price: 50, bias: [1, 1, 1, 1, 1.20, 1.40],
+    art: 'astral', price: 105, bias: [1, 1, 1, 1, 1.20, 1.40],
     desc: '桶身刻着逆行的星图。6 与 5 的出现率显著提高。',
     short: '5、6 概率 +',
   },
   {
-    id: 'wolf_totem', name: '狼图腾桶', rarity: 'rare', type: 'setScore',
-    art: 'wolf-totem', price: 42, setId: 'wolf', value: 30,
-    desc: '每颗参与本次计分的狼裔骰额外 +30 分。只奖励真正选入计分的骰子。',
-    short: '每颗计分的狼裔骰 +30 分',
+    id: 'wolf_totem', name: '狼图腾桶', rarity: 'rare', type: 'faceScore',
+    art: 'wolf-totem', price: 90, face: 3, value: 50, tripleValue: 150,
+    desc: '每颗参与本次计分的 3 额外 +50 分；本次计分含三连 3 再 +150 分。',
+    short: '每颗计分的 3 +50 分 · 三连 3 再 +150',
   },
   {
-    id: 'raven_totem', name: '鸦羽桶', rarity: 'epic', type: 'setScore',
-    art: 'raven-totem', price: 58, setId: 'raven', value: 40,
-    desc: '每颗参与本次计分的渡鸦骰额外 +40 分。只奖励真正选入计分的骰子。',
-    short: '每颗计分的渡鸦骰 +40 分',
+    id: 'demon_pact', name: '恶魔契桶', rarity: 'epic', type: 'wildScore',
+    art: 'demon-totem', price: 120, value: 60,
+    desc: '每颗参与本次计分的恶魔赖子额外 +60 分。赖子不能单独计分，必须补进组合。',
+    short: '每颗计分的恶魔赖子 +60 分',
   },
   {
     id: 'pentagram', name: '五芒桶', rarity: 'epic', type: 'gesture',
-    art: 'pentagram', price: 60, gesture: 'pentagram',
+    art: 'pentagram', price: 125, gesture: 'pentagram',
     desc: '每关完成一次五芒星仪式，本掷所有计分 +20%。',
     short: '五芒星仪式：每关一次，本掷计分 +20%',
   },
   {
     id: 'vortex', name: '旋涡桶', rarity: 'legendary', type: 'gesture',
-    art: 'vortex', price: 80, gesture: 'circle',
+    art: 'vortex', price: 165, gesture: 'circle',
     desc: '顺时针画满一圈，本掷计分 +15%，并在此关获得 1 次额外重投（每关一次）。',
     short: '旋涡仪式：本掷 +15% 且每关 +1 重投',
   },
@@ -276,78 +248,138 @@ export const BARRELS = [
 
 export const BARREL_BY_ID = Object.fromEntries(BARRELS.map((b) => [b.id, b]));
 
+/*
+ * Shop stock is weighted by level so early levels teach common/rare dice and
+ * late levels actually surface epic/legendary picks. Weights are relative, not
+ * percentages: 0 means the tier cannot appear in that band.
+ */
+export const SHOP_RARITY_WEIGHTS = [
+  { untilLevel: 6, weights: { common: 62, rare: 32, epic: 6, legendary: 0 } },
+  { untilLevel: 12, weights: { common: 34, rare: 46, epic: 18, legendary: 2 } },
+  { untilLevel: 18, weights: { common: 18, rare: 44, epic: 30, legendary: 8 } },
+  { untilLevel: 24, weights: { common: 9, rare: 34, epic: 37, legendary: 20 } },
+  { untilLevel: 28, weights: { common: 4, rare: 26, epic: 40, legendary: 30 } },
+];
+
+export function rarityShopWeight(rarity, level = 1) {
+  const band = SHOP_RARITY_WEIGHTS.find((entry) => level <= entry.untilLevel)
+    || SHOP_RARITY_WEIGHTS[SHOP_RARITY_WEIGHTS.length - 1];
+  return band.weights[rarity] ?? 0;
+}
+
 export const ITEMS = [
+  // ── 主动物品 · 每关恢复一次 ────────────────────────────────────────────
   {
     id: 'lucky_coin', name: '幸运币', type: 'active', icon: 'coin',
-    rarity: 'common', price: 20, charges: 1,
+    rarity: 'common', price: 35, charges: 1,
     desc: '立即获得 150 分。',
     flavor: '正面是国王，反面也是国王。这枚硬币从来不做选择。',
   },
   {
-    id: 'courage', name: '烈酒', type: 'active', icon: 'bottle',
-    rarity: 'rare', price: 24, charges: 1,
-    desc: '本关立刻获得 2 次重投。',
-    flavor: '喝下去以后，桌子看起来更平了，骰子看起来更听话了。',
-  },
-  {
     id: 'hunter_mark', name: '猎人印记', type: 'active', icon: 'eye',
-    rarity: 'rare', price: 28, charges: 1,
+    rarity: 'rare', price: 75, charges: 1,
     desc: '本关下一次计分翻倍。',
     flavor: '狼群不追错猎物。你只需要让下一次落下足够重。',
   },
   {
     id: 'glove', name: '魔术手套', type: 'active', icon: 'glove',
-    rarity: 'rare', price: 22, charges: 1,
+    rarity: 'rare', price: 65, charges: 1,
     desc: '将当前选中的一颗骰子改为 1 点。',
     flavor: '完全合法。只要没有人看见袖口里的第二只手。',
   },
   {
     id: 'smoke', name: '烟雾弹', type: 'active', icon: 'smoke',
-    rarity: 'epic', price: 34, charges: 1,
+    rarity: 'epic', price: 95, charges: 1,
     desc: '免费重掷所有未计分骰子，不消耗重投次数。',
     flavor: '烟雾散去时，桌上少了一颗骰子，多了一个说法。',
   },
   {
     id: 'charm', name: '赌徒护符', type: 'active', icon: 'amulet',
-    rarity: 'epic', price: 36, charges: 1,
+    rarity: 'epic', price: 120, charges: 1,
     desc: '本关目标分数降低 20%。',
     flavor: '据说它能让庄家忘掉一条规则。副作用是庄家会记住你的脸。',
   },
   {
     id: 'hourglass', name: '时间沙漏', type: 'active', icon: 'hourglass',
-    rarity: 'rare', price: 28, charges: 1,
+    rarity: 'epic', price: 135, charges: 1,
     desc: '恢复 1 次重投，并立即获得 125 分。',
     flavor: '沙子倒着流。你多了一次机会，也少了一点耐心。',
   },
   {
     id: 'blood_contract', name: '血契', type: 'active', icon: 'dagger',
-    rarity: 'legendary', price: 50, charges: 1,
-    desc: '本关后续每次计分 +35%，但每次计分后失去 40 分。',
+    rarity: 'legendary', price: 190, charges: 1,
+    desc: '本关后续每次计分 +35%，但每次计分后失去 100 分。',
     flavor: '签名用的不是墨水。落款之后，骰子开始闻起来像铁。',
+  },
+
+  // ── 一次性消耗品 · 用掉就从行囊消失 ────────────────────────────────────
+  {
+    id: 'courage', name: '烈酒', type: 'active', icon: 'bottle',
+    rarity: 'rare', price: 65, charges: 1, consumable: true,
+    desc: '本关 +1 次重投。一次性消耗，喝完就没了。',
+    flavor: '喝下去以后，桌子看起来更平了，骰子看起来更听话了。',
+  },
+  {
+    id: 'wager', name: '加注契约', type: 'active', icon: 'scroll',
+    rarity: 'rare', price: 85, charges: 1, consumable: true,
+    desc: '本关 +1 次重投，且下一次计分 ×1.6。一次性消耗。',
+    flavor: '空着的那一栏，是留给你自己签的。',
+  },
+  {
+    id: 'powder', name: '幸运粉', type: 'active', icon: 'powder',
+    rarity: 'rare', price: 70, charges: 1, consumable: true,
+    desc: '免费重掷所有未计分骰子，并立即获得 80 分。一次性消耗。',
+    flavor: '吹上去的时候像金粉，落在桌面上的时候像灰尘。',
+  },
+  {
+    id: 'salt', name: '盐', type: 'active', icon: 'salt',
+    rarity: 'epic', price: 105, charges: 1, consumable: true,
+    desc: '本关下一次掷空不计：本轮未计入的分数照常转为已得。一次性消耗。',
+    flavor: '洒在桌角，据说能挡住那些不该落下的骰子。',
+  },
+  {
+    id: 'boss_ward', name: '静默赦令', type: 'active', icon: 'edict',
+    rarity: 'legendary', price: 260, charges: 1, consumable: true,
+    desc: '消除下一次遇到的庄家被动。在庄家关首掷前使用可当场消除；一次性消耗。',
+    flavor: '羊皮纸上只写了一句话：今晚，庄家闭嘴。落款处盖着一枚被划掉的王冠。',
+  },
+
+  // ── 被动物品 · 永久生效 ────────────────────────────────────────────────
+  {
+    id: 'gold_cuff', name: '镀金袖扣', type: 'passive', icon: 'cuff',
+    rarity: 'rare', price: 90, charges: 0,
+    desc: '每关胜利额外获得 15 银币，商店刷新费用 -20%。',
+    flavor: '真正的财富不在钱袋里，而在别人看见你袖口时的表情里。',
+  },
+  {
+    id: 'shelf_barrel', name: '双孔桶架', type: 'passive', icon: 'shelf-barrel',
+    rarity: 'rare', price: 110, charges: 0,
+    desc: '商店骰桶货位 +1（默认 1 → 2）。',
+    flavor: '行商嫌你挑得太慢，索性把第二个洞也凿开了。',
   },
   {
     id: 'dice_bag', name: '丰饶骰袋', type: 'passive', icon: 'pouch',
-    rarity: 'epic', price: 55, charges: 0, unique: true,
+    rarity: 'epic', price: 150, charges: 0, unique: true,
     desc: '可使用的骰子 +1（永久，整局限获取一次）。',
     flavor: '袋口永远比看起来深。你甚至不确定里面有没有别的东西。',
   },
   {
     id: 'cracked_pouch', name: '裂痕骰袋', type: 'passive', icon: 'cracked-pouch',
-    rarity: 'epic', price: 45, charges: 0, unique: true,
+    rarity: 'epic', price: 130, charges: 0, unique: true,
     desc: '可使用的骰子 -1，所有计分 +25%（永久，整局限获取一次）。',
     flavor: '少一颗骰子，少一条退路。裂缝里漏出来的不是骰子，是孤注一掷。',
   },
   {
-    id: 'boss_ward', name: '静默赦令', type: 'active', icon: 'edict',
-    rarity: 'legendary', price: 150, charges: 1, consumable: true,
-    desc: '消除下一次遇到的庄家被动。在庄家关首掷前使用可当场消除；一次性消耗。',
-    flavor: '羊皮纸上只写了一句话：今晚，庄家闭嘴。落款处盖着一枚被划掉的王冠。',
+    id: 'shelf_dice', name: '三层骰架', type: 'passive', icon: 'shelf-dice',
+    rarity: 'epic', price: 140, charges: 0,
+    desc: '商店骰子货位 +1（默认 2 → 3）。',
+    flavor: '多一层，就多一种贪心的方式。',
   },
   {
-    id: 'gold_cuff', name: '镀金袖扣', type: 'passive', icon: 'cuff',
-    rarity: 'rare', price: 38, charges: 0,
-    desc: '每关胜利额外获得 15 银币，商店刷新费用 -20%。',
-    flavor: '真正的财富不在钱袋里，而在别人看见你袖口时的表情里。',
+    id: 'shelf_item', name: '暗格货架', type: 'passive', icon: 'shelf-item',
+    rarity: 'epic', price: 130, charges: 0,
+    desc: '商店物品货位 +1（默认 3 → 4）。',
+    flavor: '最值钱的东西从来不在明面上。',
   },
 ];
 
@@ -424,9 +456,49 @@ export const MINIONS = [
   },
 ];
 
-export const BOSSES = [
+/* ── 关卡结构：先定庄家，再让一切从庄家推出来 ───────────────────────────
+   每位庄家前面留 gap 个小兵关。gap 只增不减（2 / 2 / 3 / 3 / 3 / 4 / 4 / 4），
+   所以庄家越往后越像里程碑，而不是隔关撞见的减速带。
+
+   关卡总数、每位庄家的关卡号、他坐哪张桌子，全部从这张表推出来——加一位
+   庄家只需要往 BOSS_DEFS 里加一条、在 MINION_GAPS 里补一个空档，关卡表、
+   章节划分、赏金会自己重排。 */
+export const MINION_GAPS = [2, 2, 3, 3, 3, 4, 4, 4];
+
+const BOSS_LEVELS = (() => {
+  let level = 0;
+  return MINION_GAPS.map((gap) => (level += gap + 1));
+})();
+
+const LEVEL_TOTAL = BOSS_LEVELS[BOSS_LEVELS.length - 1];
+
+// 五张桌子平分全部关卡（33 关 → 7 / 7 / 7 / 6 / 6），章节归属也从这里推。
+const CHAPTER_BOUNDS = (() => {
+  const chapters = TABLES.length;
+  const base = Math.floor(LEVEL_TOTAL / chapters);
+  const extra = LEVEL_TOTAL % chapters;
+  const bounds = [];
+  let sum = 0;
+  for (let i = 0; i < chapters; i += 1) {
+    sum += base + (i < extra ? 1 : 0);
+    bounds.push(sum);
+  }
+  return bounds;
+})();
+
+export function chapterForLevel(level) {
+  for (let i = 0; i < CHAPTER_BOUNDS.length; i += 1) {
+    if (level <= CHAPTER_BOUNDS[i]) return i;
+  }
+  return CHAPTER_BOUNDS.length - 1;
+}
+
+const BOSS_DEFS = [
   {
-    id: 'rotfang', group: 0, level: 3, art: 'boss-rat',
+    id: 'rotfang', art: 'boss-rat',
+    // 赏金系数：这一关的银币 = 曲线 × 系数（曲线本身逐关上涨，系数随
+    // 关卡缓慢收敛，否则后期赏金会指数爆炸）。
+    curve: { target: 1, reward: 1.65 },
     name: '腐牙伯爵', title: '鼠群之主', accent: '#c25b5b',
     effectName: '鼠群噬点', effectKey: 'blankNinth',
     effectDesc: '每投出 8 颗骰子，接下来 1 颗会被啃成白骰：没有点数，不能计分。',
@@ -439,7 +511,10 @@ export const BOSSES = [
     win: '不可能……我的孩子们明明已经闻到血腥味了。',
   },
   {
-    id: 'judge', group: 1, level: 5, art: 'boss-stone',
+    id: 'judge', art: 'boss-stone',
+    // 赏金系数：这一关的银币 = 曲线 × 系数（曲线本身逐关上涨，系数随
+    // 关卡缓慢收敛，否则后期赏金会指数爆炸）。
+    curve: { target: 1, reward: 1.50 },
     name: '石心审判官', title: '无言法庭', accent: '#9ab9c4',
     effectName: '三证成立', effectKey: 'minTripleScore',
     effectDesc: '只有使用 3 颗及以上骰子的组合才能计分；更小的组合仍可打出，但本次得 0 分。',
@@ -452,7 +527,10 @@ export const BOSSES = [
     win: '……判决暂缓。石头的记忆比你想的长。',
   },
   {
-    id: 'soulsmith', group: 2, level: 7, art: 'boss-iron',
+    id: 'soulsmith', art: 'boss-iron',
+    // 赏金系数：这一关的银币 = 曲线 × 系数（曲线本身逐关上涨，系数随
+    // 关卡缓慢收敛，否则后期赏金会指数爆炸）。
+    curve: { target: 1, reward: 1.45 },
     name: '铁面铸魂师', title: '熔炉之主', accent: '#e07d4d',
     effectName: '六点回炉', effectKey: 'noSix',
     effectDesc: '所有 6 点骰子被熔毁：不能选择，也不能计分。',
@@ -465,7 +543,10 @@ export const BOSSES = [
     win: '……看来这一炉，淬过头了。',
   },
   {
-    id: 'ashclerk', group: 2, level: 9, art: 'boss-ash',
+    id: 'ashclerk', art: 'boss-ash',
+    // 赏金系数：这一关的银币 = 曲线 × 系数（曲线本身逐关上涨，系数随
+    // 关卡缓慢收敛，否则后期赏金会指数爆炸）。
+    curve: { target: 1, reward: 1.40 },
     name: '灰烬书记官', title: '熔炉的记录员', accent: '#d98a56',
     effectName: '不许复写', effectKey: 'noRepeatType',
     effectDesc: '本关不能连续使用同一种骰型；重复上一手的骰型本次得 0 分。',
@@ -478,7 +559,10 @@ export const BOSSES = [
     win: '……这一页，我记下了。笔尖也该换新的了。',
   },
   {
-    id: 'gildedking', group: 3, level: 11, art: 'boss-gold',
+    id: 'gildedking', art: 'boss-gold',
+    // 赏金系数：这一关的银币 = 曲线 × 系数（曲线本身逐关上涨，系数随
+    // 关卡缓慢收敛，否则后期赏金会指数爆炸）。
+    curve: { target: 1, reward: 1.35 },
     name: '金冠赌王', title: '无冕之王', accent: '#e8c569',
     effectName: '只开一桌', effectKey: 'singleTypeOnly',
     effectDesc: '本关第一次计分会锁定一种骰型；之后只能继续使用同一种骰型，其他骰型得 0 分。',
@@ -491,7 +575,10 @@ export const BOSSES = [
     win: '拿走吧。王座上的灰尘，正好需要一点新的故事。',
   },
   {
-    id: 'startax', group: 4, level: 13, art: 'boss-tax',
+    id: 'startax', art: 'boss-tax',
+    // 赏金系数：这一关的银币 = 曲线 × 系数（曲线本身逐关上涨，系数随
+    // 关卡缓慢收敛，否则后期赏金会指数爆炸）。
+    curve: { target: 1, reward: 1.30 },
     name: '星辉税吏', title: '天穹的收税官', accent: '#8fcbd8',
     effectName: '少一次机会', effectKey: 'rerollMinus',
     effectDesc: '本关重投次数减少 1 次。',
@@ -504,7 +591,24 @@ export const BOSSES = [
     win: '税已收讫。天穹会记住这笔账。',
   },
   {
-    id: 'seraph', group: 4, level: 15, art: 'boss-diamond',
+    id: 'suspensor', art: 'boss-scale',
+    curve: { target: 1, reward: 1.50 },
+    name: '悬秤人', title: '未落定之数', accent: '#c3b4e6',
+    effectName: '浮筹未决', effectKey: 'floatingScore',
+    effectDesc: '本关所有得分都是漂浮分：计分与重投都不会真正入账，只有离开这张桌子时才结算；一旦掷出无法计分的骰型，全部漂浮分立刻消散。',
+    intro: '别急着把筹码放进兜里。在这张桌上，它们还没落地。',
+    taunts: [
+      '你看，它浮着。像所有还没被承认的运气。',
+      '记下来了吗？记下来也没用，它还没落定。',
+      '秤在等一个结果。要不要继续，随你。',
+    ],
+    win: '……落了。原来你的运气，是有重量的。',
+  },
+  {
+    id: 'seraph', art: 'boss-diamond',
+    // 赏金系数：这一关的银币 = 曲线 × 系数（曲线本身逐关上涨，系数随
+    // 关卡缓慢收敛，否则后期赏金会指数爆炸）。
+    curve: { target: 1, reward: 1.45 },
     name: '钻石天使', title: '最后的庄家', accent: '#a8e8f1',
     effectName: '四成归天', effectKey: 'scoreTaxReroll',
     effectDesc: '所有计分减少 40%；作为补偿，本关重投次数 +1。',
@@ -518,27 +622,79 @@ export const BOSSES = [
   },
 ];
 
-// 15 duels. Bosses now close every other table after the first: 3, 5, 7,
-// 9, 11, 13, 15. The eight minion levels between them are breathing room.
-export const LEVELS = [
-  { level: 1, target: 350, reward: 45 },
-  { level: 2, target: 500, reward: 50 },
-  { level: 3, target: 700, reward: 85, boss: true },
-  { level: 4, target: 750, reward: 55 },
-  { level: 5, target: 950, reward: 95, boss: true },
-  { level: 6, target: 1300, reward: 65 },
-  { level: 7, target: 1150, reward: 105, boss: true },
-  { level: 8, target: 1450, reward: 75 },
-  { level: 9, target: 1850, reward: 120, boss: true },
-  { level: 10, target: 1650, reward: 80 },
-  { level: 11, target: 2050, reward: 135, boss: true },
-  { level: 12, target: 2550, reward: 90 },
-  { level: 13, target: 2250, reward: 150, boss: true },
-  { level: 14, target: 2800, reward: 110 },
-  { level: 15, target: 3500, reward: 185, boss: true },
-];
+/* 庄家的关卡号与所属赌桌都由上面的空档表决定，条目里不再手写。 */
+export const BOSSES = BOSS_DEFS.map((boss, index) => ({
+  ...boss,
+  level: BOSS_LEVELS[index],
+  group: chapterForLevel(BOSS_LEVELS[index]),
+}));
+
+/* ── 关卡曲线：目标与赏金是算出来的，不是抄出来的 ──────────────────────
+   一条指数曲线负责“越往后越贵”，庄家用 BOSS_DEFS[i].curve 里的系数把
+   自己那一档抬起来。改难度只要动 curve、改曲线只要动 LEVEL_CURVE，
+   不用再手改 33 行数字（改一行忘三行才是真正的 bug 来源）。 */
+export const LEVEL_CURVE = {
+  targetBase: 200,      // 第 1 关目标分
+  targetGrowth: 1.05,   // 每关目标 ×1.05
+  rewardBase: 55,       // 第 1 关基础赏金
+  rewardGrowth: 1.055,  // 每关赏金 ×1.055
+  targetStep: 10,       // 目标取整到 10
+  rewardStep: 5,        // 赏金取整到 5
+};
+
+const roundTo = (value, step) => Math.max(step, Math.round(value / step) * step);
+
+/**
+ * 生成关卡表。庄家关的目标与赏金都会乘上该庄家的系数。
+ * 每行额外带一份 curve（乘系数之前的曲线值），方便界面/结算展示
+ * “这一关因为庄家多拿了多少”。
+ */
+export function buildLevelTable(bosses = BOSSES, curve = LEVEL_CURVE) {
+  const at = new Map(bosses.map((boss) => [boss.level, boss]));
+  const total = bosses.length ? Math.max(...bosses.map((boss) => boss.level)) : 0;
+  const rows = [];
+  for (let level = 1; level <= total; level += 1) {
+    const baseTarget = curve.targetBase * curve.targetGrowth ** (level - 1);
+    const baseReward = curve.rewardBase * curve.rewardGrowth ** (level - 1);
+    const boss = at.get(level) || null;
+    const scale = boss?.curve || { target: 1, reward: 1 };
+    const row = {
+      level,
+      target: roundTo(baseTarget * (scale.target ?? 1), curve.targetStep),
+      reward: roundTo(baseReward * (scale.reward ?? 1), curve.rewardStep),
+      curve: {
+        target: roundTo(baseTarget, curve.targetStep),
+        reward: roundTo(baseReward, curve.rewardStep),
+      },
+    };
+    if (boss) row.boss = true;
+    rows.push(row);
+  }
+  return rows;
+}
+
+export const LEVELS = buildLevelTable();
 
 export const LEVEL_COUNT = LEVELS.length;
+
+/* ── 过关奖金细则 ───────────────────────────────────────────────────────────
+   收手是一门技术：没用掉的重投次数可以折成银币带走，把目标分甩开一大截
+   也有阶梯赏金。两者都由 engine 结算、app 实时预览，共用下面这套数据。 */
+export const REROLL_REFUND = 8;
+export const OVERSHOOT_TIERS = [
+  { ratio: 3, value: 140, key: 'miracle', label: '天胡 · 3 倍目标' },
+  { ratio: 2, value: 60, key: 'sweep', label: '通杀 · 2 倍目标' },
+  { ratio: 1.5, value: 25, key: 'clean', label: '赢得漂亮 · 1.5 倍目标' },
+];
+
+/** Highest overshoot tier reached by a score, or null when it just scraped by. */
+export function overshootTier(score, target) {
+  if (!target || target <= 0) return null;
+  const ratio = score / target;
+  return OVERSHOOT_TIERS.find((tier) => ratio >= tier.ratio) || null;
+}
+
+
 
 export const CHAPTERS = [0, 1, 2, 3, 4].map((group) => ({
   group,
@@ -546,11 +702,13 @@ export const CHAPTERS = [0, 1, 2, 3, 4].map((group) => ({
   minion: MINIONS[group],
   boss: BOSSES.find((b) => b.group === group),
   bosses: BOSSES.filter((b) => b.group === group),
-  levels: LEVELS.filter((l) => Math.floor((l.level - 1) / 3) === group),
+  levels: LEVELS.filter((l) => chapterForLevel(l.level) === group),
 }));
 
-export function chapterForLevel(level) {
-  return Math.min(4, Math.floor((level - 1) / 3));
+export function chapterLevelSpan(chapter) {
+  const levels = LEVELS.filter((entry) => chapterForLevel(entry.level) === chapter).map((entry) => entry.level);
+  if (!levels.length) return [1, LEVELS.length];
+  return [Math.min(...levels), Math.max(...levels)];
 }
 
 export function getLevelConfig(level) {
@@ -569,7 +727,7 @@ export function getTable(level) {
 }
 
 export function setPieceCounts(equippedDice) {
-  const counts = { wolf: 0, raven: 0, serpent: 0, crown: 0, astral: 0 };
+  const counts = Object.fromEntries(Object.keys(DICE_SETS).map((id) => [id, 0]));
   for (const entry of equippedDice) {
     const die = DICE_BY_ID[entry.dieId] || STANDARD_DIE;
     if (die.setId) counts[die.setId] += 1;

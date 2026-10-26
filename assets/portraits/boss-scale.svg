@@ -1,0 +1,179 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="600" height="760" viewBox="0 0 600 760">
+<defs>
+  <radialGradient id="aura" cx=".5" cy=".46" r=".55">
+    <stop offset="0" stop-color="#c9b8f2" stop-opacity=".46"/>
+    <stop offset=".5" stop-color="#0d0818" stop-opacity=".14"/>
+    <stop offset="1" stop-color="#0d0818" stop-opacity="0"/>
+  </radialGradient>
+  <radialGradient id="floorGlow" cx=".5" cy=".5" r=".5">
+    <stop offset="0" stop-color="#c9b8f2" stop-opacity=".22"/>
+    <stop offset="1" stop-color="#c9b8f2" stop-opacity="0"/>
+  </radialGradient>
+  <linearGradient id="cape" x1=".2" y1="0" x2=".8" y2="1">
+    <stop offset="0" stop-color="#211a17"/><stop offset=".52" stop-color="#0d0a09"/><stop offset="1" stop-color="#050404"/>
+  </linearGradient>
+  <linearGradient id="rim" x1="0" y1="0" x2="1" y2="1">
+    <stop offset="0" stop-color="#c9b8f2" stop-opacity=".9"/><stop offset=".5" stop-color="#c9b8f2" stop-opacity=".14"/>
+    <stop offset="1" stop-color="#0d0818" stop-opacity=".7"/>
+  </linearGradient>
+  <filter id="blur24" x="-70%" y="-70%" width="240%" height="240%"><feGaussianBlur stdDeviation="24"/></filter>
+  <filter id="blur8" x="-70%" y="-70%" width="240%" height="240%"><feGaussianBlur stdDeviation="8"/></filter>
+  <filter id="blur2" x="-70%" y="-70%" width="240%" height="240%"><feGaussianBlur stdDeviation="2.5"/></filter>
+  <filter id="grain" x="0" y="0" width="100%" height="100%">
+    <feTurbulence type="fractalNoise" baseFrequency=".65" numOctaves="3" seed="17"/>
+    <feColorMatrix type="saturate" values="0"/>
+    <feComponentTransfer><feFuncA type="linear" slope=".1"/></feComponentTransfer>
+    <feBlend in="SourceGraphic" mode="soft-light"/>
+  </filter>
+  
+  <linearGradient id="shroud" x1=".2" y1="0" x2=".8" y2="1">
+    <stop offset="0" stop-color="#3c3258"/><stop offset=".55" stop-color="#1c1630"/>
+    <stop offset="1" stop-color="#090612"/>
+  </linearGradient>
+  <linearGradient id="hoodEdge" x1="0" y1="0" x2="1" y2="1">
+    <stop offset="0" stop-color="#cbb6ff" stop-opacity=".75"/>
+    <stop offset=".5" stop-color="#8d78c4" stop-opacity=".2"/>
+    <stop offset="1" stop-color="#6a56a0" stop-opacity=".6"/>
+  </linearGradient>
+  <linearGradient id="vapour" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0" stop-color="#d6c8f5" stop-opacity=".42"/>
+    <stop offset="1" stop-color="#8f7ac0" stop-opacity="0"/>
+  </linearGradient>
+  <linearGradient id="brass" x1="0" y1="0" x2="1" y2="1">
+    <stop offset="0" stop-color="#f4ead0"/><stop offset=".45" stop-color="#cbb689"/>
+    <stop offset="1" stop-color="#7a6742"/>
+  </linearGradient>
+  <radialGradient id="panGlow" cx=".5" cy=".5" r=".5">
+    <stop offset="0" stop-color="#cbb6ff" stop-opacity=".5"/>
+    <stop offset="1" stop-color="#8a74c8" stop-opacity="0"/>
+  </radialGradient>
+
+</defs>
+<ellipse cx="300" cy="330" rx="275" ry="335" fill="url(#aura)"/>
+<ellipse cx="300" cy="715" rx="300" ry="80" fill="url(#floorGlow)"/>
+
+<g>
+  <!-- 悬在空中的下半身：袍角化进雾里，暗示它没有落地 -->
+  <g opacity=".8">
+    <path d="M150 588 Q300 664 452 588 L492 760 L108 760Z" fill="url(#vapour)"/>
+    <path d="M196 604 Q300 692 404 604 L420 760 L180 760Z" fill="url(#vapour)" opacity=".85"/>
+    <g fill="none" stroke="#d6c8f5" stroke-width="1.1" opacity=".34">
+      <path d="M232 616 Q300 662 368 616 M214 684 Q300 736 386 684"/>
+    </g>
+    <!-- 从袍角往上飘的丝缕 -->
+    <g fill="none" stroke="#cbb6ff" stroke-width="1" opacity=".22">
+      <path d="M212 700 Q196 640 214 596"/>
+      <path d="M388 700 Q404 640 386 596"/>
+      <path d="M300 726 Q286 668 300 626"/>
+    </g>
+  </g>
+
+  <!-- 长袍 -->
+  <path d="M300 372 Q372 402 392 486 L408 690 Q300 742 192 690 L208 486 Q228 402 300 372Z"
+        fill="url(#shroud)" stroke="#0a0714" stroke-width="3"/>
+  <g fill="none" stroke="#5a4a86" stroke-width="1.2" opacity=".5">
+    <path d="M300 392 L300 700 M252 408 Q244 540 236 686 M348 408 Q356 540 364 686"/>
+  </g>
+
+  <!-- 领口：给剪影一道横向的断点 -->
+  <path d="M300 400 Q356 414 386 462 Q344 494 300 496 Q256 494 214 462 Q244 414 300 400Z"
+        fill="#2a2142" stroke="#4c3d70" stroke-width="1.6"/>
+  <path d="M300 400 Q356 414 386 462 Q344 494 300 496 Q256 494 214 462 Q244 414 300 400Z"
+        fill="none" stroke="url(#hoodEdge)" stroke-width="1.2" opacity=".7"/>
+
+  <!-- 兜帽 -->
+  <path d="M300 126 Q396 216 388 330 Q380 412 300 452 Q220 412 212 330 Q204 216 300 126Z"
+        fill="url(#shroud)" stroke="#120c20" stroke-width="3"/>
+  <path d="M300 126 Q396 216 388 330 Q380 412 300 452 Q220 412 212 330 Q204 216 300 126Z"
+        fill="none" stroke="url(#hoodEdge)" stroke-width="2"/>
+  <path d="M300 186 Q364 250 358 332 Q352 392 300 424 Q248 392 242 332 Q236 250 300 186Z"
+        fill="#06040c"/>
+  <path d="M300 186 Q364 250 358 332 Q352 392 300 424 Q248 392 242 332 Q236 250 300 186Z"
+        fill="none" stroke="#8d78c4" stroke-width="1" opacity=".35"/>
+
+  <!-- 兜帽后的冷光：把剪影从背景里剥出来 -->
+  <ellipse cx="300" cy="300" rx="120" ry="150" fill="#a48ed6" opacity=".14" filter="url(#blur24)"/>
+
+  <!-- 左侧轮廓光 -->
+  <g fill="none" stroke="#d8c8ff" stroke-linecap="round">
+    <path d="M300 132 Q206 220 213 330 Q216 392 236 436" stroke-width="2.4" opacity=".5"/>
+    <path d="M209 470 Q203 560 197 644" stroke-width="2" opacity=".32"/>
+  </g>
+
+  <!-- 面罩下的两点紫光：它不看你，看的是秤 -->
+  <g filter="url(#blur8)" opacity=".85">
+    <ellipse cx="272" cy="318" rx="16" ry="10" fill="#cbb6ff" opacity=".5"/>
+    <ellipse cx="330" cy="318" rx="16" ry="10" fill="#cbb6ff" opacity=".5"/>
+  </g>
+  <ellipse cx="272" cy="318" rx="6.5" ry="4" fill="#efe6ff"/>
+  <ellipse cx="330" cy="318" rx="6.5" ry="4" fill="#efe6ff"/>
+
+  <!-- 天平：钩子、横梁、两条链条 -->
+  <path d="M300 24 L300 104" stroke="url(#brass)" stroke-width="3"/>
+  <circle cx="300" cy="24" r="9" fill="none" stroke="url(#brass)" stroke-width="3"/>
+  <g transform="rotate(3.5 300 108)">
+    <rect x="128" y="103" width="344" height="9" rx="4" fill="url(#brass)"/>
+    <circle cx="300" cy="108" r="10" fill="url(#brass)" stroke="#6d5c3a" stroke-width="1.4"/>
+    <g stroke="url(#brass)" stroke-width="1.6" fill="none">
+      <path d="M136 112 L104 262 M136 112 L172 262"/>
+      <path d="M464 112 L430 262 M464 112 L496 262"/>
+    </g>
+  </g>
+
+  <!-- 两个秤盘 -->
+  <ellipse cx="138" cy="286" rx="66" ry="16" fill="url(#panGlow)"/>
+  <ellipse cx="462" cy="286" rx="66" ry="16" fill="url(#panGlow)"/>
+  <path d="M76 258 Q138 300 200 258" fill="none" stroke="url(#brass)" stroke-width="6" stroke-linecap="round"/>
+  <path d="M400 258 Q462 300 524 258" fill="none" stroke="url(#brass)" stroke-width="6" stroke-linecap="round"/>
+  <path d="M76 258 L200 258" stroke="#8b764c" stroke-width="1" opacity=".45"/>
+  <path d="M400 258 L524 258" stroke="#8b764c" stroke-width="1" opacity=".45"/>
+
+  <!-- 秤上悬着的骰子：还没落定 -->
+  <g transform="rotate(-14 120 196)" opacity="0.85"><rect x="105.0" y="181.0" width="30" height="30" rx="6.0" fill="#efe6d0" stroke="#241a34" stroke-width="1.1" opacity=".92"/><circle cx="112.2" cy="188.2" r="2.2" fill="#241a34"/><circle cx="127.8" cy="188.2" r="2.2" fill="#241a34"/><circle cx="120.0" cy="196.0" r="2.2" fill="#241a34"/><circle cx="112.2" cy="203.8" r="2.2" fill="#241a34"/><circle cx="127.8" cy="203.8" r="2.2" fill="#241a34"/></g><g transform="rotate(9 168 168)" opacity="0.7"><rect x="155.0" y="155.0" width="26" height="26" rx="5.2" fill="#efe6d0" stroke="#241a34" stroke-width="1.1" opacity=".92"/><circle cx="168.0" cy="168.0" r="1.9" fill="#241a34"/></g><g transform="rotate(22 146 232)" opacity="0.6"><rect x="135.0" y="221.0" width="22" height="22" rx="4.4" fill="#efe6d0" stroke="#241a34" stroke-width="1.1" opacity=".92"/><circle cx="140.3" cy="226.3" r="1.6" fill="#241a34"/><circle cx="146.0" cy="232.0" r="1.6" fill="#241a34"/><circle cx="151.7" cy="237.7" r="1.6" fill="#241a34"/></g>
+  <g transform="rotate(12 452 186)" opacity="0.85"><rect x="437.0" y="171.0" width="30" height="30" rx="6.0" fill="#efe6d0" stroke="#241a34" stroke-width="1.1" opacity=".92"/><circle cx="444.2" cy="178.2" r="2.2" fill="#241a34"/><circle cx="444.2" cy="186.0" r="2.2" fill="#241a34"/><circle cx="444.2" cy="193.8" r="2.2" fill="#241a34"/><circle cx="459.8" cy="178.2" r="2.2" fill="#241a34"/><circle cx="459.8" cy="186.0" r="2.2" fill="#241a34"/><circle cx="459.8" cy="193.8" r="2.2" fill="#241a34"/></g><g transform="rotate(-8 408 162)" opacity="0.7"><rect x="395.0" y="149.0" width="26" height="26" rx="5.2" fill="#efe6d0" stroke="#241a34" stroke-width="1.1" opacity=".92"/><circle cx="401.2" cy="155.2" r="1.9" fill="#241a34"/><circle cx="414.8" cy="155.2" r="1.9" fill="#241a34"/><circle cx="401.2" cy="168.8" r="1.9" fill="#241a34"/><circle cx="414.8" cy="168.8" r="1.9" fill="#241a34"/></g><g transform="rotate(-20 470 226)" opacity="0.6"><rect x="459.0" y="215.0" width="22" height="22" rx="4.4" fill="#efe6d0" stroke="#241a34" stroke-width="1.1" opacity=".92"/><circle cx="464.3" cy="220.3" r="1.6" fill="#241a34"/><circle cx="475.7" cy="231.7" r="1.6" fill="#241a34"/></g>
+
+  <!-- 长袍前襟的骰面刻纹 -->
+  <g opacity=".6">
+    <g transform="rotate(8 300 556)" opacity="1.0"><rect x="277.0" y="533.0" width="46" height="46" rx="9.2" fill="#302448" stroke="#cbb6ff" stroke-width="1.1" opacity=".92"/><circle cx="288.0" cy="544.0" r="3.4" fill="#cbb6ff"/><circle cx="312.0" cy="544.0" r="3.4" fill="#cbb6ff"/><circle cx="300.0" cy="556.0" r="3.4" fill="#cbb6ff"/><circle cx="288.0" cy="568.0" r="3.4" fill="#cbb6ff"/><circle cx="312.0" cy="568.0" r="3.4" fill="#cbb6ff"/></g>
+  </g>
+  <g fill="none" stroke="#cbb6ff" stroke-width="1" opacity=".2">
+    <circle cx="300" cy="556" r="46"/><circle cx="300" cy="556" r="58" stroke-dasharray="4 9"/>
+  </g>
+</g>
+<circle cx="371" cy="560" r="2.3" fill="#8a74c8" opacity="0.59"/>
+<circle cx="244" cy="309" r="1.0" fill="#d6c8f5" opacity="0.40"/>
+<circle cx="556" cy="64" r="2.8" fill="#d6c8f5" opacity="0.57"/>
+<circle cx="508" cy="173" r="1.6" fill="#8a74c8" opacity="0.27"/>
+<circle cx="71" cy="437" r="2.4" fill="#8a74c8" opacity="0.17"/>
+<circle cx="487" cy="496" r="3.1" fill="#d6c8f5" opacity="0.43"/>
+<circle cx="295" cy="658" r="1.2" fill="#8a74c8" opacity="0.47"/>
+<circle cx="403" cy="345" r="2.2" fill="#8a74c8" opacity="0.20"/>
+<circle cx="69" cy="110" r="1.0" fill="#8a74c8" opacity="0.17"/>
+<circle cx="529" cy="545" r="2.7" fill="#d6c8f5" opacity="0.28"/>
+<circle cx="137" cy="249" r="1.5" fill="#8a74c8" opacity="0.39"/>
+<circle cx="527" cy="599" r="1.6" fill="#8a74c8" opacity="0.48"/>
+<circle cx="304" cy="65" r="0.9" fill="#8a74c8" opacity="0.34"/>
+<circle cx="556" cy="557" r="2.9" fill="#d6c8f5" opacity="0.23"/>
+<circle cx="185" cy="94" r="2.0" fill="#d6c8f5" opacity="0.16"/>
+<circle cx="133" cy="256" r="3.2" fill="#d6c8f5" opacity="0.51"/>
+<circle cx="475" cy="304" r="1.5" fill="#d6c8f5" opacity="0.26"/>
+<circle cx="537" cy="603" r="2.9" fill="#d6c8f5" opacity="0.58"/>
+<circle cx="457" cy="261" r="1.9" fill="#d6c8f5" opacity="0.35"/>
+<circle cx="337" cy="53" r="0.9" fill="#d6c8f5" opacity="0.26"/>
+<circle cx="389" cy="652" r="2.8" fill="#8a74c8" opacity="0.32"/>
+<circle cx="392" cy="647" r="1.9" fill="#8a74c8" opacity="0.15"/>
+<circle cx="330" cy="354" r="2.9" fill="#d6c8f5" opacity="0.48"/>
+<circle cx="62" cy="315" r="1.7" fill="#d6c8f5" opacity="0.53"/>
+<circle cx="412" cy="629" r="1.1" fill="#d6c8f5" opacity="0.33"/>
+<circle cx="300" cy="549" r="1.2" fill="#d6c8f5" opacity="0.49"/>
+<circle cx="487" cy="444" r="1.2" fill="#d6c8f5" opacity="0.33"/>
+<circle cx="171" cy="103" r="2.2" fill="#d6c8f5" opacity="0.47"/>
+<circle cx="282" cy="189" r="2.4" fill="#8a74c8" opacity="0.59"/>
+<circle cx="54" cy="410" r="1.1" fill="#d6c8f5" opacity="0.45"/>
+<circle cx="172" cy="198" r="2.3" fill="#d6c8f5" opacity="0.58"/>
+<circle cx="531" cy="555" r="0.8" fill="#8a74c8" opacity="0.54"/>
+<circle cx="150" cy="684" r="1.5" fill="#d6c8f5" opacity="0.47"/>
+<circle cx="308" cy="612" r="3.0" fill="#d6c8f5" opacity="0.49"/>
+<rect x="0" y="0" width="600" height="760" fill="url(#aura)" opacity=".08"/>
+<path d="M0 760 L0 720 Q300 680 600 720 L600 760Z" fill="#000" opacity=".35"/>
+</svg>

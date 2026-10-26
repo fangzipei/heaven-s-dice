@@ -1,10 +1,11 @@
 import {
   BARRELS, BARREL_BY_ID, BOSSES, DICE, DICE_BY_ID, DICE_SETS,
   ITEMS, ITEM_BY_ID, LEVELS, LEVEL_COUNT, RARITIES, STANDARD_DIE,
+  REROLL_REFUND, OVERSHOOT_TIERS, rarityShopWeight, overshootTier,
   activeSetBonuses, chapterForLevel, getLevelConfig, getOpponent, getTable,
 } from './data.js';
 import {
-  analyzeSelection, bestSelection, hasScoringSelection,
+  analyzeSelection, bestSelection, hasScoringSelection, WILD_VALUE,
 } from './scoring.js';
 
 export const BASE_REROLLS = 5;
@@ -89,6 +90,7 @@ function makeBoard(bag) {
     dieId: entry.dieId,
     value: null,
     blank: false,
+    wild: false,
     scored: false,
   }));
 }
@@ -111,15 +113,15 @@ export function hasSetTier(state, setId, tier) {
 }
 
 export function targetForLevel(state, level = state.level) {
-  let target = getLevelConfig(level).target;
-  if (hasSetTier(state, 'astral', 2)) target *= 0.9;
-  return Math.ceil(target);
+  return getLevelConfig(level).target;
 }
 
 function resetLevelFlags(state) {
   state.flags = {
     hunterMark: false,
     bloodContract: false,
+    wagerMark: false,
+    saltGuard: false,
     starBonus: false,
     starArmed: false,
     vortexScore: false,
@@ -145,6 +147,15 @@ export function bossEffectKey(state) {
   const boss = activeBoss(state);
   if (!boss || state.flags?.bossDisabled) return null;
   return boss.effectKey;
+}
+
+/**
+ * 悬秤人的「浮筹未决」：本关的分数全是漂浮分。漂浮分照样能推高目标进度，
+ * 但它一直押在桌上——掷空时连同之前所有回合一起消散，只有离开这张桌子
+ * （过关结算）才真正落袋。
+ */
+export function isFloatingScore(state) {
+  return bossEffectKey(state) === 'floatingScore';
 }
 
 export function isBossDieBlocked(state, die) {
@@ -213,6 +224,10 @@ export function bossStatusText(state) {
     const remainder = 9 - ((state.bossDiceRolled || 0) % 9);
     return `距离下一颗白骰还有 ${remainder} 颗`;
   }
+  if (effectKey === 'floatingScore') {
+    const atRisk = Math.max(0, state.roundScore || 0);
+    return atRisk > 0 ? `${atRisk} 分漂浮未落定` : '所有得分漂浮，掷空即清零';
+  }
   if (effectKey === 'noRepeatType') {
     return state.flags?.bossLastType ? `上一手：${handTypeName(state.flags.bossLastType)}` : '尚未计分';
   }
@@ -230,6 +245,7 @@ export function initLevel(state) {
   state.score = 0;
   state.roundScore = 0;
   state.targetReached = false;
+  state.overshootTierKey = null;
   state.lastBust = null;
   state.lastScore = null;
   state.selected = [];
@@ -252,7 +268,6 @@ export function initLevel(state) {
   }
   const effectKey = state.flags.bossDisabled ? null : opponent.effectKey;
   let rerolls = BASE_REROLLS + (state.bossBoons || 0);
-  if (hasSetTier(state, 'raven', 2)) rerolls += 1;
   if (config.boss && effectKey === 'rerollMinus') rerolls -= 1;
   if (config.boss && effectKey === 'scoreTaxReroll') rerolls += 1;
   state.rerolls = Math.max(1, rerolls);
@@ -264,6 +279,9 @@ export function initLevel(state) {
   state.stats.levelRolls = 0;
   state.stats.levelScore = 0;
   pushLog(state, `${getTable(state.level).name}：第 ${state.level} 关，目标 ${state.target} 分。`, 'system');
+  if (config.boss && effectKey === 'floatingScore') {
+    pushLog(state, '悬秤人把秤悬在桌上：本关所有得分都是漂浮分，掷出无法计分的骰型就会整桌清零。', 'system');
+  }
   return state;
 }
 
@@ -283,6 +301,7 @@ export function createRun({ rng = Math.random } = {}) {
     score: 0,
     roundScore: 0,
     targetReached: false,
+    overshootTierKey: null,
     lastBust: null,
     target: 0,
     targetBase: 0,
@@ -338,7 +357,7 @@ export function clearSelection(state) {
 
 export function getComboAnalysis(state) {
   const dice = selectedDice(state);
-  return analyzeSelection(dice.map((d) => d.value));
+  return analyzeSelection(dice.map((d) => (d.wild ? WILD_VALUE : d.value)));
 }
 
 function subtotal(state) {
@@ -360,7 +379,7 @@ export function buildScore(state, action = 'reroll') {
       breakdown: null,
     };
   }
-  const analysis = analyzeSelection(selected.map((d) => d.value));
+  const analysis = analyzeSelection(selected.map((d) => (d.wild ? WILD_VALUE : d.value)));
   if (!analysis.valid) {
     return {
       valid: false,
@@ -410,10 +429,16 @@ export function buildScore(state, action = 'reroll') {
     if (bonus.type === 'faceFlat' && die.value === bonus.face) {
       flatAdd += bonus.value;
       flats.push({ label: `${spec.name} · ${bonus.label}`, value: bonus.value });
-    } else if (bonus.type === 'twoSixes' && counts[6] >= 2) {
+    } else if (bonus.type === 'wildFlat' && die.wild) {
       flatAdd += bonus.value;
       flats.push({ label: `${spec.name} · ${bonus.label}`, value: bonus.value });
-    } else if (bonus.type === 'hasOne' && counts[1] >= 1) {
+    } else if (bonus.type === 'tripleFace' && counts[bonus.face] >= 3) {
+      flatAdd += bonus.value;
+      flats.push({ label: `${spec.name} · ${bonus.label}`, value: bonus.value });
+    } else if (bonus.type === 'anyTriple' && Object.values(counts).some((n) => n >= 3)) {
+      flatAdd += bonus.value;
+      flats.push({ label: `${spec.name} · ${bonus.label}`, value: bonus.value });
+    } else if (bonus.type === 'hasFace' && counts[bonus.face] >= 1) {
       flatAdd += bonus.value;
       flats.push({ label: `${spec.name} · ${bonus.label}`, value: bonus.value });
     } else if (bonus.type === 'straightFlat' && analysis.straight) {
@@ -428,65 +453,76 @@ export function buildScore(state, action = 'reroll') {
     }
   }
 
-  // Set bonuses.
-  if ((sets.wolf?.count || 0) >= 2 && counts[6] > 0) {
-    const value = counts[6] * 30;
+  // Set bonuses: wolf rides on 3s, demon pays for jokers actually used.
+  const wolfCount = sets.wolf?.count || 0;
+  const demonCount = sets.demon?.count || 0;
+  const wildDice = selected.filter((d) => d.wild).length;
+  if (wolfCount >= 2 && counts[3] > 0) {
+    const value = counts[3] * 60;
     flatAdd += value;
-    flats.push({ label: '狼裔 2 件 · 每颗 6 +30', value });
+    flats.push({ label: '狼裔 2 件 · 每颗 3 +60', value });
   }
-  if ((sets.wolf?.count || 0) >= 4 && analysis.multi) {
-    flatAdd += 125;
-    flats.push({ label: '狼裔 4 件 · 群猎 +125', value: 125 });
+  if (wolfCount >= 4 && counts[3] >= 3) {
+    flatAdd += 600;
+    flats.push({ label: '狼裔 4 件 · 三连 3 加成', value: 600 });
   }
-  if ((sets.raven?.count || 0) >= 4 && counts[1] > 0) {
-    const value = counts[1] * 60;
-    flatAdd += value;
-    flats.push({ label: '渡鸦 4 件 · 每颗 1 +60', value });
-  }
-  if ((sets.serpent?.count || 0) >= 2 && analysis.straight) {
-    flatAdd += 200;
-    flats.push({ label: '蝰蛇 2 件 · 顺流 +200', value: 200 });
-  }
-  if ((sets.serpent?.count || 0) >= 4 && counts[5] > 0) {
-    const value = counts[5] * 60;
-    flatAdd += value;
-    flats.push({ label: '蝰蛇 4 件 · 每颗 5 +60', value });
-  }
-  if ((sets.astral?.count || 0) >= 4) {
-    multiplier *= 1.20;
-    multipliers.push({ label: '星穹 4 件 · 星辉', value: 1.20 });
+  if (demonCount >= 4 && wildDice > 0) {
+    multiplier *= 1.22;
+    multipliers.push({ label: '恶魔 4 件 · 群魔', value: 1.22 });
+  } else if (demonCount >= 2 && wildDice > 0) {
+    multiplier *= 1.08;
+    multipliers.push({ label: '恶魔 2 件 · 契约', value: 1.08 });
   }
 
-  // Set-scoring barrels reward only dice actually selected for this score.
+  // Barrels pay for what was actually scored: the wolf cup pays for 3s, the
+  // demon pact pays for jokers that made a combination legal.
   const barrel = getBarrel(state);
-  if (barrel.type === 'setScore') {
-    const matching = dieSpecs.filter((spec) => spec.setId === barrel.setId).length;
-    const value = matching * barrel.value;
-    if (value > 0) {
+  if (barrel.type === 'faceScore') {
+    const n = counts[barrel.face] || 0;
+    if (n > 0) {
+      const value = n * barrel.value;
       flatAdd += value;
-      flats.push({ label: `${barrel.name} · ${matching} 颗对应骰型`, value });
+      flats.push({ label: `${barrel.name} · ${n} 颗 ${barrel.face}`, value });
     }
+    if (n >= 3 && barrel.tripleValue) {
+      flatAdd += barrel.tripleValue;
+      flats.push({ label: `${barrel.name} · 三连 ${barrel.face}`, value: barrel.tripleValue });
+    }
+  }
+  if (barrel.type === 'wildScore' && wildDice > 0) {
+    const value = wildDice * barrel.value;
+    flatAdd += value;
+    flats.push({ label: `${barrel.name} · ${wildDice} 颗恶魔赖子`, value });
   }
   if (state.passiveItems.includes('cracked_pouch')) {
     multiplier *= 1.25;
     multipliers.push({ label: '裂痕骰袋 · 孤注一掷', value: 1.25 });
   }
 
-  // Demon die: included is a boon, available-but-ignored is a pact penalty.
-  const queenEquipped = state.bag.some((entry) => entry.dieId === 'crown_queen');
-  const queenSelected = selectedIds.includes('crown_queen');
-  if (queenEquipped && queenSelected) {
-    multiplier *= 1.30;
-    multipliers.push({ label: '无冠女王 · 恶魔契约', value: 1.30 });
-  } else if (queenEquipped && state.dice.some((d) => d.dieId === 'crown_queen' && !d.scored)) {
-    multiplier *= 0.80;
-    multipliers.push({ label: '无冠女王 · 被冷落的诅咒', value: 0.80 });
+  // Pact die: carrying it is a boon when it scores, a penalty when it sits out.
+  // Driven by the bonus type, so renaming or retiring a die cannot break it.
+  const pactDie = state.bag
+    .map((entry) => getDieSpec(entry.dieId))
+    .find((spec) => spec.bonus?.type === 'demon');
+  if (pactDie) {
+    const pact = pactDie.bonus;
+    if (selectedIds.includes(pactDie.id)) {
+      multiplier *= pact.included;
+      multipliers.push({ label: `${pactDie.name} · 恶魔契约`, value: pact.included });
+    } else if (state.dice.some((die) => die.dieId === pactDie.id && !die.scored)) {
+      multiplier *= pact.missing;
+      multipliers.push({ label: `${pactDie.name} · 被冷落的诅咒`, value: pact.missing });
+    }
   }
 
   // Active items and gesture buffs.
   if (state.flags.hunterMark) {
     multiplier *= 2;
     multipliers.push({ label: '猎人印记 · 双倍', value: 2 });
+  }
+  if (state.flags.wagerMark) {
+    multiplier *= 1.6;
+    multipliers.push({ label: '加注契约 · 押注', value: 1.6 });
   }
   if (state.flags.bloodContract) {
     multiplier *= 1.35;
@@ -514,7 +550,7 @@ export function buildScore(state, action = 'reroll') {
   if (voided) notes.push({ label: `${boss.name} · 本手不计分`, value: '×0' });
 
   const costs = [];
-  if (state.flags.bloodContract) costs.push({ label: '血契代价', value: 40 });
+  if (state.flags.bloodContract) costs.push({ label: '血契代价', value: 100 });
 
   return {
     valid: true,
@@ -561,7 +597,10 @@ function addScore(state, amount, { round = false } = {}) {
   state.stats.levelScore += amount;
   // The newest scoring action is at risk until the next throw proves it has a
   // scoring combination. Earlier confirmed rounds stay in the secured total.
-  if (round) state.roundScore = amount;
+  // Under a floating-score dealer nothing ever gets confirmed: every point on
+  // the table rides on the next throw.
+  if (isFloatingScore(state)) state.roundScore = state.score;
+  else if (round) state.roundScore = amount;
   if (amount > state.stats.bestHit) state.stats.bestHit = amount;
 }
 
@@ -572,11 +611,14 @@ function addScore(state, amount, { round = false } = {}) {
 function bustRound(state) {
   const lost = Math.max(0, state.roundScore || 0);
   if (!lost) return 0;
+  const floating = isFloatingScore(state);
   state.score = Math.max(0, state.score - lost);
   state.stats.levelScore = Math.max(0, state.stats.levelScore - lost);
   state.roundScore = 0;
-  state.lastBust = { lost };
-  pushLog(state, `本轮 ${lost} 分作废。`, 'bad');
+  state.lastBust = { lost, floating };
+  pushLog(state, floating
+    ? `秤翻了：整桌 ${lost} 分漂浮分全部消散。`
+    : `本轮 ${lost} 分作废。`, 'bad');
   return lost;
 }
 
@@ -587,24 +629,61 @@ function penalizeScore(state, amount) {
   state.stats.levelScore = Math.max(0, state.stats.levelScore - amount);
 }
 
+/**
+ * What banking right now would pay, on top of the level's base reward:
+ * unspent reroll tokens converted to coins, plus a tiered overshoot bounty.
+ * Used both for the real payout and for the live HUD preview.
+ */
+export function cashOutValue(state) {
+  const spare = Math.max(0, state.rerolls || 0);
+  const refund = spare * REROLL_REFUND;
+  // 漂浮分照样能追超额赏金——它在落秤的那一刻才兑现，和分数同一个时刻。
+  const tier = overshootTier(state.score || 0, state.target || 0);
+  return { spare, refund, tier: tier || null, tierValue: tier?.value || 0, total: refund + (tier?.value || 0) };
+}
+
 function awardLevel(state) {
   if (state.levelReward) return state.levelReward;
   const cfg = getLevelConfig(state.level);
   const bonuses = [];
   let total = cfg.reward;
-  if (hasSetTier(state, 'crown', 4)) {
-    total += 15;
-    bonuses.push({ label: '王冠 4 件 · 贡金', value: 15 });
-  }
+  // 庄家赏金系数：目标分与基础赏金都由曲线 × 系数算出来，这里把系数本身
+  // 记进结算，界面才能说清“这一关为什么比上一关贵”。
+  const boss = cfg.boss ? getOpponent(state.level) : null;
+  const curveReward = cfg.curve?.reward ?? cfg.reward;
+  const bossPremium = boss ? cfg.reward - curveReward : 0;
   if (state.passiveItems.includes('gold_cuff')) {
     total += 15;
     bonuses.push({ label: '镀金袖扣', value: 15 });
   }
+  // Leaving with tokens in hand pays: every unspent reroll is cashed out.
+  const cash = cashOutValue(state);
+  if (cash.spare > 0) {
+    total += cash.refund;
+    bonuses.push({ label: `剩余重投 ${cash.spare} × ${REROLL_REFUND}`, value: cash.refund });
+  }
+  if (cash.tier) {
+    total += cash.tierValue;
+    bonuses.push({ label: cash.tier.label, value: cash.tierValue });
+  }
   state.coins += total;
-  state.levelReward = { base: cfg.reward, bonuses, total };
+  state.levelReward = {
+    base: cfg.reward, curveBase: curveReward, bossPremium,
+    bossName: boss?.name || null, bossScale: boss?.curve?.reward ?? 1, bonuses, total,
+  };
   state.pendingReward = state.levelReward;
   state.stats.wins += 1;
   pushLog(state, `第 ${state.level} 关获胜，获得 ${total} 银币。`, 'reward');
+  if (bossPremium > 0) {
+    pushLog(state, `${boss.name} 悬赏 ×${(boss.curve?.reward ?? 1).toFixed(2)}：基础赏金 ${curveReward} → ${cfg.reward}。`, 'reward');
+  }
+  if (cash.spare > 0) {
+    pushLog(state, `收手带走 ${cash.spare} 次未用重投，折 ${cash.refund} 银币。`, 'reward');
+  }
+  if (cash.tier) {
+    const times = ((state.score || 0) / (state.target || 1)).toFixed(1);
+    pushLog(state, `本关得分达到目标的 ${times} 倍：${cash.tier.label.split(' · ')[0]} +${cash.tierValue} 银币。`, 'reward');
+  }
   return state.levelReward;
 }
 
@@ -632,7 +711,30 @@ function checkWin(state) {
   if (state.score >= state.target && state.phase !== 'won' && state.phase !== 'run-won') {
     if (!state.targetReached) {
       state.targetReached = true;
-      pushLog(state, `达到 ${state.target} 分。可以继续加注，或点击「下一关」收手。`, 'win');
+      const cash = cashOutValue(state);
+      if (isFloatingScore(state)) {
+        pushLog(
+          state,
+          `漂浮分摸到 ${state.target}。现在落秤就能带走 ${cash.total} 银币`
+          + `（含剩余重投 ${cash.spare} 次折 ${cash.refund}）；再扔一次，秤就可能翻，一分不剩。`,
+          'win',
+        );
+      } else {
+        pushLog(
+          state,
+          `达到 ${state.target} 分。继续加注可以追更高的赏金（1.5 倍 +25 / 2 倍 +60 / 3 倍 +140）；`
+          + `现在收手则带走 ${cash.total} 银币（含剩余重投 ${cash.spare} 次折 ${cash.refund}）。`,
+          'win',
+        );
+      }
+    }
+    // Announce each new overshoot tier as the player pushes past the target.
+    const tier = overshootTier(state.score, state.target);
+    if (tier && tier.key !== state.overshootTierKey) {
+      state.overshootTierKey = tier.key;
+      pushLog(state, isFloatingScore(state)
+        ? `${tier.label}：落秤时可额外带走 ${tier.value} 银币——前提是秤没翻。`
+        : `${tier.label}：收手时可额外带走 ${tier.value} 银币。`, 'good');
     }
     return true;
   }
@@ -708,6 +810,7 @@ export function rollDice(state, { free = false, rng = getRng(state) } = {}) {
       die.scored = false;
       die.value = null;
       die.blank = false;
+      die.wild = false;
     }
     state.flags.hotDice = false;
     state.flags.rerollAll = false;
@@ -720,6 +823,7 @@ export function rollDice(state, { free = false, rng = getRng(state) } = {}) {
   const rollOne = (die) => {
     die.scored = false;
     die.blank = false;
+    die.wild = false;
     state.bossDiceRolled = (state.bossDiceRolled || 0) + 1;
     if (blankNinth && state.bossDiceRolled % 9 === 0) {
       die.value = 0;
@@ -727,6 +831,8 @@ export function rollDice(state, { free = false, rng = getRng(state) } = {}) {
       return;
     }
     die.value = rollValue(effectiveProbs(die.dieId, barrel.id), rng);
+    // Demon dice turn their 1 face into a joker, never a plain 100 points.
+    die.wild = getDieSpec(die.dieId).setId === 'demon' && die.value === 1;
   };
   for (const die of targets) rollOne(die);
   for (const die of state.dice) {
@@ -737,17 +843,30 @@ export function rollDice(state, { free = false, rng = getRng(state) } = {}) {
   state.throwNumber += 1;
   state.stats.rolls += 1;
   state.stats.levelRolls += 1;
-  state.lastRoll = targets.map((d) => d.value);
+  state.lastRoll = targets.map((d) => (d.blank ? 0 : d.wild ? '魔' : d.value));
 
   const scoring = bestSelection(scorableDice(state));
   let bust = 0;
   if (!scoring) {
     state.phase = 'dead';
     pushLog(state, `掷出 ${state.lastRoll.map((v) => v === 0 ? '白' : v).join(' · ')}，没有可计分的组合。`, 'bad');
-    bust = bustRound(state);
+    if (state.flags.saltGuard) {
+      // Salt eats the bust once: the provisional round is confirmed instead.
+      const saved = Math.max(0, state.roundScore || 0);
+      state.flags.saltGuard = false;
+      // Floating points go straight back on the table after salt saves them.
+      state.roundScore = isFloatingScore(state) ? state.score : 0;
+      state.lastBust = { saved };
+      pushLog(state, saved > 0
+        ? `盐挡住了这一掷：本轮 ${saved} 分保住。`
+        : '盐挡住了这一掷，但本轮本来没有分数可保。', 'good');
+    } else {
+      bust = bustRound(state);
+    }
   } else {
-    // A scoring throw confirms the previous round's provisional points.
-    state.roundScore = 0;
+    // A scoring throw confirms the previous round's provisional points — unless
+    // the dealer keeps everything floating, in which case it stays at risk.
+    if (!isFloatingScore(state)) state.roundScore = 0;
     state.lastBust = null;
     pushLog(state, `掷出 ${state.lastRoll.map((v) => v === 0 ? '白' : v).join(' · ')}。`, 'roll');
   }
@@ -785,7 +904,7 @@ export function applyScore(state, action) {
   if (!chosen.valid) return { ok: false, error: chosen.error };
 
   const scoringDice = selectedDice(state);
-  const scoringValues = scoringDice.map((d) => d.value);
+  const scoringValues = scoringDice.map((d) => (d.wild ? '魔' : d.value));
   const total = chosen.total;
   const bossEffect = bossEffectKey(state);
   if (bossEffect === 'noRepeatType') {
@@ -806,11 +925,12 @@ export function applyScore(state, action) {
 
   // Die-specific trigger effects.
   const specs = scoringDice.map((d) => getDieSpec(d.dieId));
-  if (specs.some((s) => s.id === 'astral_eye') && !state.flags.eyeUsed) {
+  const rerollDie = specs.find((spec) => spec.bonus?.type === 'bonusReroll');
+  if (rerollDie && !state.flags.eyeUsed) {
     state.flags.eyeUsed = true;
     state.rerolls += 1;
     state.maxRerolls += 1;
-    pushLog(state, '命运之眼睁开：本关获得 1 次额外重投。', 'good');
+    pushLog(state, `${rerollDie.name} 睁眼：本关获得 1 次额外重投。`, 'good');
   }
   if (specs.some((s) => s.bonus?.type === 'demon')) {
     pushLog(state, '无冠女王满意地收下了这份供奉。', 'demon');
@@ -819,9 +939,12 @@ export function applyScore(state, action) {
   if (state.flags.hunterMark) {
     state.flags.hunterMark = false;
   }
+  if (state.flags.wagerMark) {
+    state.flags.wagerMark = false;
+  }
   if (state.flags.bloodContract) {
-    penalizeScore(state, 40);
-    pushLog(state, '血契索取代价：-40 分。', 'bad');
+    penalizeScore(state, 100);
+    pushLog(state, '血契索取代价：-100 分。', 'bad');
   }
 
   for (const die of scoringDice) die.scored = true;
@@ -918,6 +1041,9 @@ function disableBossEffectNow(state) {
   } else if (boss.effectKey === 'scoreTaxReroll') {
     state.rerolls = Math.max(1, state.rerolls - 1);
     state.maxRerolls = Math.max(1, state.maxRerolls - 1);
+  } else if (boss.effectKey === 'floatingScore') {
+    // 秤被按下去了：桌上的分从此落袋，不再随着掷空消散。
+    state.roundScore = 0;
   }
   state.flags.bossDisabled = true;
   pushLog(state, `静默赦令：${boss.name} 的「${boss.effectName}」被消除。`, 'good');
@@ -942,7 +1068,7 @@ export function canUseItem(state, itemId) {
   if (itemId === 'glove' && (state.phase !== 'selecting' || selectedDice(state).length !== 1)) {
     return { ok: false, error: '先选中恰好一颗骰子。' };
   }
-  if (itemId === 'smoke' && !['selecting', 'dead'].includes(state.phase)) {
+  if ((itemId === 'smoke' || itemId === 'powder') && !['selecting', 'dead'].includes(state.phase)) {
     return { ok: false, error: '只能在投掷后使用。' };
   }
   return { ok: true };
@@ -967,16 +1093,19 @@ export function useItem(state, itemId) {
     pushLog(state, `幸运币翻面：+${gain} 分。`, 'item');
     checkWin(state);
   } else if (itemId === 'courage') {
-    state.rerolls += 2;
-    state.maxRerolls += 2;
-    pushLog(state, '烈酒下肚：+2 次重投。', 'item');
+    state.rerolls += 1;
+    state.maxRerolls += 1;
+    pushLog(state, '烈酒下肚：+1 次重投。这瓶酒见底了。', 'item');
   } else if (itemId === 'hunter_mark') {
     state.flags.hunterMark = true;
     pushLog(state, '猎人印记已锁定：下一次计分翻倍。', 'item');
   } else if (itemId === 'glove') {
     const die = selectedDice(state)[0];
     die.value = 1;
-    pushLog(state, '魔术手套滑过骰面：一颗骰子变成 1。', 'item');
+    die.wild = getDieSpec(die.dieId).setId === 'demon';
+    pushLog(state, die.wild
+      ? '魔术手套滑过骰面：一颗恶魔骰翻出赖子。'
+      : '魔术手套滑过骰面：一颗骰子变成 1。', 'item');
   } else if (itemId === 'smoke') {
     pushLog(state, '烟雾弥漫，未计分的骰子被重新掷出。', 'item');
     state.selected = [];
@@ -996,7 +1125,24 @@ export function useItem(state, itemId) {
     checkWin(state);
   } else if (itemId === 'blood_contract') {
     state.flags.bloodContract = true;
-    pushLog(state, '血契签署：本关后续计分 +35%，每次计分后 -40 分。', 'item');
+    pushLog(state, '血契签署：本关后续计分 +35%，每次计分后 -100 分。', 'item');
+  } else if (itemId === 'wager') {
+    state.rerolls += 1;
+    state.maxRerolls += 1;
+    state.flags.wagerMark = true;
+    pushLog(state, '加注契约生效：+1 次重投，下一次计分 ×1.6。', 'item');
+  } else if (itemId === 'salt') {
+    state.flags.saltGuard = true;
+    pushLog(state, '盐已洒在桌角：下一次掷空不会抹掉本轮分数。', 'item');
+  } else if (itemId === 'powder') {
+    const gain = bossScoreAmount(state, 80);
+    addScore(state, gain);
+    state.selected = [];
+    pushLog(state, `幸运粉扬开：+${gain} 分，未计分的骰子重新掷出。`, 'item');
+    state.activeItems = state.activeItems.filter((id) => id !== itemId);
+    delete state.itemCharges[itemId];
+    checkWin(state);
+    return { ok: true, rerollFree: true, item };
   }
 
   if (item.consumable) {
@@ -1036,9 +1182,7 @@ export function retryLevel(state) {
 // ── Shop ───────────────────────────────────────────────────────────────────
 
 export function shopPrice(state, base) {
-  let value = base;
-  if (hasSetTier(state, 'crown', 2)) value *= 0.85;
-  return Math.max(1, Math.round(value));
+  return Math.max(1, Math.round(base));
 }
 
 export function refreshCost(state, section) {
@@ -1100,21 +1244,50 @@ function diceOffers(state, count, rng) {
       .filter(Boolean),
   );
   const chosen = [];
-  const favored = pool.filter((die) => ownedSets.has(die.setId));
-  if (favored.length && count > 0) {
-    const first = favored[Math.floor(rng() * favored.length)];
-    chosen.push(first);
+  const remaining = () => pool.filter((die) => !chosen.some((pick) => pick.id === die.id));
+  const weightFor = (die) => {
+    const base = rarityShopWeight(die.rarity, state.level || 1);
+    if (!base) return 0;
+    // Nudge stock toward sets the player already owns so 2/4-piece bonuses
+    // stay reachable without removing shop randomness.
+    return ownedSets.has(die.setId) ? base * 1.5 : base;
+  };
+  while (chosen.length < count) {
+    const candidates = remaining()
+      .map((die) => ({ die, weight: weightFor(die) }))
+      .filter((entry) => entry.weight > 0);
+    if (!candidates.length) break;
+    const total = candidates.reduce((sum, entry) => sum + entry.weight, 0);
+    let roll = rng() * total;
+    let pick = candidates[candidates.length - 1].die;
+    for (const entry of candidates) {
+      roll -= entry.weight;
+      if (roll <= 0) { pick = entry.die; break; }
+    }
+    chosen.push(pick);
   }
-  const remainder = pool.filter((die) => !chosen.some((pick) => pick.id === die.id));
-  chosen.push(...pickMany(remainder, count - chosen.length, rng));
   return chosen.map((die) => ({ kind: 'die', id: die.id, sold: false }));
 }
 
+/**
+ * Base stock is 2 dice / 1 barrel / 3 items; the shelf passives each add one
+ * slot to their own section.
+ */
+export function shopSlots(state) {
+  const has = (id) => (state.passiveItems || []).includes(id);
+  return {
+    dice: 2 + (has('shelf_dice') ? 1 : 0),
+    barrel: 1 + (has('shelf_barrel') ? 1 : 0),
+    item: 3 + (has('shelf_item') ? 1 : 0),
+  };
+}
+
 export function createShop(state, { rng = getRng(state) } = {}) {
+  const slots = shopSlots(state);
   const shop = {
-    dice: diceOffers(state, 2, rng),
-    barrel: offers(barrelPool(state), 1, 'barrel', rng),
-    item: offers(itemPool(state), 3, 'item', rng),
+    dice: diceOffers(state, slots.dice, rng),
+    barrel: offers(barrelPool(state), slots.barrel, 'barrel', rng),
+    item: offers(itemPool(state), slots.item, 'item', rng),
     refreshes: { dice: 0, barrel: 0, item: 0 },
   };
   state.shop = shop;
@@ -1153,12 +1326,13 @@ export function refreshSection(state, section, { rng = getRng(state) } = {}) {
   const cost = refreshCost(state, section);
   if (state.coins < cost) return { ok: false, error: `需要 ${cost} 银币。` };
   state.coins -= cost;
+  const slots = shopSlots(state);
   if (section === 'dice') {
-    state.shop.dice = diceOffers(state, 2, rng);
+    state.shop.dice = diceOffers(state, slots.dice, rng);
   } else if (section === 'barrel') {
-    state.shop.barrel = offers(barrelPool(state), 1, 'barrel', rng);
+    state.shop.barrel = offers(barrelPool(state), slots.barrel, 'barrel', rng);
   } else if (section === 'item') {
-    state.shop.item = offers(itemPool(state), 3, 'item', rng);
+    state.shop.item = offers(itemPool(state), slots.item, 'item', rng);
   } else {
     return { ok: false, error: '未知的商店区域。' };
   }
@@ -1299,7 +1473,6 @@ export function runSummary(state) {
 export function explainTarget(state) {
   const base = getLevelConfig(state.level).target;
   const reasons = [];
-  if (hasSetTier(state, 'astral', 2)) reasons.push({ label: '星穹 2 件', value: -Math.round(base * 0.1) });
   if (state.flags.charm) reasons.push({ label: '赌徒护符', value: `目标降至 ${state.target}` });
   return { base, target: state.target, reasons };
 }

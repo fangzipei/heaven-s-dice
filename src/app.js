@@ -1,11 +1,28 @@
 import {
   BARRELS, BARREL_BY_ID, BOSSES, DICE, DICE_BY_ID, DICE_SETS, ITEMS,
   ITEM_BY_ID, LEVELS, LEVEL_COUNT, MINIONS, RARITIES, TABLES, STANDARD_DIE,
-  activeSetBonuses, chapterForLevel, getLevelConfig, getOpponent, getTable,
+  SHOP_RARITY_WEIGHTS, rarityShopWeight, REROLL_REFUND, OVERSHOOT_TIERS,
+  MINION_GAPS, LEVEL_CURVE,
+  activeSetBonuses, chapterForLevel, chapterLevelSpan, getLevelConfig, getOpponent, getTable,
 } from './data.js';
 import * as Engine from './engine.js';
 import { SCORING_ROWS, analyzeSelection } from './scoring.js';
 import { dieMotifSvg, dieSkinStyle } from './dice-skins.js';
+import { motion } from './motion.js';
+
+/* The dice itself is WebGL. Loaded lazily so a browser without WebGL2 (or a
+   failure inside three) falls back to the DOM renderer instead of blanking
+   the table. */
+let DiceTable = null;
+let diceTablePromise = null;
+function loadDiceTable() {
+  if (!diceTablePromise) {
+    diceTablePromise = import('./dice-3d.js')
+      .then((mod) => { DiceTable = mod.DiceTable; return DiceTable; })
+      .catch((error) => { console.warn('WebGL dice unavailable, falling back', error); return null; });
+  }
+  return diceTablePromise;
+}
 
 /* ═══════════════════════════════════════════════════════════════════
    Tiny helpers
@@ -473,6 +490,14 @@ function startRun() {
   $('#game-screen').hidden = false;
   setupLevelScene(true);
   renderGame();
+  // Bring the WebGL table up once the game screen has a real size, then
+  // repaint so the first roll already animates in 3D.
+  ensureDiceTable().then((table) => {
+    if (!table || !app.run) return;
+    diceTable.resize();
+    renderDiceTray();
+    motion.markDirty();
+  });
   sound.unlock();
   showLevelIntro();
 }
@@ -559,7 +584,7 @@ function showLevelIntro() {
   const isBoss = Boolean(cfg.boss);
   const chapter = chapterForLevel(run.level);
   const roman = ['I', 'II', 'III', 'IV', 'V'][chapter];
-  const reward = projectedReward();
+  const reward = baseReward();
   const line = introLine(opponent, run.level, isBoss);
   const effect = isBoss ? `
     <div class="intro-effect">
@@ -581,11 +606,12 @@ function showLevelIntro() {
         ${effect}
         <div class="intro-stats">
           <div class="intro-stat"><span>目标分数</span><b>${num(run.target)}</b></div>
-          <div class="intro-stat"><span>胜利奖励</span><b>${num(reward)} <small style="font-size:10px;color:#8d7c62">银币</small></b></div>
+          <div class="intro-stat"><span>胜利奖励</span><b>${num(reward)} <small style="font-size:10px;color:#8d7c62">银币起</small></b></div>
           <div class="intro-stat ${isBoss ? 'boss' : ''}"><span>重投次数</span><b>${run.rerolls}</b></div>
           <div class="intro-stat"><span>章节</span><b>${roman}</b></div>
         </div>
         ${run.bossBoons ? `<p class="intro-role" style="margin-top:-12px;margin-bottom:18px;font-size:10px;color:#c5a96e">已夺取 ${run.bossBoons} 枚庄家徽记 · 每关额外 ${run.bossBoons} 次重投。</p>` : ''}
+        <p class="intro-role" style="margin-top:-12px;margin-bottom:18px;font-size:10px;color:#a08c6c">收手奖金：每剩 1 次重投 +${REROLL_REFUND} 银币；得分达到目标 1.5 / 2 / 3 倍再 +${OVERSHOOT_TIERS.slice().reverse().map((t) => t.value).join(' / ')}。</p>
         <div class="intro-actions">
           <button class="primary-button" data-action="close-intro">入座应战 <svg><use href="#i-arrow"></use></svg></button>
           <button class="text-button" data-action="open-rules">查看计分规则 <span>↗</span></button>
@@ -597,14 +623,29 @@ function showLevelIntro() {
   `, { dismissible: false });
 }
 
+/** Base level payout, before reroll cash-out and overshoot tiers. */
+function baseReward() {
+  if (!app.run) return 0;
+  let reward = getLevelConfig(app.run.level).reward;
+  // Must match awardLevel in the engine (gold_cuff pays 15).
+  if (app.run.passiveItems.includes('gold_cuff')) reward += 15;
+  return reward;
+}
+
 function projectedReward() {
   if (!app.run) return 0;
-  const cfg = getLevelConfig(app.run.level);
-  const sets = Engine.setCounts(app.run);
-  let reward = cfg.reward;
-  if ((sets.crown?.count || 0) >= 4) reward += 12;
-  if (app.run.passiveItems.includes('gold_cuff')) reward += 12;
-  return reward;
+  // Live preview: what banking at this exact moment would pay.
+  return baseReward() + Engine.cashOutValue(app.run).total;
+}
+
+/** Itemised preview shown in the HUD tooltip so the cash-out rules stay visible. */
+function cashOutHint() {
+  const cash = Engine.cashOutValue(app.run);
+  const parts = [`基础 ${getLevelConfig(app.run.level).reward}`];
+  if (app.run.passiveItems.includes('gold_cuff')) parts.push('镀金袖扣 +15');
+  parts.push(`剩余重投 ${cash.spare} × ${REROLL_REFUND} = ${cash.refund}`);
+  parts.push(cash.tier ? `${cash.tier.label} +${cash.tierValue}` : '超额赏金 未达成（1.5 倍 +25 / 2 倍 +60 / 3 倍 +140）');
+  return parts.join('\n');
 }
 
 function goToShop() {
@@ -682,20 +723,25 @@ function renderScorePanel() {
   const run = app.run;
   const round = Math.max(0, run.roundScore || 0);
   const secured = Math.max(0, run.score - round);
-  $('#score-value').textContent = num(secured);
+  // 悬秤人：整桌都是漂浮分，没有“已落袋”的一半可说。
+  const floating = Engine.isFloatingScore(run);
+  $('#score-value').textContent = num(floating ? run.score : secured);
   $('#secured-value').textContent = num(secured);
   $('#target-value').textContent = num(run.target);
   $('#target-value-2').textContent = num(run.target);
-  $('#score-pending').hidden = round <= 0;
+  $('#score-pending').hidden = floating || round <= 0;
   $('#round-value').textContent = num(round);
-  $('#round-breakdown').hidden = round <= 0;
+  $('#round-breakdown').hidden = floating || round <= 0;
   $('#round-value-2').textContent = num(round);
+  $('#secured-note').hidden = floating;
+  $('#float-note').hidden = !floating;
   const target = Math.max(1, run.target);
   const securedProgress = clamp((secured / target) * 100, 0, 100);
   const totalProgress = clamp((run.score / target) * 100, 0, 100);
   $('#score-progress').style.width = `${securedProgress}%`;
   $('#score-progress-pending').style.width = `${totalProgress}%`;
   $('#reroll-inline').textContent = `重投 ×${run.rerolls}`;
+  $('#score-panel').classList.toggle('is-floating', floating);
   $('#score-panel').classList.toggle('is-danger', run.rerolls <= 0 && run.score < run.target);
   const canAdvance = run.score >= run.target && !['won', 'run-won', 'lost', 'shop'].includes(run.phase);
   const nextButton = $('#next-level');
@@ -712,12 +758,15 @@ function showBustNotice(lost) {
   const panel = $('#score-panel');
   const note = $('#score-bust');
   if (!panel || !note) return;
+  const floating = Engine.isFloatingScore(app.run);
   note.hidden = false;
-  note.textContent = `本轮 ${num(lost)} 分作废`;
+  note.textContent = floating ? `秤翻了 · 整桌 ${num(lost)} 分消散` : `本轮 ${num(lost)} 分作废`;
   panel.classList.remove('is-bust');
   void panel.offsetWidth;
   panel.classList.add('is-bust');
-  showToast(`没有可计分的组合，本轮 ${num(lost)} 分作废。`, 'error');
+  showToast(floating
+    ? `没有可计分的组合，秤翻了：整桌 ${num(lost)} 分漂浮分全部消散。`
+    : `没有可计分的组合，本轮 ${num(lost)} 分作废。`, 'error');
   clearTimeout(app.bustTimer);
   app.bustTimer = setTimeout(() => {
     note.hidden = true;
@@ -749,7 +798,9 @@ function renderRail() {
   $('#objective-name').textContent = opponent.name;
   $('#objective-role').textContent = opponent.title;
   $('#objective-target').textContent = num(run.target);
-  $('#objective-reward').textContent = num(projectedReward());
+  const rewardEl = $('#objective-reward');
+  rewardEl.textContent = num(projectedReward());
+  rewardEl.title = `现在收手可带走：\n${cashOutHint()}`;
   $('#objective-dice').textContent = run.bag.length;
   const taunt = $('#objective-taunt');
   if (isBoss) {
@@ -882,7 +933,7 @@ function dieSpecFor(die) {
 
 function dieMark(spec) {
   if (spec.id === 'standard') return '';
-  if (spec.demon) return '魔';
+  if (spec.setId === 'demon') return '魔';
   const set = DICE_SETS[spec.setId];
   return set ? set.name[0] : '';
 }
@@ -957,14 +1008,207 @@ function dieFacesHtml(value, spec = STANDARD_DIE, concealed = false, blank = fal
   }).join('');
 }
 
+/* ═══════════════════════════════════════════════════════════════════
+   Dice tray — WebGL path
+   ═══════════════════════════════════════════════════════════════════ */
+let diceTable = null;
+
+function dieStateOf(run, die) {
+  const spec = dieSpecFor(die);
+  const hidden = die.value == null;
+  const blank = Boolean(die.blank);
+  const blocked = !hidden && !blank && Engine.isBossDieBlocked(run, die);
+  const selected = run.selected.includes(die.uid);
+  return { spec, hidden, blank, blocked, selected, scored: Boolean(die.scored) };
+}
+
+async function ensureDiceTable() {
+  if (diceTable) return diceTable;
+  const canvas = $('#dice-canvas');
+  if (!canvas) return null;
+  const Table = await loadDiceTable();
+  if (!Table) return null;
+  diceTable = new Table(canvas, { onPick: (uid) => handleDiePick(uid) });
+  motion.attach(diceTable);
+  motion.startClock();
+  bindDiceCanvas(canvas);
+  const ro = new ResizeObserver(() => { diceTable?.resize(); motion.markDirty(); });
+  ro.observe(canvas);
+  diceTable.resize();
+  return diceTable;
+}
+
+function handleDiePick(uid) {
+  if (!app.run || app.busy || app.introOpen) return;
+  if (Engine.toggleDie(app.run, uid)) {
+    motion.tapDie(diceTable, uid);
+    renderGame();
+  }
+  hideTooltip();
+}
+
+function bindDiceCanvas(canvas) {
+  let downAt = 0;
+  let downX = 0;
+  let downY = 0;
+  canvas.addEventListener('pointerdown', (event) => {
+    downAt = performance.now();
+    downX = event.clientX;
+    downY = event.clientY;
+  });
+  canvas.addEventListener('pointerup', (event) => {
+    // Treat a small, quick press as a tap so the cup drag never picks dice.
+    const moved = Math.hypot(event.clientX - downX, event.clientY - downY);
+    if (performance.now() - downAt > 900 || moved > 14) return;
+    const uid = diceTable?.pickAt(event.clientX, event.clientY);
+    if (uid) handleDiePick(uid);
+  });
+  canvas.addEventListener('pointermove', (event) => {
+    const uid = diceTable?.pickAt(event.clientX, event.clientY) || null;
+    if (diceTable) motion.hoverDie(diceTable, uid);
+    canvas.style.cursor = uid ? 'pointer' : 'default';
+  });
+  canvas.addEventListener('pointerleave', () => {
+    if (diceTable) motion.hoverDie(diceTable, null);
+  });
+}
+
+/* Screen-reader + keyboard row. Invisible on purpose: it carries the labels
+   and focus order, while the pointer path goes through the raycast. */
+function renderDiceA11y(run) {
+  const layer = $('#dice-a11y');
+  if (!layer) return;
+  const signature = run.dice.map((die) => {
+    const state = dieStateOf(run, die);
+    const disabled = state.scored || state.blank || state.blocked || app.busy || run.phase !== 'selecting';
+    return `${die.uid}:${die.value ?? 'x'}:${state.selected ? 1 : 0}:${disabled ? 1 : 0}`;
+  }).join('|');
+  if (layer.dataset.signature !== signature) {
+    layer.dataset.signature = signature;
+    layer.innerHTML = run.dice.map((die) => {
+      const state = dieStateOf(run, die);
+      const disabled = state.scored || state.blank || state.blocked || app.busy || run.phase !== 'selecting';
+      const label = state.hidden ? '未掷出的骰子'
+        : state.blank ? '白骰，无法计分'
+          : state.blocked ? '六点被庄家禁用'
+            : `${state.spec.name}，${die.value} 点`;
+      return `<button type="button" class="die-a11y-button" data-die-uid="${h(die.uid)}" data-die-tip="${h(state.spec.id)}"
+        ${disabled ? 'disabled' : ''} aria-pressed="${state.selected}" aria-label="${h(label)}"></button>`;
+    }).join('');
+  }
+}
+
+function renderDiceTrayGL(run, tray) {
+  // The DOM fallback may have painted before WebGL came up — clear it once
+  // so the two renderers never stack.
+  if (tray.querySelector('#dice-dom-fallback')) {
+    tray.querySelector('#dice-dom-fallback').remove();
+    delete tray.dataset.dieSignature;
+  }
+  const dice = run.dice.map((die) => {
+    const state = dieStateOf(run, die);
+    return { uid: die.uid, value: die.value, hidden: state.hidden, blank: state.blank, spec: state.spec };
+  });
+  const signature = dice.map((die) => `${die.uid}:${die.value ?? 'x'}:${die.spec.id}`).join('|');
+  if (tray.dataset.dieSignature !== signature) {
+    tray.dataset.dieSignature = signature;
+    diceTable.setDice(dice);
+  }
+  const states = new Map();
+  run.dice.forEach((die) => {
+    const state = dieStateOf(run, die);
+    states.set(die.uid, {
+      selected: state.selected, scored: state.scored, blank: state.blank, blocked: state.blocked,
+    });
+  });
+  diceTable.applyStates(states);
+  motion.settle(diceTable, run.dice.map((die) => die.uid));
+  renderDiceA11y(run);
+  motion.markDirty();
+}
+
 function renderDiceTray() {
   const run = app.run;
   const tray = $('#dice-tray');
   if (!tray) return;
+  if (!run) return;
+  if (diceTable) {
+    renderDiceTrayGL(run, tray);
+    syncDiceTrayLabels(run);
+    return;
+  }
+  // First frame before WebGL comes up (or a browser without it): keep the
+  // DOM renderer so the table is never empty.
+  renderDiceTrayDom(run, tray);
+  syncDiceTrayLabels(run);
+}
+
+function syncDiceTrayLabels(run) {
+  const selectedCount = run.selected.length;
+  const available = Engine.availableDice(run);
+  const tray = $('#dice-tray');
+  tray?.classList.toggle('has-selection', selectedCount > 0);
+  const stateLabel = run.phase === 'ready'
+    ? '等待落骰'
+    : run.phase === 'hot'
+      ? '全骰归位'
+      : run.phase === 'dead'
+        ? '无分可计'
+        : run.phase === 'selecting'
+          ? '选择骰子'
+          : run.phase === 'reroll-pending'
+            ? '选择重投方式'
+            : run.phase === 'cleared'
+              ? '目标达成'
+              : '本关结束';
+  const throwLabel = run.throwNumber ? `第 ${run.throwNumber} 掷 · ${stateLabel}` : stateLabel;
+  const throwNode = $('#throw-label');
+  if (throwNode) {
+    throwNode.textContent = selectedCount && run.phase === 'selecting'
+      ? `${throwLabel} · 已选 ${selectedCount} 颗`
+      : throwLabel;
+    throwNode.classList.toggle('is-active', selectedCount > 0);
+  }
+  const availableCount = available.filter((die) => !die.scored).length;
+  const countNode = $('#dice-count');
+  if (countNode) {
+    countNode.textContent = run.phase === 'hot'
+      ? `${run.dice.length} 颗骰子 · 全骰`
+      : selectedCount && run.phase === 'selecting'
+        ? `${run.dice.length} 颗骰子 · 已选 ${selectedCount} 颗`
+        : `${run.dice.length} 颗骰子 · 剩余 ${availableCount} 可掷`;
+    countNode.classList.toggle('is-active', selectedCount > 0);
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   Dice tray — DOM fallback (kept for browsers without WebGL)
+   ═══════════════════════════════════════════════════════════════════ */
+function renderDiceTrayDom(run, tray) {
   const available = Engine.availableDice(run);
   const selectedCount = run.selected.length;
   tray.classList.toggle('has-selection', selectedCount > 0);
-  tray.innerHTML = run.dice.map((die, index) => {
+  /* Rebuilding the 3D dice DOM on every tap is the single hottest path on
+     phones (≈200 nodes × dozens of preserve-3d layers per click). Only
+     rebuild when the dice set / face values actually change; otherwise just
+     sync classes and attributes in place. */
+  const signature = run.dice.map((die) => {
+    const hidden = die.value == null;
+    const blank = Boolean(die.blank);
+    const blocked = !hidden && !blank && Engine.isBossDieBlocked(run, die);
+    return `${die.uid}:${die.value ?? 'x'}:${die.scored ? 1 : 0}:${blank ? 1 : 0}:${blocked ? 1 : 0}:${app.rolling ? 1 : 0}`;
+  }).join('|');
+  if (tray.dataset.dieSignature !== signature) {
+    tray.dataset.dieSignature = signature;
+    // The canvas lives in this tray too, so the DOM fallback gets its own
+    // host instead of wiping the tray's children.
+    let host = $('#dice-dom-fallback', tray);
+    if (!host) {
+      host = document.createElement('div');
+      host.id = 'dice-dom-fallback';
+      tray.append(host);
+    }
+    host.innerHTML = run.dice.map((die, index) => {
     const spec = dieSpecFor(die);
     const hidden = die.value == null;
     const blank = Boolean(die.blank);
@@ -974,7 +1218,7 @@ function renderDiceTray() {
     const classes = [
       'die', `rarity-${spec.rarity || 'common'}`,
       hidden ? 'is-hidden' : '', selected ? 'is-selected' : '',
-      scored ? 'is-scored' : '', spec.demon ? 'is-demon' : '',
+      scored ? 'is-scored' : '', spec.setId === 'demon' ? 'is-demon' : '',
       blank ? 'is-blank' : '', blocked ? 'is-boss-blocked' : '',
       app.rolling && !hidden && !scored ? 'is-rolling' : '',
     ].filter(Boolean).join(' ');
@@ -995,33 +1239,30 @@ function renderDiceTray() {
         `}
       </button>`;
   }).join('');
-  const stateLabel = run.phase === 'ready'
-    ? '等待落骰'
-    : run.phase === 'hot'
-      ? '全骰归位'
-      : run.phase === 'dead'
-        ? '无分可计'
-        : run.phase === 'selecting'
-          ? '选择骰子'
-          : run.phase === 'reroll-pending'
-            ? '选择重投方式'
-            : run.phase === 'cleared'
-              ? '目标达成'
-              : '本关结束';
-  const throwLabel = run.throwNumber ? `第 ${run.throwNumber} 掷 · ${stateLabel}` : stateLabel;
-  const throwNode = $('#throw-label');
-  throwNode.textContent = selectedCount && run.phase === 'selecting'
-    ? `${throwLabel} · 已选 ${selectedCount} 颗`
-    : throwLabel;
-  throwNode.classList.toggle('is-active', selectedCount > 0);
-  const availableCount = available.filter((d) => !d.scored).length;
-  const countNode = $('#dice-count');
-  countNode.textContent = run.phase === 'hot'
-    ? `${run.dice.length} 颗骰子 · 全骰`
-    : selectedCount && run.phase === 'selecting'
-      ? `${run.dice.length} 颗骰子 · 已选 ${selectedCount} 颗`
-      : `${run.dice.length} 颗骰子 · 剩余 ${availableCount} 可掷`;
-  countNode.classList.toggle('is-active', selectedCount > 0);
+  }
+  /* in-place class/attribute sync — no DOM rebuild on selection changes */
+  for (const die of run.dice) {
+    const element = tray.querySelector(`[data-die-uid="${die.uid}"]`);
+    if (!element) continue;
+    const spec = dieSpecFor(die);
+    const hidden = die.value == null;
+    const blank = Boolean(die.blank);
+    const blocked = !hidden && !blank && Engine.isBossDieBlocked(run, die);
+    const selected = run.selected.includes(die.uid);
+    const disabled = die.scored || blank || blocked || app.busy || run.phase !== 'selecting';
+    const classes = [
+      'die', `rarity-${spec.rarity || 'common'}`,
+      hidden ? 'is-hidden' : '', selected ? 'is-selected' : '',
+      die.scored ? 'is-scored' : '', spec.setId === 'demon' ? 'is-demon' : '',
+      blank ? 'is-blank' : '', blocked ? 'is-boss-blocked' : '',
+      app.rolling && !hidden && !die.scored ? 'is-rolling' : '',
+    ].filter(Boolean).join(' ');
+    if (element.className !== classes) element.className = classes;
+    if (element.disabled !== disabled) element.disabled = disabled;
+    if (element.getAttribute('aria-pressed') !== String(selected)) element.setAttribute('aria-pressed', String(selected));
+  }
+  // Labels are shared with the WebGL path (syncDiceTrayLabels).
+  syncDiceTrayLabels(run);
 }
 
 function renderComboPreview() {
@@ -1223,7 +1464,7 @@ function renderActionDock() {
 function renderAutoButton() {
   const run = app.run;
   const button = $('#auto-roll');
-  if (!run) return;
+  if (!run || !button) return;
   const can = !app.busy && (run.phase === 'ready' || run.phase === 'hot' || run.phase === 'reroll-pending'
     || (run.phase === 'dead' && run.rerolls > 0));
   button.disabled = !can;
@@ -1267,33 +1508,38 @@ function dieElement(uid) {
   return $(`.die[data-die-uid="${CSS.escape(uid)}"]`);
 }
 
+/* World-space point at the cup's mouth, so dice really leave from the cup
+   instead of a guessed offset above the tray. */
+function cupWorldPoint() {
+  const cup = $('#cup-image') || $('#cup');
+  if (!diceTable || !cup) return { x: 0, y: 1.2, z: 0.9 };
+  const rect = cup.getBoundingClientRect();
+  if (!rect.width) return { x: 0, y: 1.2, z: 0.9 };
+  // Park them roughly a die above the rim so the pour starts above the table.
+  return diceTable.screenToPlane(rect.left + rect.width / 2, rect.top + rect.height * .82, 1.35);
+}
+
 async function slowSpinTableDice(run) {
   if (prefersReducedMotion() || run.stats.levelRolls === 0) return;
-  // All six readable dice turn on the table; the cup then takes only the
-  // ones that are actually being rerolled.
-  const elements = run.dice
-    .filter((die) => die.value != null)
-    .map((die) => dieElement(die.uid))
-    .filter(Boolean);
+  const uids = run.dice.filter((die) => die.value != null).map((die) => die.uid);
+  if (!uids.length) return;
+  if (diceTable) {
+    await motion.tumble(diceTable, uids);
+    return;
+  }
+  // ── DOM fallback ──
   const gatherUids = new Set(cupDiceToGather(run).map((die) => die.uid));
-  if (!elements.length) return;
-  const animations = [];
-  elements.forEach((element, index) => {
+  const elements = uids.map((uid) => dieElement(uid)).filter(Boolean);
+  const animations = elements.map((element, index) => {
     const roller = $('.die-roller', element);
-    if (!roller) return;
+    if (!roller) return Promise.resolve();
     element.classList.add('is-rerolling');
-    animations.push(roller.animate([
+    return roller.animate([
       { transform: 'rotateY(0deg) translateY(0)' },
       { transform: 'rotateY(360deg) translateY(-3px)' },
-    ], {
-      duration: 500,
-      delay: index * 20,
-      easing: 'cubic-bezier(.36,0,.3,1)',
-    }).finished.catch(() => {}));
+    ], { duration: 500, delay: index * 20, easing: 'cubic-bezier(.36,0,.3,1)' }).finished.catch(() => {});
   });
   await Promise.all(animations);
-  // Keep gathered dice full until they vanish into the cup. Dice that stay
-  // set aside return to their dimmed state after the spin.
   elements.forEach((element) => {
     if (!gatherUids.has(element.dataset.dieUid)) element.classList.remove('is-rerolling');
   });
@@ -1301,49 +1547,54 @@ async function slowSpinTableDice(run) {
 
 async function gatherDiceToCup(run) {
   if (prefersReducedMotion()) return;
+  const uids = cupDiceToGather(run).map((die) => die.uid);
+  if (!uids.length) return;
+  if (diceTable) {
+    await motion.gather(diceTable, uids, cupWorldPoint());
+    return;
+  }
+  // ── DOM fallback ──
   const cupImage = $('#cup-image');
   if (!cupImage) return;
   const cupRect = cupImage.getBoundingClientRect();
   const mouthX = cupRect.left + cupRect.width / 2;
-  // The cup parks mouth-down, so dice are swept under the rim at its base.
   const mouthY = cupRect.top + cupRect.height * .88;
-  const elements = cupDiceToGather(run)
-    .map((die) => dieElement(die.uid))
-    .filter(Boolean);
-  const animations = [];
-  elements.forEach((element, index) => {
+  const elements = uids.map((die) => dieElement(die.uid)).filter(Boolean);
+  const animations = elements.map((element, index) => {
     const rect = element.getBoundingClientRect();
     const dx = mouthX - (rect.left + rect.width / 2);
     const dy = mouthY - (rect.top + rect.height / 2);
     element.style.pointerEvents = 'none';
-    const animation = element.animate([
+    return element.animate([
       { transform: 'translate(0, 0) scale(1) rotate(0deg)', opacity: 1 },
       { transform: `translate(${dx * .55}px, ${dy * .4 - 18}px) scale(.66) rotate(90deg)`, opacity: .9, offset: .5 },
       { transform: `translate(${dx}px, ${dy}px) scale(.14) rotate(150deg)`, opacity: 0 },
-    ], {
-      duration: 340,
-      delay: index * 18,
-      easing: 'cubic-bezier(.45,0,.2,1)',
-      fill: 'forwards',
-    });
-    animations.push(animation.finished.catch(() => {}));
+    ], { duration: 340, delay: index * 18, easing: 'cubic-bezier(.45,0,.2,1)', fill: 'forwards' })
+      .finished.catch(() => {});
   });
   await Promise.all(animations);
   elements.forEach((element) => { element.style.opacity = '0'; });
 }
 
+/* Pour every rerolled die out of the cup and let it settle. */
+async function pourDiceIntoTable(uids) {
+  if (!diceTable || !uids.length) return;
+  await motion.rollDice(diceTable, uids, cupWorldPoint(), { stagger: 0.045, duration: 0.58 });
+}
+
 function pulseCup() {
   const cup = $('#cup');
   if (!cup) return;
-  cup.classList.remove('is-cue');
-  void cup.offsetWidth;
-  cup.classList.add('is-cue');
+  motion.cupCue(cup);
   clearTimeout(app.cupCueTimer);
-  app.cupCueTimer = setTimeout(() => cup.classList.remove('is-cue'), 1400);
+  app.cupCueTimer = setTimeout(() => { /* GSAP owns the tween now */ }, 1400);
 }
 
 function stopCupShake() {
-  $('#cup')?.classList.remove('is-shaking');
+  const cup = $('#cup');
+  if (!cup) return;
+  cup.classList.remove('is-shaking');
+  motion.gsap?.killTweensOf($('#cup-vessel'));
 }
 
 async function invertCup() {
@@ -1355,8 +1606,7 @@ async function invertCup() {
   app.cupInverted = true;
   // The cup already rests mouth-down; lifting it clear of the table is the
   // "ready to pour" pose, so no flip is needed.
-  vessel.style.transform = 'translateY(-15px) rotate(-2.4deg)';
-  await sleep(prefersReducedMotion() ? 30 : 300);
+  await motion.cupLift(vessel);
 }
 
 function rightCup() {
@@ -1365,7 +1615,7 @@ function rightCup() {
   if (!cup || !vessel) return;
   app.cupInverted = false;
   cup.classList.remove('is-inverted', 'is-shaking');
-  vessel.style.transform = 'translateY(0px) rotate(0deg)';
+  motion.cupDrop(vessel);
   setTimeout(() => cup.classList.remove('is-ritual'), 380);
 }
 
@@ -1387,7 +1637,10 @@ function resetCupVisuals() {
   const cup = $('#cup');
   const vessel = $('#cup-vessel');
   cup?.classList.remove('is-shaking', 'is-inverted', 'is-ritual', 'is-dragging', 'is-cue');
-  if (vessel) vessel.style.transform = '';
+  if (vessel) {
+    motion.gsap?.killTweensOf(vessel);
+    motion.gsap?.set(vessel, { clearProps: 'transform' });
+  }
   clearCupTimers();
   removeCupOverlays();
   app.cupInverted = false;
@@ -1548,13 +1801,19 @@ function beginCupCountdown(onDone) {
   cup.append(node);
   const end = performance.now() + 2000;
   app.cupCountdownEnd = end;
+  let lastText = '';
   const tick = () => {
     const left = Math.max(0, end - performance.now());
-    node.textContent = `${(left / 1000).toFixed(1)}s`;
-    node.classList.toggle('is-urgent', left <= 650);
+    const text = `${(left / 1000).toFixed(1)}s`;
+    const urgent = left <= 650;
+    if (text !== lastText) {
+      lastText = text;
+      node.textContent = text;
+      node.classList.toggle('is-urgent', urgent);
+    }
   };
   tick();
-  app.cupCountdownTimer = setInterval(tick, 60);
+  app.cupCountdownTimer = setInterval(tick, 100);
   app.cupAutoTimer = setTimeout(() => {
     clearCupTimers();
     onDone?.();
@@ -1565,12 +1824,16 @@ async function performCupRoll({ free = false, prepared = false } = {}) {
   const run = app.run;
   if (!run) return;
   const previousPhase = run.phase;
+  // Which dice the cup actually swallows — captured before the engine
+  // rewrites the values, so the pour animation targets the right meshes.
+  const pouring = cupDiceToGather(run).map((die) => die.uid);
   try {
     if (!prepared) {
       await slowSpinTableDice(run);
       await gatherDiceToCup(run);
       const cup = $('#cup');
-      cup?.classList.add('is-ritual', 'is-shaking');
+      cup?.classList.add('is-ritual');
+      motion.cupRattle($('#cup-vessel'), { cycles: 2 });
       sound.rattle();
       await sleep(prefersReducedMotion() ? 0 : 300);
       await invertCup();
@@ -1593,7 +1856,10 @@ async function performCupRoll({ free = false, prepared = false } = {}) {
     rightCup();
     renderGame();
     if (result.bust) showBustNotice(result.bust);
-    await sleep(680);
+    // The dice pour out of the cup and settle; wait for the real motion
+    // instead of a guessed timeout.
+    if (diceTable) await pourDiceIntoTable(pouring.length ? pouring : run.dice.map((die) => die.uid));
+    else await sleep(680);
     app.busy = false;
     app.rolling = false;
     app.cupAnimating = false;
@@ -1651,7 +1917,10 @@ function startCupHold() {
   const cup = $('#cup');
   cup?.classList.remove('is-shaking', 'is-inverted', 'is-cue');
   const vessel = $('#cup-vessel');
-  if (vessel) vessel.style.transform = '';
+  if (vessel) {
+    motion.gsap?.killTweensOf(vessel);
+    motion.gsap?.set(vessel, { clearProps: 'transform' });
+  }
   renderGame();
   cup?.classList.add('is-ritual');
   const ritualHold = Boolean(cupGestureInfo(run));
@@ -1661,7 +1930,7 @@ function startCupHold() {
     if (!app.cupHoldStarted) return;
     await gatherDiceToCup(run);
     if (!app.cupHoldStarted) return;
-    cup.classList.add('is-shaking');
+    motion.cupRattle($('#cup-vessel'), { cycles: 1 });
     sound.rattle();
     await sleep(320);
     if (!app.cupHoldStarted) return;
@@ -1672,7 +1941,8 @@ function startCupHold() {
         return;
       }
     }
-    cup.classList.add('is-shaking');
+    // Keep rattling while the player holds the cup.
+    motion.cupRattle($('#cup-vessel'), { cycles: 3 });
     sound.rattle();
   })().catch((error) => {
     console.error(error);
@@ -2068,7 +2338,8 @@ function setTooltip(setId) {
 function barrelTypeLabel(barrel) {
   if (barrel.type === 'gesture') return '仪式';
   if (barrel.type === 'probability') return '概率';
-  if (barrel.type === 'setScore') return '骰型加成';
+  if (barrel.type === 'faceScore') return '点数加成';
+  if (barrel.type === 'wildScore') return '赖子加成';
   return '普通';
 }
 
@@ -2080,7 +2351,8 @@ function barrelTooltip(barrelId) {
     <div class="tip-sub">${h(rarityOf(barrel).name)} · ${barrelTypeLabel(barrel)}骰桶</div>
     <p>${h(barrel.desc)}</p>
     ${barrel.type === 'probability' ? `<p class="tip-bonus">偏向：${h(barrel.short)}</p>` : ''}
-    ${barrel.type === 'setScore' ? `<p class="tip-bonus">指定骰型：${h(barrel.short)}</p>` : ''}
+    ${barrel.type === 'faceScore' ? `<p class="tip-bonus">指定点数：${h(barrel.short)}</p>` : ''}
+    ${barrel.type === 'wildScore' ? `<p class="tip-bonus">赖子加成：${h(barrel.short)}</p>` : ''}
     ${barrel.gesture ? '<p class="tip-bonus">完成仪式后，本次投掷获得加成。</p>' : ''}
   `;
 }
@@ -2149,7 +2421,7 @@ function showVictory() {
         <p class="result-sub">你击败了钻石天使，赢下了整座天国骰局。</p>
         <p class="result-quote">“${h(opponent.win)}”</p>
         <div class="result-score">
-          <div><span>通关关卡</span><b>15 / 15</b></div>
+          <div><span>通关关卡</span><b>${LEVEL_COUNT} / ${LEVEL_COUNT}</b></div>
           <div><span>最高单次计分</span><b>${num(summary.bestHit)}</b></div>
           <div><span>银币</span><b><svg><use href="#i-coin"></use></svg>${num(summary.coins)}</b></div>
         </div>
@@ -2181,6 +2453,7 @@ function showVictory() {
         <div><span>目标</span><b>${num(run.target)}</b></div>
         <div><span>奖励</span><b><svg><use href="#i-coin"></use></svg>${num(reward.total)}</b></div>
       </div>
+      ${reward.bossPremium ? `<div class="reward-breakdown"><span style="border-color:rgba(196,170,240,.34);color:#c9b6f0">${h(reward.bossName)} 悬赏 ×${reward.bossScale.toFixed(2)} <b>基础 ${num(reward.curveBase)} → ${num(reward.base)}</b></span></div>` : ''}
       ${reward.bonuses?.length ? `<div class="reward-breakdown">${reward.bonuses.map((b) => `<span>${h(b.label)} <b>+${num(b.value)}</b></span>`).join('')}</div>` : ''}
       ${getLevelConfig(run.level).boss ? '<div class="reward-breakdown"><span style="border-color:rgba(217,180,106,.3);color:#e2c887">夺下庄家徽记 <b>后续重投上限 +1</b></span></div>' : ''}
       <p class="result-sub" style="font-size:10px;margin-top:-5px">下一站：${h(nextTable.name)} · 第 ${next} 关</p>
@@ -2250,7 +2523,16 @@ function renderShopScreen() {
   const nextLevel = run.level + 1;
   const nextTable = getTable(nextLevel);
   const reward = run.levelReward?.total ?? projectedReward();
-  const discount = Engine.setCounts(run).crown?.count >= 2;
+  const band = SHOP_RARITY_WEIGHTS.find((entry) => nextLevel <= entry.untilLevel)
+    || SHOP_RARITY_WEIGHTS[SHOP_RARITY_WEIGHTS.length - 1];
+  const stockNote = Object.entries(band.weights)
+    .filter(([, weight]) => weight > 0)
+    .map(([rarity, weight]) => `${RARITIES[rarity].short} ${Math.round(weight / Object.values(band.weights).reduce((a, b) => a + b, 0) * 100)}%`)
+    .join(' · ');
+  const slots = Engine.shopSlots(run);
+  const slotNote = (count, unit, defaultCount, tail) => (count > defaultCount
+    ? `货架 ${count} ${unit}（含 +1）· ${tail}`
+    : `货架 ${defaultCount} ${unit} · ${tail}`);
 
   screen.innerHTML = `
     <header class="shop-head">
@@ -2265,13 +2547,13 @@ function renderShopScreen() {
     </header>
     <div class="shop-body">
       <div class="shop-intro">
-        <p><b>“看一看，摸一摸，别问来路。”</b> 每关之间只有一次市集。骰子、骰桶和物品会改变你下一关能走多远；随身物品也可以半价卖回。${discount ? '<span style="color:#d9b46a"> 王冠套组已让价格降低。</span>' : ''}</p>
+        <p><b>“看一看，摸一摸，别问来路。”</b> 每关之间只有一次市集。骰子、骰桶和物品会改变你下一关能走多远；随身物品也可以半价卖回。<span style="color:#d9b46a"> 本关骰子货架权重：${stockNote}。</span></p>
         <span class="rail-note">本关奖励已入袋：<b style="color:#e5c278">${num(reward)}</b> 银币</span>
       </div>
       <div class="shop-zones">
-        ${shopZone('dice', '骰子', '默认 2 枚 · 购入后替换骰袋中的骰子', shop.dice, renderDiceShopCard)}
-        ${shopZone('barrel', '骰桶', '默认 1 只 · 立即替换当前骰桶', shop.barrel, renderBarrelShopCard)}
-        ${shopZone('item', '物品', '默认 3 件 · 主动物品栏上限 4', shop.item, renderItemShopCard)}
+        ${shopZone('dice', '骰子', slotNote(slots.dice, '枚', 2, '购入后替换骰袋中的骰子'), shop.dice, renderDiceShopCard)}
+        ${shopZone('barrel', '骰桶', slotNote(slots.barrel, '只', 1, '立即替换当前骰桶'), shop.barrel, renderBarrelShopCard)}
+        ${shopZone('item', '物品', slotNote(slots.item, '件', 3, '主动物品栏上限 4'), shop.item, renderItemShopCard)}
       </div>
       ${renderSellShelf(run)}
     </div>
@@ -2281,7 +2563,7 @@ function renderShopScreen() {
         <div class="loadout-dice">${run.bag.map((entry) => {
           const spec = Engine.getDieSpec(entry.dieId);
           const weighted = favoredFaces(spec).length > 0;
-          return `<span class="mini-die rarity-${spec.rarity} ${spec.demon ? 'is-demon' : ''} ${weighted ? 'is-weighted' : ''}" style="${dieSkinStyle(spec)}" data-pips="${spec.demon ? '魔' : (spec.setId ? spec.name[0] : '骰')}" title="${h(spec.name)}"></span>`;
+          return `<span class="mini-die rarity-${spec.rarity} ${spec.setId === 'demon' ? 'is-demon' : ''} ${weighted ? 'is-weighted' : ''}" style="${dieSkinStyle(spec)}" data-pips="${spec.setId === 'demon' ? '魔' : (spec.setId ? spec.name[0] : '骰')}" title="${h(spec.name)}"></span>`;
         }).join('')}</div>
         <span class="loadout-label" style="margin-left:8px">骰桶</span>
         <div class="barrel-thumb" style="width:25px;height:32px"><img src="assets/cups/${Engine.getBarrel(run).art}.svg" alt=""></div>
@@ -2419,7 +2701,7 @@ function emptyShopCard() {
 }
 
 function artDieHtml(spec) {
-  const demon = spec.demon;
+  const demon = spec.setId === 'demon';
   const rarity = spec.rarity || 'common';
   const probs = spec.probs || STANDARD_DIE.probs;
   const bestFace = probs.indexOf(Math.max(...probs)) + 1;
@@ -2849,9 +3131,9 @@ function tutorialHtml() {
         <div class="tut-section-head"><span>01</span><div><p>THE SHAPE OF A RUN</p><h3>先看目标：一关一关把分数堆上去</h3></div></div>
         <p class="tut-lede">你坐在长桌这一侧，用六颗骰子去够每关的目标分。达到目标后不会自动结束，可以继续加注；准备好了，再亲自点击「下一关」。</p>
         <div class="tut-cards three">
-          <div class="tut-card"><b>15 关 · 7 位庄家</b><p>第 3、5、7…15 关各有一位庄家。庄家有自己的桌规，击败他会拿到永久重投上限。</p></div>
+          <div class="tut-card"><b>${LEVEL_COUNT} 关 · ${BOSSES.length} 位庄家</b><p>第 ${BOSSES.map((boss) => boss.level).join('、')} 关各有一位庄家，两场庄家之间的空档越拖越长：${MINION_GAPS.join('、')} 关。庄家有自己的桌规，击败他会拿到永久重投上限。</p></div>
           <div class="tut-card"><b>6 颗骰子 · 5 次重投</b><p>每关第一掷免费；之后每掷一次消耗 1 次重投。骰子、骰桶、物品会改变你能走多远。</p></div>
-          <div class="tut-card"><b>目标分</b><p>目标会随关卡提高。分数在左上角：大字是“已得”，本轮挂账单独显示。</p></div>
+          <div class="tut-card"><b>目标分是算出来的</b><p>第 1 关 ${LEVEL_CURVE.targetBase} 分，之后每关 ×${LEVEL_CURVE.targetGrowth}；庄家的桌子再乘上自己的系数（赏金最高 ×${Math.max(...BOSSES.map((boss) => boss.curve.reward)).toFixed(2)}），所以庄家关总是比隔壁贵一档。分数在左上角：大字是“已得”，本轮挂账单独显示。</p></div>
         </div>
         <div class="tut-flow">
           <div><i>1</i><b>摇骰</b><span>按住骰桶摇动，2 秒后落骰</span></div>
@@ -2923,11 +3205,18 @@ function tutorialHtml() {
           <div class="tut-score-demo-labels"><span>已得 220</span><span>本轮未计入 80</span></div>
           <div class="tut-score-demo-bar"><i style="width:49%"></i><b style="width:18%"></b></div>
         </div>
-        <div class="tut-cards three">
+        <div class="tut-cards">
           <div class="tut-card"><b>下一次投掷仍能计分</b><p>上一笔“本轮未计入”会转为“已得”，然后你可以继续选骰计分。</p></div>
           <div class="tut-card"><b>下一次投掷掷空</b><p>本次投掷没有任何可计分组合时，这一笔“本轮未计入”全部作废；已得分数保留。</p></div>
           <div class="tut-card"><b>目标达成后</b><p>不会自动过关。可以继续得分，直到你亲自点击左上角「下一关」。终局按钮是「查看结局」。</p></div>
+          <div class="tut-card is-gold"><b>收手换钱</b><p>过关结算时，每剩 1 次未使用的重投可以折 <b style="display:inline;font-size:10px;color:#e5c278">${REROLL_REFUND} 银币</b>带走。带着 3 次重投收手 = +${REROLL_REFUND * 3} 银币；想刷分就得把它花掉，这是明码标价的取舍。</p></div>
         </div>
+        <h4 class="tut-subtitle">超额赏金 · 把目标甩得越远，拿得越多</h4>
+        <div class="tut-cards three">
+          ${OVERSHOOT_TIERS.slice().reverse().map((tier) => `
+          <div class="tut-card is-gold"><b>${h(tier.label.split(' · ')[1])} · ${h(tier.label.split(' · ')[0])}</b><p>本关得分达到目标的 <b style="display:inline;font-size:10px;color:#e5c278">${tier.ratio} 倍</b>，结算额外 <b style="display:inline;font-size:10px;color:#e5c278">+${tier.value} 银币</b>。只取达到的最高一档，不叠加。</p></div>`).join('')}
+        </div>
+        <div class="tut-callout is-key"><b>收手还是加注？</b><p>达标那一刻，左上角「胜利奖励」会实时变成你现在收手能拿到的数目（含剩余重投折价与已达成的超额档位），鼠标悬停可以看到明细。再赌一把可能跨到 2 倍、3 倍，也可能一次掷空把本轮挂账全丢掉——已得分数不会丢，但也不会再多给你一枚银币。</p></div>
         <div class="tut-callout">
           <b>全骰（Hot Dice）</b>
           <p>如果六颗骰子全部被计分，它们会全部归位，下一次投掷免费，不消耗重投次数。但本轮未计入的分数仍然要等下一次投掷确认。</p>
@@ -2941,13 +3230,13 @@ function tutorialHtml() {
       <section class="tut-section" id="tut-gear">
         <div class="tut-section-head"><span>04</span><div><p>THE REST OF THE TABLE</p><h3>骰桶、骰子、物品、市集与庄家</h3></div></div>
         <div class="tut-cards">
-          <div class="tut-card"><b>骰桶 · 6 只</b><p>初始橡木桶之外，3 只概率桶偏向某些点数，2 只仪式桶需要画阵。按住骰桶后桌面会显示五芒星或顺时针圆轨迹，2 秒内沿着画；偏差过大会失败。五芒星每关只能生效一次，也可点右下角「画阵」。</p></div>
-          <div class="tut-card"><b>骰子 · 20 枚</b><p>2 普通、10 稀有、5 史诗、3 传说。每枚骰子有自己的六面概率与套组；悬停可查看真实概率。同套组 2 / 4 件会触发套组奖励。</p></div>
-          <div class="tut-card"><b>物品 · 12 件</b><p>9 主动、3 被动。主动物品每关恢复一次；被动物品永久生效。丰饶骰袋 +1 骰、裂痕骰袋 -1 骰但计分 +25%，这两件整局各只能获取一次。幸运币开局自带，每关可用一次，立即 +150 分。静默赦令可以消除下一场庄家被动。</p></div>
-          <div class="tut-card"><b>市集</b><p>每关之后进入：骰子 2 件、骰桶 1 件、物品 3 件。每次刷新都消耗银币；随身物品可以半价卖回，出售后不会再次上架。</p></div>
-          <div class="tut-card"><b>赌桌 · 5 张</b><p>木头、青石、黑铁、黄金、钻石。每三关换一张桌子；从第 3 关起，庄家隔关落座。</p></div>
+          <div class="tut-card"><b>骰桶 · 8 只</b><p>初始橡木桶之外，3 只概率桶偏向某些点数，2 只骰型桶（狼图腾桶奖励 3、恶魔契桶奖励赖子），2 只仪式桶需要画阵。按住骰桶后桌面会显示五芒星或顺时针圆轨迹，2 秒内沿着画；偏差过大会失败。五芒星每关只能生效一次，也可点右下角「画阵」。</p></div>
+          <div class="tut-card"><b>骰子 · ${DICE.length} 枚 · 两套 + 无套</b><p>${RARITIES.common.name} ${DICE.filter((d) => d.rarity === 'common').length}、${RARITIES.rare.name} ${DICE.filter((d) => d.rarity === 'rare').length}、${RARITIES.epic.name} ${DICE.filter((d) => d.rarity === 'epic').length}、${RARITIES.legendary.name} ${DICE.filter((d) => d.rarity === 'legendary').length}。每枚骰子有自己的六面概率，悬停可看真实概率；<b>额外加分只出现在史诗与传说</b>上。<b>狼裔 5 枚</b>把 3 的概率抬高，2 / 4 件分别让每颗计分的 3 加分、三连 3 大幅加分。<b>恶魔 5 枚</b>把掷出的 1 变成「恶魔赖子」——能补三连或顺子（顺子最多替 1 颗），但不能单独计分。剩下的 <b>10 枚无套组</b>走极端骰型：只有单数、只有双数、非 1 即 6、阶梯、照面……它们不参与套装，但随时能买能卖。</p></div>
+          <div class="tut-card"><b>物品 · ${ITEMS.length} 件</b><p>${ITEMS.filter((i) => i.type === 'active').length} 主动、${ITEMS.filter((i) => i.type === 'passive').length} 被动，其中 <b>${ITEMS.filter((i) => i.consumable).length} 件一次性</b>（烈酒、加注契约、幸运粉、盐、静默赦令）——用完即消失，但效果比同价位常驻物品更直接。主动物品每关恢复一次；被动物品永久生效。<b>三层骰架 / 双孔桶架 / 暗格货架</b>分别让市集的骰子、骰桶、物品各 +1 个货位。丰饶骰袋 +1 骰、裂痕骰袋 -1 骰但计分 +25%，这两件整局各只能获取一次。</p></div>
+          <div class="tut-card"><b>市集</b><p>每关之后进入：骰子 2 枚、骰桶 1 只、物品 3 件；带上货架类被动会各 +1。骰子按等级加权：前 6 关以普通 / 稀有为主，过了 24 关才真正放出传说。每次刷新都消耗银币；随身物品可以半价卖回，出售后不会再次上架。</p></div>
+          <div class="tut-card"><b>赌桌 · ${TABLES.length} 张</b><p>木头、青石、黑铁、黄金、钻石。五张桌子平分 ${LEVEL_COUNT} 关（${LEVEL_CURVE.targetBase} 分起步），庄家按难度穿插落座：越晚的桌子越贵，也越不像人坐的地方。</p></div>
         </div>
-        <h4 class="tut-subtitle">七位庄家的桌规</h4>
+        <h4 class="tut-subtitle">${BOSSES.length} 位庄家的桌规</h4>
         <div class="tut-bosses">${bosses}</div>
         <div class="tut-callout">
           <b>操作速记</b>
@@ -2963,6 +3252,7 @@ function tutorialHtml() {
           <li><b>记住乘以几：</b>四个 ×2、五个 ×4、六个 ×8。</li>
           <li><b>不要乱选：</b>所选骰子必须全部被合法组合吃掉。</li>
           <li><b>达标不等于结束：</b>可以继续刷分，准备好再点「下一关」。</li>
+          <li><b>收手有价：</b>每剩 1 次重投折 ${REROLL_REFUND} 银币；得分达到目标 1.5 / 2 / 3 倍，再分别 +25 / +60 / +140 银币。左上角奖励数字会实时告诉你现在收手能拿多少。</li>
         </ul>
         <div class="tut-final-line">骰子落下之前，命运只是一句空话。<br><span>现在，去把它掷出来。</span></div>
       </section>
@@ -3027,17 +3317,20 @@ function openRules() {
           <h3 style="margin-top:18px">一掷的流程</h3>
           <p>1. 按住骰桶摇动，2 秒倒计时后落骰；或点击自动摇骰。<br>2. 点击选择要计分的骰子。<br>3. 选择「计分并继续」，计分后把选中骰放一边、重投剩余骰子；或「计分并重投」，计分后把全部六颗骰子重新投。两者各消耗 1 次重投。<br>4. 六颗骰子全部计分会触发「全骰」，免费重投全部骰子。<br>5. 没有重投次数时，按钮变为「计分并结算」，得分后本关结束。</p>
           <div class="rules-note">开局有 5 次重投。每击败一位庄家，你会夺下他的徽记：后续关卡重投上限 +1。门房还会送你一枚每关都能使用的幸运币。</div>
+          <h3 style="margin-top:18px">收手换钱与超额赏金</h3>
+          <p>过关结算时，每剩 1 次<b style="color:#e5c278">未使用的重投折 ${REROLL_REFUND} 银币</b>带走——带着 5 次重投收手就是 +${REROLL_REFUND * 5}。此外，本关得分达到目标分的 <b style="color:#e5c278">1.5 倍 +25、2 倍 +60、3 倍 +140</b> 银币，只取达到的最高一档。</p>
+          <div class="rules-note">达标后左上角「胜利奖励」会实时变成你现在收手能拿到的数目，悬停可看明细：继续加注可以追更高的倍数，也可能一次掷空把本轮挂账全部丢掉。</div>
         </div>
         <div class="rules-section">
-          <h3>七位庄家</h3>
+          <h3>${BOSSES.length} 位庄家</h3>
           ${BOSSES.map((boss) => `
             <div class="rule-boss">
-              <b>${h(boss.name)}<span>${h(boss.title)} · 第 ${boss.level} 关</span></b>
+              <b>${h(boss.name)}<span>${h(boss.title)} · 第 ${boss.level} 关 · 悬赏 ×${boss.curve.reward.toFixed(2)}</span></b>
               <p>${h(boss.effectName)}：${h(boss.effectDesc)}</p>
             </div>`).join('')}
           <h3 style="margin-top:16px">装备与市集</h3>
-          <p>骰子有各自的点数概率与套组效果，20 枚秘骰分为普通、稀有、史诗、传说。鼠标移到骰子上查看六面概率。骰桶分为概率偏向与仪式加成两类，点「画阵」完成星阵或旋涡，能为本次投掷争取优势。</p>
-          <p>每关之后进入市集：骰子区默认 2 件、骰桶区 1 件、物品区 3 件，刷新均需银币。主动物品每关恢复一次，被动物品永久生效。市集下方可以把随身物品按半价卖回。</p>
+          <p>骰子有各自的点数概率与套组效果，${DICE.length} 枚秘骰分为普通、稀有、史诗、传说：狼裔 5 枚、恶魔 5 枚，其余 10 枚无套组。鼠标移到骰子上查看六面概率；额外加分只出现在史诗与传说骰上。骰桶分为概率偏向与仪式加成两类，点「画阵」完成星阵或旋涡，能为本次投掷争取优势。</p>
+          <p>每关之后进入市集：骰子区默认 2 枚、骰桶区 1 只、物品区 3 件，刷新均需银币。三层骰架 / 双孔桶架 / 暗格货架会各让对应区域多摆 1 件。主动物品每关恢复一次，被动物品永久生效；烈酒、加注契约、幸运粉、盐、静默赦令是一次性消耗品，用完即消失。市集下方可以把随身物品按半价卖回。</p>
           <div class="rules-note">提示：空格投掷，数字键 1 / 2 分别使用「计分并继续」「计分并重投」。“计分并继续”会触发金冠赌王的抽成。</div>
         </div>
       </div>
@@ -3097,14 +3390,15 @@ function compendiumProgress(kind, total) {
 function compendiumBody(tab) {
   if (tab === 'dice') {
     const dice = codexDice();
-    return `<p class="compendium-intro">每一枚秘骰都像一张有偏向的牌：点数概率不同，且归属于五个套组之一。同套组集齐 2 枚与 4 枚会解锁额外效果。${compendiumProgress('dice', dice.length)}</p>
+    return `<p class="compendium-intro">每一枚秘骰都像一张有偏向的牌：点数概率不同。狼裔 5 枚把筹码押在 3 上，恶魔 5 枚把掷出的 1 变成赖子，同套组集齐 2 枚与 4 枚会解锁额外效果；另外 10 枚无套组，走的是极端骰型，不参与套装但随时能买卖。额外加分只出现在史诗与传说骰上。${compendiumProgress('dice', dice.length)}</p>
       <div class="compendium-grid">${dice.map((spec) => {
         if (!isDiscovered('dice', spec.id)) return compendiumLockedCard('这枚骰子');
         const rarity = rarityOf(spec);
         const set = DICE_SETS[spec.setId];
+        const setTag = set ? `${set.name}套组` : '无套组';
         const bars = probabilityBars(spec.probs, spec.rarity);
         return `<article class="compendium-card compendium-die" style="--rarity:${rarity.color};--glow:${rarity.glow}" data-die-tip="${h(spec.id)}">
-          <div class="card-topline"><span class="rarity-tag">${rarity.name}</span><span class="set-tag">${h(set.name)}套组</span></div>
+          <div class="card-topline"><span class="rarity-tag">${rarity.name}</span><span class="set-tag">${h(setTag)}</span></div>
           <div class="comp-art"><div class="card-art" style="height:74px">${artDieHtml(spec)}</div></div>
           <h4>${h(spec.name)}</h4>
           <div class="comp-sub">${h(spec.desc)}</div>
@@ -3128,7 +3422,7 @@ function compendiumBody(tab) {
       }).join('')}</div>`;
   }
   if (tab === 'items') {
-    return `<p class="compendium-intro">九件主动物品，三件被动物品。主动物品每关恢复一次；静默赦令是一次性消耗品。丰饶骰袋与裂痕骰袋整局各只能获取一次。${compendiumProgress('items', ITEMS.length)}</p>
+    return `<p class="compendium-intro">${ITEMS.filter((i) => i.type === 'active').length} 件主动物品、${ITEMS.filter((i) => i.type === 'passive').length} 件被动物品，其中 ${ITEMS.filter((i) => i.consumable).length} 件是一次性消耗品：烈酒、加注契约、幸运粉、盐、静默赦令。主动物品每关恢复一次，被动物品永久生效；三种货架被动分别让市集某一区多摆 1 件。丰饶骰袋与裂痕骰袋整局各只能获取一次。${compendiumProgress('items', ITEMS.length)}</p>
       <div class="compendium-grid">${ITEMS.map((item) => {
         if (!isDiscovered('items', item.id)) return compendiumLockedCard('这件物品');
         const rarity = rarityOf(item);
@@ -3142,12 +3436,12 @@ function compendiumBody(tab) {
       }).join('')}</div>`;
   }
   if (tab === 'tables') {
-    return `<p class="compendium-intro">五张赌桌，五种材质。关卡越深，桌面越昂贵，坐在对面的东西也越不像人。每张桌子都由三名对手看守：两名小兵，一名庄家。</p>
+    return `<p class="compendium-intro">五张赌桌，五种材质。关卡越深，桌面越昂贵，坐在对面的东西也越不像人。前四幕各 6 关、终幕 4 关，每幕有两位庄家看守，庄家之间的小兵越排越长。</p>
       <div class="compendium-grid tables-grid">
         ${TABLES.map((table) => `<article class="compendium-card table-comp-card" style="--rarity:${table.accent};--glow:${table.glow};min-height:280px;overflow:hidden">
           <div class="comp-table-bg" style="background-image:url('assets/tables/${table.art}.svg')"></div>
           <div class="comp-table-content">
-            <div class="comp-sub">第 ${table.group * 3 + 1}–${table.group * 3 + 3} 关 · ${h(table.material)}</div>
+            <div class="comp-sub">第 ${chapterLevelSpan(table.group)[0]}–${chapterLevelSpan(table.group)[1]} 关 · ${h(table.material)}</div>
             <h4>${h(table.name)}</h4>
             <p style="color:${table.accent};font-size:9px;margin-top:3px">${h(table.subtitle)}</p>
             <p>${h(table.desc)}</p>
@@ -3156,13 +3450,13 @@ function compendiumBody(tab) {
       </div>`;
   }
   if (tab === 'bosses') {
-    return `<p class="compendium-intro">每一位庄家都有一句自己的规矩。第 3、5、7…15 关，庄家亲自落座；击败他们，桌子会随章节换成下一种材质。</p>
-      <h3 style="font-family:var(--serif);font-weight:400;font-size:18px;color:#e4cd9f;margin:8px 0 12px;letter-spacing:.1em">七位庄家</h3>
+    return `<p class="compendium-intro">每一位庄家都有一句自己的规矩。第 ${BOSSES.map((boss) => boss.level).join('、')} 关庄家亲自落座，两场之间的小兵关越拖越长（${MINION_GAPS.join('、')}）；击败他们，桌子会随章节换成下一种材质。</p>
+      <h3 style="font-family:var(--serif);font-weight:400;font-size:18px;color:#e4cd9f;margin:8px 0 12px;letter-spacing:.1em">${BOSSES.length} 位庄家</h3>
       <div class="compendium-grid bosses-grid">
         ${BOSSES.map((boss) => `<article class="compendium-card boss-compendium-card" style="--rarity:${boss.accent};--glow:${boss.accent}33">
           <img class="comp-portrait" src="assets/portraits/${boss.art}.svg" alt="${h(boss.name)}">
           <div class="comp-content">
-            <div class="comp-sub">第 ${boss.level} 关 · ${h(boss.title)}</div>
+            <div class="comp-sub">第 ${boss.level} 关 · ${h(boss.title)} · 悬赏 ×${boss.curve.reward.toFixed(2)}</div>
             <h4>${h(boss.name)}</h4>
             <div class="effect"><b>${h(boss.effectName)}</b><p>${h(boss.effectDesc)}</p></div>
             <p style="color:#8f7f69;font-size:8px">“${h(boss.intro)}”</p>
@@ -3230,6 +3524,9 @@ window.HeavensDice = {
   openRules,
   showVictory,
   showDefeat,
+  diceTable: () => diceTable,
+  diceTableEntries: () => diceTable?.entries.length ?? 0,
+  motion,
   setLevel(level) {
     if (!app.run) return false;
     app.run.level = clamp(Number(level) || 1, 1, LEVEL_COUNT);

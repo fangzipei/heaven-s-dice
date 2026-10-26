@@ -4,10 +4,18 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#0b0805">
-  <meta name="description" content="天国骰局 — 一款以《天国：拯救 2》骰子规则为核心的肉鸽网页游戏。摇骰、留骰、画阵，挑战七位庄家。">
+  <meta name="description" content="天国骰局 — 一款以《天国：拯救 2》骰子规则为核心的肉鸽网页游戏。摇骰、留骰、画阵，挑战八位庄家。">
   <title>天国骰局 · Heaven's Dice</title>
-  <link rel="stylesheet" href="css/main.css?v=20261026-trace01">
+  <link rel="stylesheet" href="css/main.css?v=20261028-float01">
   <link rel="icon" href="assets/items/coin.svg" type="image/svg+xml">
+  <!-- Animation + 3D stack, served locally from /vendor so the game runs offline. -->
+  <script src="vendor/gsap.min.js?v=3.15.0"></script>
+  <script src="vendor/CustomEase.min.js?v=3.15.0"></script>
+  <script src="vendor/CustomBounce.min.js?v=3.15.0"></script>
+  <script src="vendor/CustomWiggle.min.js?v=3.15.0"></script>
+  <script type="importmap">
+    { "imports": { "three": "./vendor/three.module.js?v=0.186.1" } }
+  </script>
 </head>
 <body>
   <svg class="svg-sprite" aria-hidden="true">
@@ -37,10 +45,29 @@
         <div class="home-shade"></div>
         <div class="home-halo"></div>
         <img class="home-cup" src="assets/cups/astral.svg" alt="">
+        <!-- Three real cubes resting on the table: aged bone, oak-stained, gilt. -->
         <div class="home-dice">
-          <span class="home-die"><i style="grid-row:1;grid-column:1"></i><i style="grid-row:1;grid-column:3"></i><i style="grid-row:2;grid-column:2"></i><i style="grid-row:3;grid-column:1"></i><i style="grid-row:3;grid-column:3"></i></span>
-          <span class="home-die"><i style="grid-row:1;grid-column:1"></i><i style="grid-row:2;grid-column:2"></i><i style="grid-row:3;grid-column:3"></i></span>
-          <span class="home-die"><i style="grid-row:1;grid-column:1"></i><i style="grid-row:1;grid-column:3"></i><i style="grid-row:2;grid-column:1"></i><i style="grid-row:2;grid-column:3"></i><i style="grid-row:3;grid-column:1"></i><i style="grid-row:3;grid-column:3"></i></span>
+          <span class="home-die is-bone" style="--rx:-15deg;--ry:26deg;--rz:-3deg">
+            <span class="home-cube">
+              <span class="home-face hf-front"><i style="grid-row:1;grid-column:1"></i><i style="grid-row:1;grid-column:3"></i><i style="grid-row:2;grid-column:2"></i><i style="grid-row:3;grid-column:1"></i><i style="grid-row:3;grid-column:3"></i></span>
+              <span class="home-face hf-top"><i style="grid-row:1;grid-column:1"></i><i style="grid-row:2;grid-column:2"></i><i style="grid-row:3;grid-column:3"></i></span>
+              <span class="home-face hf-right"><i style="grid-row:2;grid-column:2"></i></span>
+            </span>
+          </span>
+          <span class="home-die is-oak" style="--rx:-13deg;--ry:-24deg;--rz:5deg">
+            <span class="home-cube">
+              <span class="home-face hf-front"><i style="grid-row:1;grid-column:1"></i><i style="grid-row:2;grid-column:2"></i><i style="grid-row:3;grid-column:3"></i></span>
+              <span class="home-face hf-top"><i style="grid-row:1;grid-column:1"></i><i style="grid-row:3;grid-column:3"></i></span>
+              <span class="home-face hf-right"><i style="grid-row:1;grid-column:1"></i><i style="grid-row:1;grid-column:3"></i><i style="grid-row:2;grid-column:2"></i><i style="grid-row:3;grid-column:1"></i><i style="grid-row:3;grid-column:3"></i></span>
+            </span>
+          </span>
+          <span class="home-die is-gilt" style="--rx:-17deg;--ry:18deg;--rz:-7deg">
+            <span class="home-cube">
+              <span class="home-face hf-front"><i style="grid-row:1;grid-column:1"></i><i style="grid-row:1;grid-column:3"></i><i style="grid-row:2;grid-column:1"></i><i style="grid-row:2;grid-column:3"></i><i style="grid-row:3;grid-column:1"></i><i style="grid-row:3;grid-column:3"></i></span>
+              <span class="home-face hf-top"><i style="grid-row:1;grid-column:1"></i><i style="grid-row:1;grid-column:3"></i><i style="grid-row:3;grid-column:1"></i><i style="grid-row:3;grid-column:3"></i></span>
+              <span class="home-face hf-right"><i style="grid-row:1;grid-column:1"></i><i style="grid-row:3;grid-column:3"></i></span>
+            </span>
+          </span>
         </div>
       </div>
       <div class="start-grain" aria-hidden="true"></div>
@@ -76,7 +103,7 @@
           <span><b>HEAVEN'S DICE</b><em>天国骰局</em></span>
         </a>
         <div class="level-track-wrap">
-          <div class="level-track-label"><span id="chapter-label">第一幕 · 腐烂的根系</span><span id="level-label">第 1 / 15 关</span></div>
+          <div class="level-track-label"><span id="chapter-label">第一幕 · 腐烂的根系</span><span id="level-label">第 1 关</span></div>
           <div class="level-track" id="level-track"></div>
         </div>
         <div class="topbar-actions">
@@ -125,12 +152,13 @@
             </div>
             <div class="score-number">
               <strong id="score-value">0</strong>
-              <span class="score-pending" id="score-pending" hidden>+<b id="round-value">0</b><em>本轮</em></span>
+              <span class="score-pending" id="score-pending" hidden>+<b id="round-value">0</b><em id="round-tag">本轮</em></span>
               <span class="score-target">/<em id="target-value-2">650</em></span>
             </div>
             <div class="score-breakdown" id="score-breakdown">
-              <span>已得 <b id="secured-value">0</b></span>
-              <span class="score-breakdown-pending" id="round-breakdown" hidden>本轮未计入 <b id="round-value-2">0</b></span>
+              <span id="secured-note">已得 <b id="secured-value">0</b></span>
+              <span class="score-breakdown-pending" id="round-breakdown" hidden><span id="round-note">本轮未计入</span> <b id="round-value-2">0</b></span>
+              <span class="score-breakdown-pending" id="float-note" hidden>整桌漂浮 · 掷空清零</span>
             </div>
             <div class="progress-track">
               <div class="progress-fill is-pending" id="score-progress-pending"></div>
@@ -179,7 +207,12 @@
               <span id="throw-label">等待落骰</span>
               <span class="dice-count" id="dice-count">6 颗骰子</span>
             </div>
-            <div class="dice-tray" id="dice-tray" aria-live="polite"></div>
+            <!-- Dice now render in WebGL; the DOM keeps a canvas plus a
+                 hidden button row so screen readers and taps still work. -->
+            <div class="dice-tray" id="dice-tray" aria-live="polite">
+              <canvas class="dice-canvas" id="dice-canvas"></canvas>
+              <div class="dice-a11y" id="dice-a11y"></div>
+            </div>
             <div class="combo-preview" id="combo-preview">
               <span class="combo-placeholder">选择要计分的骰子</span>
             </div>
@@ -187,10 +220,6 @@
 
           <div class="action-dock" id="action-dock"></div>
 
-          <button class="auto-roll" id="auto-roll" data-action="auto-roll">
-            <span class="auto-icon"><svg><use href="#i-cup"></use></svg></span>
-            <span><b>自动摇骰</b><em>点击或按空格</em></span>
-          </button>
 
           <div class="danger-strip" id="danger-strip" hidden>
             <span>重投已耗尽。你可以先使用物品，再计分并结算本关。</span>
@@ -257,6 +286,6 @@
     </article>
   </template>
 
-  <script type="module" src="src/app.js?v=20261026-trace01"></script>
+  <script type="module" src="src/app.js?v=20261028-float01"></script>
 </body>
 </html>

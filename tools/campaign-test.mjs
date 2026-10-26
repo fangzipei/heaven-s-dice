@@ -1,6 +1,21 @@
-/* Full 15-level campaign through the real UI: victory → shop → next level → final. */
+/* Full campaign through the real UI: victory → shop → next level → final.
+   关卡数、庄家关卡、每个庄家的重投修正全部从 src/data.js 取，改关卡表不用改这里。 */
 import { spawn } from 'node:child_process';
 import { writeFile, mkdir } from 'node:fs/promises';
+import { LEVELS, BOSSES } from '../src/data.js';
+
+const TOTAL = LEVELS.length;
+const bossAt = new Map(BOSSES.map((boss) => [boss.level, boss]));
+const BASE_REROLLS = 5;
+/** 进入第 L 关时的重投数：基础 + 已夺徽记 + 本关庄家的修正。 */
+function expectedRerolls(level) {
+  const boons = BOSSES.filter((boss) => boss.level < level).length;
+  const boss = bossAt.get(level);
+  let rerolls = BASE_REROLLS + boons;
+  if (boss?.effectKey === 'rerollMinus') rerolls -= 1;
+  if (boss?.effectKey === 'scoreTaxReroll') rerolls += 1;
+  return Math.max(1, rerolls);
+}
 
 const EDGE = 'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe';
 const ROOT = 'D:\\vs_workspace\\Heaven\'s Dice';
@@ -28,7 +43,7 @@ await js(`window.__errors=[];window.addEventListener('error',e=>window.__errors.
 await js(`document.querySelector('[data-action="start-run"]').click(); document.querySelector('[data-action="start-direct"]')?.click()`); await sleep(400);
 await js(`document.querySelector('[data-action="close-intro"]').click()`); await sleep(350);
 
-for (let level = 1; level <= 15; level += 1) {
+for (let level = 1; level <= TOTAL; level += 1) {
   const before = await state();
   if (before.level !== level) throw new Error(`Expected level ${level}, got ${before.level}`);
   // Put the run one point away, score through the real UI, then leave the
@@ -46,14 +61,14 @@ for (let level = 1; level <= 15; level += 1) {
   await js(`document.querySelector('[data-action="advance-level"]').click()`);
   await sleep(1100);
   const won = await state();
-  const expectPhase = level === 15 ? 'run-won' : 'won';
+  const expectPhase = level === TOTAL ? 'run-won' : 'won';
   if (won.phase !== expectPhase) throw new Error(`Level ${level} expected ${expectPhase}, got ${won.phase}`);
-  const expectedBoons = { 3: 1, 5: 2, 7: 3, 9: 4, 11: 5, 13: 6 }[level];
-  if (expectedBoons && level < 15 && won.boons !== expectedBoons) {
+  const expectedBoons = level < TOTAL ? BOSSES.filter((boss) => boss.level <= level).length : undefined;
+  if (expectedBoons !== undefined && won.boons !== expectedBoons) {
     throw new Error(`Boss boon missing at level ${level}: ${won.boons} vs ${expectedBoons}`);
   }
   report.levels.push({ level, phase: won.phase, boons: won.boons, coins: won.coins, result: won.result });
-  if (level === 15) {
+  if (level === TOTAL) {
     await shot('33-campaign-final');
     break;
   }
@@ -64,11 +79,9 @@ for (let level = 1; level <= 15; level += 1) {
   const intro = await state();
   if (intro.level !== level + 1) throw new Error(`Did not advance to level ${level + 1}`);
   if (!intro.overlay) throw new Error(`Level intro missing for level ${level + 1}`);
-  // 5 base, +1 per defeated dealer, the star collector's -1 at 13, and the
-  // seraph's +1 at 15.
-  const expectedRerolls = [5, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 9, 11, 12][intro.level - 1];
-  if (intro.rerolls !== expectedRerolls) {
-    report.errors.push(`Reroll count mismatch at level ${intro.level}: ${intro.rerolls} vs ${expectedRerolls}`);
+  const want = expectedRerolls(intro.level);
+  if (intro.rerolls !== want) {
+    report.errors.push(`Reroll count mismatch at level ${intro.level}: ${intro.rerolls} vs ${want}`);
   }
   await js(`document.querySelector('[data-action="close-intro"]').click()`); await sleep(300);
 }

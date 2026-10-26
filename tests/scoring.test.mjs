@@ -67,3 +67,39 @@ test('bestSelection handles dead rolls', () => {
   const dice = [2, 3, 4, 6].map((value, i) => ({ uid: String(i), value }));
   assert.equal(bestSelection(dice), null);
 });
+
+test('demon jokers never score on their own', () => {
+  assert.equal(analyzeSelection([7]).valid, false);
+  assert.equal(analyzeSelection([7, 7]).valid, false);
+  // A joker may not pad a single 5 or a single 1.
+  assert.equal(analyzeSelection([5, 7]).valid, false);
+  assert.equal(analyzeSelection([1, 7]).valid, false);
+  assert.equal(analyzeSelection([2, 7]).valid, false);
+});
+
+test('demon jokers complete triples and straights', () => {
+  assert.equal(score([1, 1, 7]), 1000);
+  assert.equal(score([3, 3, 7]), 300);
+  assert.equal(score([1, 1, 1, 7]), 2000);
+  // One missing straight face can be filled by one joker.
+  assert.equal(score([1, 2, 3, 4, 7]), 500);
+  assert.equal(score([2, 3, 4, 5, 6, 7]), 1500);
+  // The joker stands in for the face the straight is missing, and the scorer
+  // picks the better straight: 2-3-4-5 + joker reads as 2-6 for 750.
+  assert.equal(score([2, 3, 4, 5, 7]), 750);
+  // Two missing straight faces are one joker too many, and leftovers invalidate.
+  assert.equal(analyzeSelection([2, 3, 4, 7, 7]).valid, false);
+});
+
+test('bestSelection counts jokers coming from demon dice', () => {
+  const dice = [
+    { uid: 'a', value: 1, wild: true },
+    { uid: 'b', value: 1 },
+    { uid: 'c', value: 1 },
+    { uid: 'd', value: 2 },
+  ];
+  const best = bestSelection(dice);
+  assert.ok(best);
+  assert.equal(best.analysis.base, 1000);
+  assert.equal(best.analysis.wilds, 1);
+});

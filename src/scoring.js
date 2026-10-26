@@ -4,30 +4,44 @@
    Single 1 ................ 100
    Single 5 ................ 50
    Triple 1 ................ 1000
-   Triple 2–6 .............. face × 100
-   Four of a kind .......... triple × 2
-   Five of a kind .......... triple × 4
-   Six of a kind ........... triple × 8
-   Straight 1–5 ............ 500
-   Straight 2–6 ............ 750
-   Full straight 1–6 ....... 1500
+   Triple 2-6 .............. face x 100
+   Four of a kind .......... triple x 2
+   Five of a kind .......... triple x 4
+   Six of a kind ........... triple x 8
+   Straight 1-5 ............ 500
+   Straight 2-6 ............ 750
+   Full straight 1-6 ....... 1500
+
+   Demon wilds (WILD_VALUE) are jokers: they may stand in for one missing face
+   in a straight (at most one wild per straight) or join natural dice of the
+   same face to build triples and larger. A wild never scores on its own: every
+   group it joins must contain at least one natural die, and a wild cannot be
+   used to pad single 1/5 scoring.
    ============================================================ */
+
+export const WILD_VALUE = 7;
 
 export const SCORING_ROWS = [
   { key: 'one', label: '单颗 1', detail: '每颗', points: '100' },
   { key: 'five', label: '单颗 5', detail: '每颗', points: '50' },
-  { key: 'triple', label: '三连', detail: '1×1000，其余点数×100', points: '200–1000' },
-  { key: 'four', label: '四连', detail: '三连 ×2', points: '400–2000' },
-  { key: 'fiveKind', label: '五连', detail: '三连 ×4', points: '800–4000' },
-  { key: 'sixKind', label: '六连', detail: '三连 ×8', points: '1600–8000' },
-  { key: 'straight15', label: '顺子 1–5', detail: '五颗连续', points: '500' },
-  { key: 'straight26', label: '顺子 2–6', detail: '五颗连续', points: '750' },
-  { key: 'straight16', label: '通天顺 1–6', detail: '六颗连续', points: '1500' },
+  { key: 'triple', label: '三连', detail: '1x1000，其余点数x100', points: '200-1000' },
+  { key: 'four', label: '四连', detail: '三连 x2', points: '400-2000' },
+  { key: 'fiveKind', label: '五连', detail: '三连 x4', points: '800-4000' },
+  { key: 'sixKind', label: '六连', detail: '三连 x8', points: '1600-8000' },
+  { key: 'straight15', label: '顺子 1-5', detail: '五颗连续', points: '500' },
+  { key: 'straight26', label: '顺子 2-6', detail: '五颗连续', points: '750' },
+  { key: 'straight16', label: '通天顺 1-6', detail: '六颗连续', points: '1500' },
+  { key: 'demon', label: '恶魔赖子', detail: '补三连/顺子缺口，不能单独计分', points: '-' },
 ];
 
 const N_KIND_MULTIPLIER = { 3: 1, 4: 2, 5: 4, 6: 8 };
 const N_KIND_LABEL = { 3: '三连', 4: '四连', 5: '五连', 6: '六连' };
 const SINGLE_POINTS = { 1: 100, 5: 50 };
+const STRAIGHTS = [
+  { faces: [1, 2, 3, 4, 5], label: '顺子 1-5', points: 500 },
+  { faces: [2, 3, 4, 5, 6], label: '顺子 2-6', points: 750 },
+  { faces: [1, 2, 3, 4, 5, 6], label: '通天顺 1-6', points: 1500 },
+];
 
 export function emptyCounts() {
   return [0, 0, 0, 0, 0, 0, 0]; // index 0 unused
@@ -49,6 +63,12 @@ function cloneCounts(counts) {
   return counts.slice();
 }
 
+function addCounts(a, b) {
+  const out = emptyCounts();
+  for (let face = 1; face <= 6; face += 1) out[face] = (a[face] || 0) + (b[face] || 0);
+  return out;
+}
+
 function nKindCombo(face, count) {
   return {
     type: 'nkind',
@@ -62,8 +82,8 @@ function nKindCombo(face, count) {
 const memo = new Map();
 
 /**
- * Scores an exact multiset of dice (counts index 1..6). Every die must be
- * consumed by a scoring combination; otherwise the result is invalid.
+ * Scores an exact multiset of natural dice (counts index 1..6). Every die must
+ * be consumed by a scoring combination; otherwise the result is invalid.
  * Returns the maximum-scoring legal partition, or null.
  */
 function scoreCounts(counts) {
@@ -83,7 +103,6 @@ function scoreCounts(counts) {
   const options = [];
 
   if (face === 1 || face === 5) {
-    // Any number of singles is legal.
     for (let take = 1; take <= count; take += 1) {
       const next = cloneCounts(counts);
       next[face] -= take;
@@ -94,12 +113,9 @@ function scoreCounts(counts) {
           face,
           count: take,
           points: take * SINGLE_POINTS[face],
-          label: take === 1 ? `单 ${face}` : `单 ${face} ×${take}`,
+          label: take === 1 ? `单 ${face}` : `单 ${face} x${take}`,
         };
-        options.push({
-          score: combo.points + rest.score,
-          combos: [combo, ...rest.combos],
-        });
+        options.push({ score: combo.points + rest.score, combos: [combo, ...rest.combos] });
       }
     }
   }
@@ -111,10 +127,7 @@ function scoreCounts(counts) {
       const rest = scoreCounts(next);
       if (rest) {
         const combo = nKindCombo(face, take);
-        options.push({
-          score: combo.points + rest.score,
-          combos: [combo, ...rest.combos],
-        });
+        options.push({ score: combo.points + rest.score, combos: [combo, ...rest.combos] });
       }
     }
   }
@@ -129,57 +142,104 @@ function scoreCounts(counts) {
   return options[0];
 }
 
-function scoreWithoutStraight(counts) {
-  return scoreCounts(cloneCounts(counts));
+function better(a, b) {
+  if (!a) return b;
+  if (!b) return a;
+  if (b.score !== a.score) return b.score > a.score ? b : a;
+  return b.combos.length < a.combos.length ? b : a;
 }
 
-function straightCandidate(counts, faces, label, points) {
-  const remainder = cloneCounts(counts);
-  for (const face of faces) {
-    if (remainder[face] < 1) return null;
-    remainder[face] -= 1;
+const wildMemo = new Map();
+
+/**
+ * Best legal partition of `counts` natural dice plus `wilds` jokers.
+ * Every die - natural or wild - must be consumed.
+ */
+function analyzeCounts(counts, wilds) {
+  const key = `${counts.slice(1).join(',')}|${wilds}`;
+  if (wildMemo.has(key)) return wildMemo.get(key);
+
+  let best = null;
+
+  // Straights: a wild may fill exactly one missing face.
+  for (const straight of STRAIGHTS) {
+    const missing = straight.faces.filter((face) => counts[face] === 0);
+    const wildUsed = missing.length;
+    if (wildUsed > 1 || wildUsed > wilds) continue;
+    const remainder = cloneCounts(counts);
+    const straightCounts = emptyCounts();
+    for (const face of straight.faces) {
+      straightCounts[face] += 1;
+      if (remainder[face] > 0) remainder[face] -= 1;
+    }
+    const rest = analyzeCounts(remainder, wilds - wildUsed);
+    if (!rest) continue;
+    best = better(best, {
+      score: straight.points + rest.score,
+      combos: [
+        { type: 'straight', faces: [...straight.faces], points: straight.points, label: straight.label, wilds: wildUsed },
+        ...rest.combos,
+      ],
+      counts: addCounts(straightCounts, rest.counts),
+    });
   }
-  const rest = scoreCounts(remainder);
-  if (!rest) return null;
-  return {
-    score: points + rest.score,
-    combos: [
-      { type: 'straight', faces: [...faces], points, label },
-      ...rest.combos,
-    ],
+
+  // No straight: wilds may only reinforce a face that already has a natural
+  // die, and the resulting group must be a triple or larger.
+  const distribute = (face, remaining, add) => {
+    if (face === 7) {
+      if (remaining !== 0) return;
+      const finalCounts = addCounts(counts, add);
+      const scored = scoreCounts(finalCounts);
+      if (!scored) return;
+      best = better(best, { score: scored.score, combos: scored.combos, counts: finalCounts });
+      return;
+    }
+    distribute(face + 1, remaining, add);
+    if (counts[face] === 0) return;
+    const need = Math.max(1, 3 - counts[face]);
+    for (let take = need; take <= remaining; take += 1) {
+      const nextAdd = cloneCounts(add);
+      nextAdd[face] += take;
+      distribute(face + 1, remaining - take, nextAdd);
+    }
   };
+  distribute(1, wilds, emptyCounts());
+
+  wildMemo.set(key, best);
+  return best;
 }
 
 /**
- * @param {number[]} values dice faces (1..6) selected by the player
+ * @param {number[]} values dice faces (1..6, or WILD_VALUE for a demon joker)
  * @returns {{valid:boolean, base:number, combos:Array, multi:boolean,
- *            straight:boolean, counts:number[], values:number[]}}
+ *            straight:boolean, counts:number[], values:number[], wilds:number}}
  */
 export function analyzeSelection(values) {
-  const clean = values.filter((v) => Number.isInteger(v) && v >= 1 && v <= 6);
-  const counts = countFaces(clean);
+  const clean = values.filter(
+    (v) => Number.isInteger(v) && ((v >= 1 && v <= 6) || v === WILD_VALUE),
+  );
+  const natural = clean.filter((v) => v !== WILD_VALUE);
+  const wilds = clean.length - natural.length;
+  const naturalCounts = countFaces(natural);
   if (!clean.length) {
-    return { valid: false, base: 0, combos: [], multi: false, straight: false, counts, values: [] };
+    return {
+      valid: false, base: 0, combos: [], multi: false, straight: false,
+      counts: naturalCounts, values: [], wilds: 0,
+    };
   }
 
-  const candidates = [];
-  const noStraight = scoreWithoutStraight(counts);
-  if (noStraight) candidates.push(noStraight);
-
-  const straight15 = straightCandidate(counts, [1, 2, 3, 4, 5], '顺子 1–5', 500);
-  if (straight15) candidates.push(straight15);
-  const straight26 = straightCandidate(counts, [2, 3, 4, 5, 6], '顺子 2–6', 750);
-  if (straight26) candidates.push(straight26);
-  const straight16 = straightCandidate(counts, [1, 2, 3, 4, 5, 6], '通天顺 1–6', 1500);
-  if (straight16) candidates.push(straight16);
-
-  if (!candidates.length) {
-    return { valid: false, base: 0, combos: [], multi: false, straight: false, counts, values: clean };
+  const best = analyzeCounts(naturalCounts, wilds);
+  if (!best) {
+    return {
+      valid: false, base: 0, combos: [], multi: false, straight: false,
+      counts: naturalCounts, values: clean, wilds,
+    };
   }
 
-  candidates.sort((a, b) => b.score - a.score || a.combos.length - b.combos.length);
-  const best = candidates[0];
-  const multi = best.combos.some((c) => c.type === 'straight' || (c.type === 'nkind' && c.count >= 3));
+  const multi = best.combos.some(
+    (c) => c.type === 'straight' || (c.type === 'nkind' && c.count >= 3),
+  );
   const straight = best.combos.some((c) => c.type === 'straight');
 
   return {
@@ -188,18 +248,21 @@ export function analyzeSelection(values) {
     combos: best.combos,
     multi,
     straight,
-    counts,
+    counts: best.counts,
     values: clean,
+    wilds,
   };
 }
 
 /**
  * Enumerates every non-empty selection of available dice and returns the best
  * legal one. At most 7 dice are in play, so exhaustive search is tiny.
- * @param {{uid:string,value:number}[]} dice
+ * @param {{uid:string,value:number,wild?:boolean}[]} dice
  */
 export function bestSelection(dice) {
-  const playable = dice.filter((d) => d.value >= 1 && d.value <= 6);
+  const playable = dice.filter(
+    (d) => d.wild || d.value === WILD_VALUE || (d.value >= 1 && d.value <= 6),
+  );
   if (!playable.length) return null;
   let best = null;
   const total = 1 << playable.length;
@@ -208,7 +271,9 @@ export function bestSelection(dice) {
     for (let i = 0; i < playable.length; i += 1) {
       if (mask & (1 << i)) chosen.push(playable[i]);
     }
-    const analysis = analyzeSelection(chosen.map((d) => d.value));
+    const analysis = analyzeSelection(
+      chosen.map((d) => (d.wild ? WILD_VALUE : d.value)),
+    );
     if (!analysis.valid) continue;
     if (!best || analysis.base > best.analysis.base ||
         (analysis.base === best.analysis.base && chosen.length > best.dice.length)) {
@@ -227,5 +292,5 @@ export function describeCombo(combo) {
 }
 
 export function selectionValues(dice) {
-  return dice.map((d) => d.value);
+  return dice.map((d) => (d.wild ? WILD_VALUE : d.value));
 }

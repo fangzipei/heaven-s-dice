@@ -755,6 +755,162 @@ def boss_diamond() -> str:
 """ + close_svg(particles(("#dcfcff", "#4ea9bb"), 25, 60, 40, 740))
 
 
+# ═══════════════════════════════════════════════════════════════════════════
+# 悬秤人：一袭没有脚的袍子，头顶悬着一杆永远不落定的天平
+# ═══════════════════════════════════════════════════════════════════════════
+
+_PIPS = {
+    1: [(1, 1)],
+    2: [(0, 0), (2, 2)],
+    3: [(0, 0), (1, 1), (2, 2)],
+    4: [(0, 0), (2, 0), (0, 2), (2, 2)],
+    5: [(0, 0), (2, 0), (1, 1), (0, 2), (2, 2)],
+    6: [(0, 0), (0, 1), (0, 2), (2, 0), (2, 1), (2, 2)],
+}
+
+
+def die_shape(x: float, y: float, size: float, value: int, rot: float = 0,
+              fill: str = "#efe6d0", ink: str = "#241a34", opacity: float = 1.0) -> str:
+    """A small pip die; used for the dice that hang in the air around the scale."""
+    pads = []
+    for cx, cy in _PIPS[value]:
+        px = x - size / 2 + size * (0.24 + 0.26 * cx)
+        py = y - size / 2 + size * (0.24 + 0.26 * cy)
+        pads.append(f'<circle cx="{px:.1f}" cy="{py:.1f}" r="{size * 0.075:.1f}" fill="{ink}"/>')
+    return (
+        f'<g transform="rotate({rot} {x} {y})" opacity="{opacity}">'
+        f'<rect x="{x - size / 2:.1f}" y="{y - size / 2:.1f}" width="{size}" height="{size}" '
+        f'rx="{size * 0.2:.1f}" fill="{fill}" stroke="{ink}" stroke-width="1.1" opacity=".92"/>'
+        + "".join(pads) + "</g>"
+    )
+
+
+def boss_scale() -> str:
+    defs = """
+  <linearGradient id="shroud" x1=".2" y1="0" x2=".8" y2="1">
+    <stop offset="0" stop-color="#3c3258"/><stop offset=".55" stop-color="#1c1630"/>
+    <stop offset="1" stop-color="#090612"/>
+  </linearGradient>
+  <linearGradient id="hoodEdge" x1="0" y1="0" x2="1" y2="1">
+    <stop offset="0" stop-color="#cbb6ff" stop-opacity=".75"/>
+    <stop offset=".5" stop-color="#8d78c4" stop-opacity=".2"/>
+    <stop offset="1" stop-color="#6a56a0" stop-opacity=".6"/>
+  </linearGradient>
+  <linearGradient id="vapour" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0" stop-color="#d6c8f5" stop-opacity=".42"/>
+    <stop offset="1" stop-color="#8f7ac0" stop-opacity="0"/>
+  </linearGradient>
+  <linearGradient id="brass" x1="0" y1="0" x2="1" y2="1">
+    <stop offset="0" stop-color="#f4ead0"/><stop offset=".45" stop-color="#cbb689"/>
+    <stop offset="1" stop-color="#7a6742"/>
+  </linearGradient>
+  <radialGradient id="panGlow" cx=".5" cy=".5" r=".5">
+    <stop offset="0" stop-color="#cbb6ff" stop-opacity=".5"/>
+    <stop offset="1" stop-color="#8a74c8" stop-opacity="0"/>
+  </radialGradient>
+"""
+    dice_left = "".join([
+        die_shape(120, 196, 30, 5, -14, opacity=.85),
+        die_shape(168, 168, 26, 1, 9, opacity=.7),
+        die_shape(146, 232, 22, 3, 22, opacity=.6),
+    ])
+    dice_right = "".join([
+        die_shape(452, 186, 30, 6, 12, opacity=.85),
+        die_shape(408, 162, 26, 4, -8, opacity=.7),
+        die_shape(470, 226, 22, 2, -20, opacity=.6),
+    ])
+    return open_svg("#c9b8f2", "#0d0818", defs) + f"""
+<g>
+  <!-- 悬在空中的下半身：袍角化进雾里，暗示它没有落地 -->
+  <g opacity=".8">
+    <path d="M150 588 Q300 664 452 588 L492 760 L108 760Z" fill="url(#vapour)"/>
+    <path d="M196 604 Q300 692 404 604 L420 760 L180 760Z" fill="url(#vapour)" opacity=".85"/>
+    <g fill="none" stroke="#d6c8f5" stroke-width="1.1" opacity=".34">
+      <path d="M232 616 Q300 662 368 616 M214 684 Q300 736 386 684"/>
+    </g>
+    <!-- 从袍角往上飘的丝缕 -->
+    <g fill="none" stroke="#cbb6ff" stroke-width="1" opacity=".22">
+      <path d="M212 700 Q196 640 214 596"/>
+      <path d="M388 700 Q404 640 386 596"/>
+      <path d="M300 726 Q286 668 300 626"/>
+    </g>
+  </g>
+
+  <!-- 长袍 -->
+  <path d="M300 372 Q372 402 392 486 L408 690 Q300 742 192 690 L208 486 Q228 402 300 372Z"
+        fill="url(#shroud)" stroke="#0a0714" stroke-width="3"/>
+  <g fill="none" stroke="#5a4a86" stroke-width="1.2" opacity=".5">
+    <path d="M300 392 L300 700 M252 408 Q244 540 236 686 M348 408 Q356 540 364 686"/>
+  </g>
+
+  <!-- 领口：给剪影一道横向的断点 -->
+  <path d="M300 400 Q356 414 386 462 Q344 494 300 496 Q256 494 214 462 Q244 414 300 400Z"
+        fill="#2a2142" stroke="#4c3d70" stroke-width="1.6"/>
+  <path d="M300 400 Q356 414 386 462 Q344 494 300 496 Q256 494 214 462 Q244 414 300 400Z"
+        fill="none" stroke="url(#hoodEdge)" stroke-width="1.2" opacity=".7"/>
+
+  <!-- 兜帽 -->
+  <path d="M300 126 Q396 216 388 330 Q380 412 300 452 Q220 412 212 330 Q204 216 300 126Z"
+        fill="url(#shroud)" stroke="#120c20" stroke-width="3"/>
+  <path d="M300 126 Q396 216 388 330 Q380 412 300 452 Q220 412 212 330 Q204 216 300 126Z"
+        fill="none" stroke="url(#hoodEdge)" stroke-width="2"/>
+  <path d="M300 186 Q364 250 358 332 Q352 392 300 424 Q248 392 242 332 Q236 250 300 186Z"
+        fill="#06040c"/>
+  <path d="M300 186 Q364 250 358 332 Q352 392 300 424 Q248 392 242 332 Q236 250 300 186Z"
+        fill="none" stroke="#8d78c4" stroke-width="1" opacity=".35"/>
+
+  <!-- 兜帽后的冷光：把剪影从背景里剥出来 -->
+  <ellipse cx="300" cy="300" rx="120" ry="150" fill="#a48ed6" opacity=".14" filter="url(#blur24)"/>
+
+  <!-- 左侧轮廓光 -->
+  <g fill="none" stroke="#d8c8ff" stroke-linecap="round">
+    <path d="M300 132 Q206 220 213 330 Q216 392 236 436" stroke-width="2.4" opacity=".5"/>
+    <path d="M209 470 Q203 560 197 644" stroke-width="2" opacity=".32"/>
+  </g>
+
+  <!-- 面罩下的两点紫光：它不看你，看的是秤 -->
+  <g filter="url(#blur8)" opacity=".85">
+    <ellipse cx="272" cy="318" rx="16" ry="10" fill="#cbb6ff" opacity=".5"/>
+    <ellipse cx="330" cy="318" rx="16" ry="10" fill="#cbb6ff" opacity=".5"/>
+  </g>
+  <ellipse cx="272" cy="318" rx="6.5" ry="4" fill="#efe6ff"/>
+  <ellipse cx="330" cy="318" rx="6.5" ry="4" fill="#efe6ff"/>
+
+  <!-- 天平：钩子、横梁、两条链条 -->
+  <path d="M300 24 L300 104" stroke="url(#brass)" stroke-width="3"/>
+  <circle cx="300" cy="24" r="9" fill="none" stroke="url(#brass)" stroke-width="3"/>
+  <g transform="rotate(3.5 300 108)">
+    <rect x="128" y="103" width="344" height="9" rx="4" fill="url(#brass)"/>
+    <circle cx="300" cy="108" r="10" fill="url(#brass)" stroke="#6d5c3a" stroke-width="1.4"/>
+    <g stroke="url(#brass)" stroke-width="1.6" fill="none">
+      <path d="M136 112 L104 262 M136 112 L172 262"/>
+      <path d="M464 112 L430 262 M464 112 L496 262"/>
+    </g>
+  </g>
+
+  <!-- 两个秤盘 -->
+  <ellipse cx="138" cy="286" rx="66" ry="16" fill="url(#panGlow)"/>
+  <ellipse cx="462" cy="286" rx="66" ry="16" fill="url(#panGlow)"/>
+  <path d="M76 258 Q138 300 200 258" fill="none" stroke="url(#brass)" stroke-width="6" stroke-linecap="round"/>
+  <path d="M400 258 Q462 300 524 258" fill="none" stroke="url(#brass)" stroke-width="6" stroke-linecap="round"/>
+  <path d="M76 258 L200 258" stroke="#8b764c" stroke-width="1" opacity=".45"/>
+  <path d="M400 258 L524 258" stroke="#8b764c" stroke-width="1" opacity=".45"/>
+
+  <!-- 秤上悬着的骰子：还没落定 -->
+  {dice_left}
+  {dice_right}
+
+  <!-- 长袍前襟的骰面刻纹 -->
+  <g opacity=".6">
+    {die_shape(300, 556, 46, 5, 8, fill="#302448", ink="#cbb6ff")}
+  </g>
+  <g fill="none" stroke="#cbb6ff" stroke-width="1" opacity=".2">
+    <circle cx="300" cy="556" r="46"/><circle cx="300" cy="556" r="58" stroke-dasharray="4 9"/>
+  </g>
+</g>
+""" + close_svg(particles(("#d6c8f5", "#8a74c8"), 71, 34, 40, 720))
+
+
 PORTRAITS = {
     "minion-rat": minion_rat,
     "minion-gargoyle": minion_gargoyle,
@@ -766,6 +922,7 @@ PORTRAITS = {
     "boss-iron": boss_iron,
     "boss-gold": boss_gold,
     "boss-diamond": boss_diamond,
+    "boss-scale": boss_scale,
 }
 
 

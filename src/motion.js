@@ -1,0 +1,317 @@
+/*
+ * Motion layer.
+ *
+ * Every animation in the game goes through GSAP instead of hand-written CSS
+ * keyframes: one rAF driver (gsap.ticker) feeds both the DOM tweens and the
+ * WebGL dice table, so there is no second loop competing for the main thread
+ * and no long list of compositor layers kept alive by `animation:` rules.
+ *
+ * GSAP ships as a UMD bundle in /vendor so the game still runs offline.
+ */
+const gsap = window.gsap;
+
+const DIE_HALF = 0.5; // dice are unit cubes resting on y = 0
+
+const plugins = [window.CustomEase, window.CustomBounce, window.CustomWiggle].filter(Boolean);
+if (gsap && plugins.length) gsap.registerPlugin(...plugins);
+
+const reduced = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/* Nothing animates for free: when nothing is moving the WebGL table stops
+   rendering, which is what actually keeps a phone cool. */
+const loop = {
+  targets: new Set(),
+  active: 0,
+  dirty: true,
+};
+
+let easesReady = false;
+
+function ensureEases() {
+  if (easesReady || !window.CustomWiggle || !window.CustomBounce) return;
+  window.CustomWiggle.create('cupWiggle', { wiggles: 7, type: 'easeOut' });
+  window.CustomWiggle.create('cupRattle', { wiggles: 4, type: 'uniform' });
+  window.CustomBounce.create('dieLand', { strength: 0.32, squash: 0 });
+  easesReady = true;
+}
+ensureEases();
+
+export const motion = {
+  gsap,
+  ready: Boolean(gsap),
+
+  /* ── shared clock ──────────────────────────────────────────────────── */
+  attach(table) {
+    if (!table || loop.targets.has(table)) return;
+    loop.targets.add(table);
+    loop.dirty = true;
+  },
+
+  detach(table) {
+    loop.targets.delete(table);
+  },
+
+  markDirty() {
+    loop.dirty = true;
+  },
+
+  startClock() {
+    if (!gsap || loop.started) return;
+    loop.started = true;
+    gsap.ticker.lagSmoothing(220, 33);
+    gsap.ticker.add(() => {
+      if (document.hidden || !loop.targets.size) return;
+      if (loop.active <= 0 && !loop.dirty) return;
+      loop.dirty = false;
+      loop.targets.forEach((table) => table.render());
+    });
+  },
+
+  /* Wrap an animation so the renderer knows to keep drawing. */
+  busy(promise) {
+    loop.active += 1;
+    const done = () => { loop.active = Math.max(0, loop.active - 1); loop.dirty = true; };
+    Promise.resolve(promise).then(done, done);
+    return promise;
+  },
+
+  /* ── dice ──────────────────────────────────────────────────────────── */
+  /* Dice fly out of the cup mouth, tumble, bounce and settle square to the
+     camera. `from` is a world-space point (the cup rim). */
+  rollDice(table, uids, from, options = {}) {
+    if (!table || !gsap) return Promise.resolve();
+    const stagger = options.stagger ?? 0.055;
+    const duration = reduced() ? 0.01 : (options.duration ?? 0.66);
+    const rest = table.restRotation();
+    const timelines = [];
+    uids.forEach((uid, index) => {
+      const entry = table.entries.find((item) => item.uid === uid);
+      if (!entry) return;
+      const mesh = entry.mesh;
+      const targetX = entry.baseX;
+      const spinY = Math.PI * 2 * (1 + (index % 2 ? 1 : 2));
+      const spinX = Math.PI * 2 * (index % 3 === 0 ? 1 : 2);
+      mesh.rotation.set(rest.x - spinX, rest.y + spinY, rest.z);
+      mesh.position.set(
+        (from?.x ?? 0) + (targetX - (from?.x ?? 0)) * 0.2,
+        from?.y ?? 3.4,
+        from?.z ?? 1.1,
+      );
+      const tl = gsap.timeline({ delay: reduced() ? 0 : index * stagger });
+      tl.to(mesh.position, {
+        x: targetX, z: 0, duration, ease: 'power2.out',
+      }, 0);
+      tl.to(mesh.position, {
+        y: DIE_HALF, duration: duration * 1.05,
+        ease: easesReady ? 'dieLand' : 'bounce.out',
+      }, 0);
+      tl.to(mesh.rotation, {
+        x: rest.x, y: rest.y, z: rest.z,
+        duration: duration * 1.25, ease: 'power3.out',
+      }, 0);
+      tl.fromTo(mesh.scale,
+        { x: 1.1, y: 0.82, z: 1.1 },
+        { x: 1, y: 1, z: 1, duration: duration * 0.7, ease: 'back.out(2.2)' }, duration * 0.72);
+      timelines.push(tl);
+    });
+    if (!timelines.length) return Promise.resolve();
+    return this.busy(Promise.all(timelines.map((tl) => tl.then())));
+  },
+
+  /* In-place tumble used before a reroll sweep. */
+  tumble(table, uids, options = {}) {
+    if (!table || !gsap) return Promise.resolve();
+    const duration = reduced() ? 0.01 : (options.duration ?? 0.46);
+    const rest = table.restRotation();
+    const tweens = uids.map((uid, index) => {
+      const entry = table.entries.find((item) => item.uid === uid);
+      if (!entry) return null;
+      const mesh = entry.mesh;
+      const from = { y: rest.y + Math.PI * 2, x: rest.x + Math.PI * (index % 2 ? 1 : -1) };
+      mesh.rotation.set(from.x, from.y, rest.z);
+      return gsap.timeline({ delay: reduced() ? 0 : index * 0.02 })
+        .to(mesh.rotation, { x: rest.x, y: rest.y, duration, ease: 'power2.inOut' }, 0)
+        .to(mesh.position, { y: DIE_HALF + 0.18, duration: duration * 0.5, ease: 'sine.out' }, 0)
+        .to(mesh.position, { y: DIE_HALF, duration: duration * 0.5, ease: 'sine.in' }, duration * 0.5)
+        .then();
+    }).filter(Boolean);
+    if (!tweens.length) return Promise.resolve();
+    return this.busy(Promise.all(tweens));
+  },
+
+  /* Sweep dice back into the cup before a reroll. */
+  gather(table, uids, target, options = {}) {
+    if (!table || !gsap) return Promise.resolve();
+    const duration = reduced() ? 0.01 : (options.duration ?? 0.34);
+    const tweens = uids.map((uid, index) => {
+      const entry = table.entries.find((item) => item.uid === uid);
+      if (!entry) return null;
+      const mesh = entry.mesh;
+      return gsap.timeline({ delay: reduced() ? 0 : index * 0.018 })
+        .to(mesh.position, {
+          x: (target?.x ?? 0) + (index - 2) * 0.05,
+          y: target?.y ?? 1.4,
+          z: target?.z ?? 0.9,
+          duration, ease: 'power2.in',
+        }, 0)
+        .to(mesh.rotation, {
+          x: `+=${Math.PI * 0.8}`, y: `+=${Math.PI * 1.2}`, duration, ease: 'power1.in',
+        }, 0)
+        .to(mesh.scale, { x: 0.14, y: 0.14, z: 0.14, duration: duration * 0.8, ease: 'power2.in' }, duration * 0.2)
+        .then();
+    }).filter(Boolean);
+    if (!tweens.length) return Promise.resolve();
+    return this.busy(Promise.all(tweens));
+  },
+
+  /* Selection / scoring lift. Cheap enough to fire on every tap. */
+  settle(table, uids) {
+    if (!table) return;
+    if (!gsap || reduced()) {
+      uids.forEach((uid) => {
+        const entry = table.entries.find((item) => item.uid === uid);
+        if (entry) entry.mesh.position.y = entry.restY ?? DIE_HALF;
+      });
+      return;
+    }
+    uids.forEach((uid) => {
+      const entry = table.entries.find((item) => item.uid === uid);
+      if (!entry) return;
+      const target = entry.restY ?? DIE_HALF;
+      if (Math.abs(entry.mesh.position.y - target) < 0.001) return;
+      // Position tween only — never touch scale/rotation here.
+      gsap.to(entry.mesh.position, {
+        y: target,
+        keyframes: [
+          { y: target + (entry.state?.selected ? 0.16 : 0.05), duration: 0.08, ease: 'power2.out' },
+          { y: target, duration: 0.16, ease: 'power2.in' },
+        ],
+        overwrite: 'auto',
+        onUpdate: () => { loop.dirty = true; },
+        onComplete: () => { loop.dirty = true; },
+      });
+    });
+  },
+
+  /* Small bump when a die is tapped. */
+  tapDie(table, uid) {
+    if (!table || !gsap || reduced()) return;
+    const entry = table.entries.find((item) => item.uid === uid);
+    if (!entry) return;
+    const mesh = entry.mesh;
+    gsap.timeline()
+      .to(mesh.scale, { x: 1.08, y: 1.08, z: 1.08, duration: 0.08, ease: 'power2.out' })
+      .to(mesh.scale, { x: 1, y: 1, z: 1, duration: 0.22, ease: 'elastic.out(1, .5)' });
+  },
+
+  hoverDie(table, uid) {
+    if (!table || !gsap) return;
+    const changed = table.hovered !== uid;
+    table.hovered = uid;
+    if (changed) loop.dirty = true;
+  },
+
+  /* ── cup ───────────────────────────────────────────────────────────── */
+  cupRattle(element, { cycles = 1 } = {}) {
+    if (!element || !gsap || reduced()) return Promise.resolve();
+    gsap.killTweensOf(element);
+    return this.busy(gsap.fromTo(element,
+      { rotation: -2.6, y: 0 },
+      {
+        rotation: 2.6, y: -2, duration: 0.42 * cycles,
+        ease: easesReady ? 'cupRattle' : 'sine.inOut',
+        repeat: Math.max(0, cycles - 1), transformOrigin: '50% 92%',
+      }).then());
+  },
+
+  cupLift(element) {
+    if (!element || !gsap) return Promise.resolve();
+    gsap.killTweensOf(element);
+    return this.busy(gsap.to(element, {
+      y: -15, rotation: -2.4, duration: reduced() ? 0.01 : 0.3,
+      ease: 'power2.out', transformOrigin: '50% 92%',
+    }).then());
+  },
+
+  cupDrop(element) {
+    if (!element || !gsap) return Promise.resolve();
+    gsap.killTweensOf(element);
+    return this.busy(gsap.to(element, {
+      y: 0, rotation: 0, duration: reduced() ? 0.01 : 0.34,
+      ease: 'power2.out', transformOrigin: '50% 92%',
+    }).then());
+  },
+
+  cupCue(element) {
+    if (!element || !gsap || reduced()) return;
+    gsap.killTweensOf(element);
+    gsap.fromTo(element,
+      { scale: 0.94 },
+      {
+        scale: 1, duration: 0.5,
+        ease: easesReady ? 'cupWiggle' : 'elastic.out(1, .4)',
+        transformOrigin: '50% 92%',
+      });
+  },
+
+  /* ── interface ─────────────────────────────────────────────────────── */
+  rise(element, options = {}) {
+    if (!element || !gsap) return;
+    gsap.fromTo(element,
+      { opacity: 0, y: options.y ?? 14, scale: options.scale ?? 0.985 },
+      {
+        opacity: 1, y: 0, scale: 1, duration: reduced() ? 0.01 : (options.duration ?? 0.34),
+        ease: 'power2.out', overwrite: 'auto', clearProps: 'transform',
+      });
+  },
+
+  fadeOut(element, options = {}) {
+    if (!element || !gsap) return Promise.resolve();
+    return gsap.to(element, {
+      opacity: 0, y: options.y ?? 8, duration: reduced() ? 0.01 : (options.duration ?? 0.22),
+      ease: 'power1.in', overwrite: 'auto',
+    }).then();
+  },
+
+  toastIn(element) {
+    if (!element || !gsap) return Promise.resolve();
+    return gsap.fromTo(element,
+      { opacity: 0, x: 18 },
+      { opacity: 1, x: 0, duration: reduced() ? 0.01 : 0.26, ease: 'power2.out' }).then();
+  },
+
+  toastOut(element) {
+    if (!element || !gsap) return Promise.resolve();
+    return gsap.to(element, {
+      opacity: 0, x: 14, duration: reduced() ? 0.01 : 0.2, ease: 'power1.in', overwrite: 'auto',
+    }).then();
+  },
+
+  floatScore(element) {
+    if (!element || !gsap) return Promise.resolve();
+    gsap.killTweensOf(element);
+    return gsap.timeline()
+      .fromTo(element,
+        { opacity: 0, y: 0, scale: 0.7 },
+        { opacity: 1, scale: 1.06, duration: 0.18, ease: 'back.out(2)' })
+      .to(element, { opacity: 1, duration: 0.5 })
+      .to(element, { opacity: 0, y: -76, scale: 0.98, duration: 0.34, ease: 'power1.in' })
+      .then();
+  },
+
+  pulse(element, { scale = 1.06, duration = 0.5, repeat = -1 } = {}) {
+    if (!element || !gsap || reduced()) return null;
+    return gsap.to(element, {
+      scale, duration, repeat, yoyo: true, ease: 'sine.inOut', transformOrigin: '50% 50%',
+    });
+  },
+
+  shake(element) {
+    if (!element || !gsap || reduced()) return Promise.resolve();
+    return gsap.fromTo(element,
+      { x: -5 },
+      { x: 5, duration: 0.06, repeat: 5, yoyo: true, ease: 'none', clearProps: 'x' }).then();
+  },
+};
+
+export default motion;

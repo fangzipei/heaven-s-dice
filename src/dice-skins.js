@@ -99,7 +99,7 @@ export const DIE_SKINS = {
     'rgba(244,230,204,.55)', 'rgba(214,166,104,.6)', 'coin', grain.metal('96,64,28'), 'rgba(214,166,104,.5)'),
   crown_seal: S(ramp('#f0e2b0', '#dfc172 36%', '#b5903c 62%', '#8a6a22 82%', '#543d10'), '#1e1404', '#9c7c34',
     'rgba(252,242,206,.7)', 'rgba(246,214,130,.7)', 'seal', grain.metal('108,80,20'), 'rgba(246,214,130,.55)'),
-  crown_queen: S(ramp('#8d3a38', '#5e2124 42%', '#3a1216 72%', '#1e080a'), '#f0c0a8', '#a34a44',
+  demon_queen: S(ramp('#8d3a38', '#5e2124 42%', '#3a1216 72%', '#1e080a'), '#f0c0a8', '#a34a44',
     'rgba(238,150,132,.62)', 'rgba(255,168,142,.72)', 'brokencrown', grain.ember('64,16,16'), 'rgba(255,120,80,.55)'),
 
   /* ── astral: night sky, comet ice, starcore, fate ─────────────────── */
@@ -111,6 +111,42 @@ export const DIE_SKINS = {
     'rgba(252,244,214,.65)', 'rgba(250,222,150,.68)', 'star', grain.metal('104,84,36'), 'rgba(250,222,150,.55)'),
   astral_eye: S(ramp('#ded0ee', '#b8a4d8 40%', '#8570b4 72%', '#54406e'), '#150e24', '#6f5a9a',
     'rgba(244,232,252,.6)', 'rgba(214,178,250,.68)', 'fateeye', grain.night('60,44,96'), 'rgba(214,178,250,.55)'),
+
+  /* ── wolf legend: the ancestor keeps the pack's bone-and-ivory palette ── */
+  wolf_ancestor: S(ramp('#f7f0dd', '#e3d3b0 40%', '#bda173 72%', '#8a6f45'), '#1d1408', '#7d6438',
+    'rgba(252,246,226,.7)', 'rgba(246,214,148,.7)', 'paw', grain.bone('110,84,40'), 'rgba(246,214,148,.55)'),
+
+  /* ── demon: soot, chalk gold, then crimson ────────────────────────── */
+  demon_imp: S(ramp('#8a5a4e', '#5a2f2a 44%', '#341a19 74%', '#1a0c0c'), '#f4c8b4', '#a85f4c',
+    'rgba(240,178,150,.55)', 'rgba(255,140,104,.65)', 'claw', grain.ember('54,20,14'), 'rgba(255,132,96,.5)'),
+  demon_taxman: S(ramp('#d9c9ae', '#b39674 42%', '#846849 74%', '#553f2a'), '#1c1208', '#7b5c36',
+    'rgba(246,234,212,.55)', 'rgba(216,172,110,.58)', 'coin', grain.metal('92,64,30'), 'rgba(216,172,110,.48)'),
+  demon_seal: S(ramp('#ecdcae', '#d8bc74 38%', '#ad8c40 66%', '#7d6122'), '#1d1404', '#96793a',
+    'rgba(252,244,208,.65)', 'rgba(244,208,124,.68)', 'seal', grain.metal('104,78,24'), 'rgba(244,208,124,.55)'),
+  demon_devourer: S(ramp('#5f5a52', '#38332c 44%', '#201c18 74%', '#0f0c0a'), '#f0e0c2', '#8a7a60',
+    'rgba(240,224,196,.55)', 'rgba(255,196,120,.62)', 'ouroboros', grain.metal('44,38,28'), 'rgba(255,176,96,.52)'),
+
+  /* ── free agents: each one gets its own material so the silhouette reads ── */
+  odd_eye: S(ramp('#cdd6cc', '#a2aea2 44%', '#728076 74%', '#454f49'), '#101812', '#65786a',
+    'rgba(232,244,232,.55)', 'rgba(176,222,190,.6)', 'trieye', grain.bone('52,72,58'), 'rgba(176,222,190,.5)'),
+  even_twin: S(ramp('#e9edf0', '#c6ced6 40%', '#93a0ac 72%', '#5e6a76'), '#141a20', '#6f7d8a',
+    'rgba(244,250,254,.6)', 'rgba(190,214,236,.6)', 'eye', grain.metal('70,84,98'), 'rgba(190,214,236,.5)'),
+  polar: S(ramp('#f2f0e8', '#2a2723 50%', '#1a1815 72%', '#0c0b09'), '#f4efe2', '#8c857a',
+    'rgba(250,246,236,.7)', 'rgba(246,238,214,.6)', 'moon', grain.bone('60,58,52'), 'rgba(246,238,214,.5)'),
+  ladder: S(ramp('#eadfc6', '#d3c2a0 44%', '#a8946f 74%', '#7b6845'), '#1e1608', '#7e6a44',
+    'rgba(248,240,220,.55)', 'rgba(226,200,140,.55)', 'cracks', grain.bone('96,78,40'), 'rgba(226,200,140,.42)'),
+  mirror: S(ramp('#e2e6ea', '#b9c2ca 40%', '#87929c 72%', '#525b64'), '#12171c', '#6c7883',
+    'rgba(246,250,254,.65)', 'rgba(196,220,238,.65)', 'fateeye', grain.metal('66,78,88'), 'rgba(196,220,238,.52)'),
+  five_fold: S(ramp('#f2e6c2', '#dcc384 38%', '#b09444 66%', '#7f6720'), '#1d1406', '#9a7d34',
+    'rgba(252,246,216,.65)', 'rgba(248,214,132,.68)', 'star', grain.metal('106,82,30'), 'rgba(248,214,132,.55)'),
+  hex: S(ramp('#cfe2d6', '#a2c2ae 42%', '#6f9682 72%', '#456253'), '#0f1a14', '#5f8874',
+    'rgba(232,248,238,.55)', 'rgba(170,224,196,.62)', 'constellation', grain.scale('44,74,58'), 'rgba(170,224,196,.5)'),
+  echo: S(ramp('#e6dff0', '#c2b6d8 42%', '#9484b4 72%', '#615479'), '#150e22', '#7b6a98',
+    'rgba(246,238,254,.6)', 'rgba(208,182,250,.66)', 'comet', grain.night('58,44,88'), 'rgba(208,182,250,.54)'),
+  ace: S(ramp('#6a5a52', '#3d2f2b 44%', '#241a18 72%', '#120c0b'), '#f6d8c8', '#9c6d5c',
+    'rgba(250,216,196,.62)', 'rgba(255,142,112,.7)', 'skull', grain.ember('56,22,16'), 'rgba(255,132,96,.55)'),
+  jack: S(ramp('#f4e8c6', '#e0c98c 36%', '#b89a4c 64%', '#886d26'), '#1c1404', '#9d8038',
+    'rgba(254,248,220,.7)', 'rgba(252,220,140,.72)', 'crown', grain.metal('110,86,32'), 'rgba(252,220,140,.58)'),
 };
 
 const FALLBACK = DIE_SKINS.standard;
@@ -134,6 +170,32 @@ export function dieMotifSvg(spec) {
   const skin = dieSkin(spec);
   const body = MOTIFS[skin.motif] || MOTIFS.cracks;
   return `<svg class="die-motif" viewBox="0 0 100 100" aria-hidden="true" focusable="false">${body}</svg>`;
+}
+
+/* Raw motif markup, for the WebGL path which paints it into a canvas texture
+   instead of letting the browser lay out an SVG. Accepts a die spec or a
+   bare motif key. */
+export function dieMotifBody(spec) {
+  const key = typeof spec === 'string' ? spec : dieSkin(spec).motif;
+  return MOTIFS[key] || MOTIFS.cracks;
+}
+
+/* Surface family per die. CSS derives grain from the `material` layer, but
+   the WebGL renderer needs a named family to pick procedural noise, roughness
+   and metalness. */
+export const DIE_FAMILY = {
+  standard: 'bone',
+  wolf_whelp: 'bone', wolf_hunter: 'hair', wolf_bloodmoon: 'bone', wolf_alpha: 'hair',
+  wolf_ancestor: 'bone',
+  demon_imp: 'ember', demon_taxman: 'metal', demon_seal: 'metal',
+  demon_queen: 'ember', demon_devourer: 'metal',
+  odd_eye: 'bone', even_twin: 'metal', polar: 'bone', ladder: 'bone',
+  mirror: 'metal', five_fold: 'metal', hex: 'scale', echo: 'night',
+  ace: 'ember', jack: 'metal',
+};
+
+export function dieFamily(spec) {
+  return DIE_FAMILY[spec?.id] || 'bone';
 }
 
 export const MOTIF_KEYS = Object.keys(MOTIFS);

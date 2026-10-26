@@ -8,9 +8,16 @@
     "dev": "node server.js",
     "start": "node server.js",
     "test": "node --test tests/scoring.test.mjs tests/engine.test.mjs tests/content.test.mjs",
-    "simulate": "node tools/balance.mjs 500"
+    "simulate": "node tools/balance.mjs 500",
+    "dice:ev": "node tools/dice-ev.mjs",
+    "codex": "node tools/build-codex.mjs",
+    "export:dice": "node tools/export-dice-models.mjs"
   },
   "engines": {
     "node": ">=20"
+  },
+  "dependencies": {
+    "gsap": "^3.15.0",
+    "three": "^0.186.1"
   }
 }
