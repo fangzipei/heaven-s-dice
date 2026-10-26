@@ -126,6 +126,7 @@ function resetLevelFlags(state) {
     charm: false,
     eyeUsed: false,
     vortexUsed: false,
+    starUsed: false,
     gestureUsedThisThrow: false,
     hotDice: false,
     rerollAll: false,
@@ -856,6 +857,9 @@ export function applyGesture(state, gesture) {
     return { ok: false, error: '本次投掷已经完成过仪式。' };
   }
   if (gesture === 'pentagram') {
+    if (state.flags.starUsed) {
+      return { ok: false, error: '五芒星每关只能生效一次。' };
+    }
     if (state.phase === 'ready' || state.phase === 'dead' || state.phase === 'hot' ||
         state.phase === 'reroll-pending') {
       state.flags.starArmed = true;
@@ -864,9 +868,10 @@ export function applyGesture(state, gesture) {
     } else {
       return { ok: false, error: '当前无法进行仪式。' };
     }
+    state.flags.starUsed = true;
     state.flags.gestureUsedThisThrow = true;
-    pushLog(state, '五芒星仪式完成：本次投掷计分 +25%。', 'gesture');
-    return { ok: true, message: '五芒星点亮。本掷计分 +25%' };
+    pushLog(state, '五芒星仪式完成：本关仅此一次，本掷计分 +20%。', 'gesture');
+    return { ok: true, message: '五芒星点亮。本关仅此一次，本掷计分 +20%' };
   }
   if (gesture === 'circle') {
     if (state.flags.vortexUsed) {

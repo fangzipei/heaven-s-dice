@@ -766,7 +766,9 @@ function renderRail() {
   const gestureButton = $('#gesture-button');
   if (barrel.gesture) {
     gestureButton.hidden = false;
-    const used = run.flags.gestureUsedThisThrow || (barrel.gesture === 'circle' && run.flags.vortexUsed);
+    const used = run.flags.gestureUsedThisThrow
+      || (barrel.gesture === 'circle' && run.flags.vortexUsed)
+      || (barrel.gesture === 'pentagram' && run.flags.starUsed);
     gestureButton.disabled = used || ['won', 'run-won', 'lost', 'cleared'].includes(run.phase) || app.busy;
     gestureButton.innerHTML = `<svg><use href="#i-gesture"></use></svg>${used ? '已完成' : '画阵'}`;
   } else {
@@ -2269,6 +2271,7 @@ function openGesture() {
   const barrel = Engine.getBarrel(app.run);
   if (!barrel.gesture) return;
   if (app.run.flags.gestureUsedThisThrow) { showToast('本次投掷已经完成过仪式。'); return; }
+  if (barrel.gesture === 'pentagram' && app.run.flags.starUsed) { showToast('五芒星每关只能生效一次。'); return; }
   if (barrel.gesture === 'circle' && app.run.flags.vortexUsed) { showToast('旋涡桶的额外重投每关只能获得一次。'); return; }
   closeOverlay();
   const isStar = barrel.gesture === 'pentagram';
@@ -2279,7 +2282,7 @@ function openGesture() {
       <div class="gesture-head">
         <p class="modal-kicker">RITUAL OF ${isStar ? 'THE FIVE POINTS' : 'THE VORTEX'}</p>
         <h2>${isStar ? '五芒星仪式' : '旋涡仪式'}</h2>
-        <p>${isStar ? '依次连接五颗星点：顶 → 右下 → 左上 → 右上 → 左下 → 回到顶。' : '从任意位置开始，顺时针画满一整圈。'}完成后，本次投掷获得加成。</p>
+        <p>${isStar ? '每关只能完成一次。依次连接五颗星点：顶 → 右下 → 左上 → 右上 → 左下 → 回到顶。完成后，本次投掷获得加成。' : '从任意位置开始，顺时针画满一整圈。完成后，本次投掷获得加成。'}</p>
       </div>
       <div class="gesture-board-wrap">
         <div class="gesture-board" id="gesture-board">
@@ -2672,7 +2675,7 @@ function tutorialHtml() {
       <section class="tut-section" id="tut-gear">
         <div class="tut-section-head"><span>04</span><div><p>THE REST OF THE TABLE</p><h3>骰桶、骰子、物品、市集与庄家</h3></div></div>
         <div class="tut-cards">
-          <div class="tut-card"><b>骰桶 · 6 只</b><p>初始橡木桶之外，3 只概率桶偏向某些点数，2 只仪式桶需要画阵。五芒星要依次穿过五个星点；旋涡要顺时针画满约 288°。拖动骰桶的横向范围覆盖整张桌面。</p></div>
+          <div class="tut-card"><b>骰桶 · 6 只</b><p>初始橡木桶之外，3 只概率桶偏向某些点数，2 只仪式桶需要画阵。五芒星每关只能生效一次，要依次穿过五个星点；旋涡要顺时针画满约 288°。拖动骰桶的横向范围覆盖整张桌面。</p></div>
           <div class="tut-card"><b>骰子 · 20 枚</b><p>2 普通、10 稀有、5 史诗、3 传说。每枚骰子有自己的六面概率与套组；悬停可查看真实概率。同套组 2 / 4 件会触发套组奖励。</p></div>
           <div class="tut-card"><b>物品 · 11 件</b><p>8 主动、3 被动。主动物品每关恢复一次；被动物品永久生效。丰饶骰袋 +1 骰、裂痕骰袋 -1 骰但计分 +25%，这两件整局各只能获取一次。幸运币开局自带，每关可用一次，立即 +150 分。</p></div>
           <div class="tut-card"><b>市集</b><p>每关之后进入：骰子 2 件、骰桶 1 件、物品 3 件。每次刷新都消耗银币，购买前先看构筑。</p></div>

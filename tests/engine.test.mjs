@@ -280,15 +280,22 @@ test('defeating a boss grants a permanent reroll boon', () => {
   assert.equal(state.rerolls, BASE_REROLLS + 1);
 });
 
-test('pentagram gesture arms a 25% bonus for the current throw', () => {
+test('pentagram gesture arms one 20% bonus per level', () => {
   const state = fresh();
   state.barrelId = 'pentagram';
   state.phase = 'ready';
   const result = applyGesture(state, 'pentagram');
   assert.equal(result.ok, true);
   assert.equal(state.flags.starArmed, true);
+  assert.equal(state.flags.starUsed, true);
   rollDice(state);
   assert.equal(state.flags.starBonus, true);
+  const second = applyGesture(state, 'pentagram');
+  assert.equal(second.ok, false);
+  assert.match(second.error, /每关/);
+  initLevel(state);
+  assert.equal(state.flags.starUsed, false);
+  assert.equal(applyGesture(state, 'pentagram').ok, true);
 });
 
 test('vortex gesture grants one extra reroll per level', () => {
