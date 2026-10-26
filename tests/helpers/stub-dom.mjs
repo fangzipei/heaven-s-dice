@@ -5,7 +5,7 @@
  * 桩节点记下所有写入值，断言直接从 nodes 里读。 */
 
 function makeNode(selector) {
-  return {
+  const node = {
     selector,
     textContent: '',
     innerHTML: '',
@@ -15,6 +15,10 @@ function makeNode(selector) {
     src: '',
     className: '',
     offsetWidth: 0,
+    dataset: {},
+    attrs: {},
+    listeners: {},
+    parent: null,
     children: [],
     style: { width: '', setProperty() {} },
     classList: {
@@ -25,13 +29,21 @@ function makeNode(selector) {
       add(name) { this.added.push(name); },
       remove(name) { this.removed.push(name); },
     },
-    append(child) { this.children.push(child); },
+    addEventListener(type, fn) { (node.listeners[type] ||= []).push(fn); },
+    getAttribute(key) { return node.attrs[key] ?? null; },
+    setAttribute(key, value) { node.attrs[key] = String(value); },
+    focus() { node.focused = true; },
+    append(child) { node.children.push(child); child.parent = node; },
+    remove() {
+      if (node.parent) node.parent.children = node.parent.children.filter((child) => child !== node);
+    },
     _sub: new Map(),
     querySelector(sub) {
       if (!this._sub.has(sub)) this._sub.set(sub, makeNode(sub));
       return this._sub.get(sub);
     },
   };
+  return node;
 }
 
 export function installDomStub() {
