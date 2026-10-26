@@ -1,0 +1,54 @@
+// content/dice/index.ts — 注册表。
+// 顺序即数据：商店卡池按索引抽取、掷骰 RNG 也按这个顺序消耗权重，插队会改变平衡。
+// 新增一项 = 建一个 <id>.ts，再在下方数组里按想要的顺序插一行；
+// tests/unit/content-registry.test.mjs 会抓住漏注册的文件。
+//
+// probs 是字面的六面权重，掷骰时才归一化：每颗特殊骰都要有一个读得懂的偏向，
+// 而不是一句看不见的“运气值”。
+import wolf_whelp from './wolf_whelp.ts';
+import wolf_hunter from './wolf_hunter.ts';
+import wolf_bloodmoon from './wolf_bloodmoon.ts';
+import wolf_alpha from './wolf_alpha.ts';
+import wolf_ancestor from './wolf_ancestor.ts';
+import demon_imp from './demon_imp.ts';
+import demon_taxman from './demon_taxman.ts';
+import demon_seal from './demon_seal.ts';
+import demon_queen from './demon_queen.ts';
+import demon_devourer from './demon_devourer.ts';
+import odd_eye from './odd_eye.ts';
+import even_twin from './even_twin.ts';
+import polar from './polar.ts';
+import ladder from './ladder.ts';
+import mirror from './mirror.ts';
+import five_fold from './five_fold.ts';
+import hex from './hex.ts';
+import echo from './echo.ts';
+import ace from './ace.ts';
+import jack from './jack.ts';
+import type { DiceDef } from '../../core/types.ts';
+
+export const DICE_DEFS: DiceDef[] = [
+  // ── 狼裔 · 5 枚：全部在把概率往 3 推 ─────────────────────────────────
+  wolf_whelp,
+  wolf_hunter,
+  wolf_bloodmoon,
+  wolf_alpha,
+  wolf_ancestor,
+  // ── 恶魔 · 5 枚：掷出 1 就是赖子，不按 100 分算 ──────────────────────
+  demon_imp,
+  demon_taxman,
+  demon_seal,
+  demon_queen,
+  demon_devourer,
+  // ── 无套组 · 10 枚：形状本身就是规则 ────────────────────────────────
+  odd_eye,
+  even_twin,
+  polar,
+  ladder,
+  mirror,
+  five_fold,
+  hex,
+  echo,
+  ace,
+  jack,
+];

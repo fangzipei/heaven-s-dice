@@ -1,6 +1,8 @@
+// 重构前的原始套件，跑在 src/legacy/* 上；等价断言已搬进 tests/unit/*（vitest）。
+// Phase 3d 删除 legacy 时，这些文件一并退役。
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { analyzeSelection, bestSelection } from '../src/scoring.js';
+import { analyzeSelection, bestSelection } from '../src/legacy/scoring.js';
 
 const score = (values) => analyzeSelection(values).base;
 

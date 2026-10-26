@@ -1,3 +1,5 @@
+// 重构前的原始套件，跑在 src/legacy/* 上；等价断言已搬进 tests/unit/*（vitest）。
+// Phase 3d 删除 legacy 时，这些文件一并退役。
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
@@ -8,11 +10,11 @@ import {
   buildScore, syncBag, getScorePreview, hasItemEverBeenTaken,
   activeBoss, isBossDieBlocked, handTypeOf, sellItem, canSellItem, itemSellPrice,
   bossEffectKey, shopSlots, isFloatingScore,
-} from '../src/engine.js';
-import { makeRng, cashOutValue } from '../src/engine.js';
+} from '../src/legacy/engine.js';
+import { makeRng, cashOutValue } from '../src/legacy/engine.js';
 import {
   REROLL_REFUND, overshootTier, OVERSHOOT_TIERS, LEVELS, getLevelConfig,
-} from '../src/data.js';
+} from '../src/legacy/data.js';
 
 function fresh(seed = 42) {
   return createRun({ rng: makeRng(seed) });

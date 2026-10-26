@@ -4,7 +4,7 @@ import {
   BARRELS, BOSSES, DICE, ITEMS, LEVELS, MINIONS, TABLES, DICE_SETS,
   SHOP_RARITY_WEIGHTS, rarityShopWeight, chapterForLevel, chapterLevelSpan,
   MINION_GAPS, buildLevelTable, LEVEL_CURVE,
-} from '../../src/legacy/data.js';
+} from '../../src/content/index.ts';
 
 const countBy = (list, key) => list.reduce((counts, entry) => {
   counts[entry[key]] = (counts[entry[key]] || 0) + 1;

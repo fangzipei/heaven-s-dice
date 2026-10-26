@@ -19,9 +19,12 @@ const CONTENT_KEYS = [
 ];
 
 describe('content surface is the same data', () => {
-  it('re-exports every legacy content object by identity', () => {
+  it('rebuilds every legacy content table, entry for entry', () => {
+    // Phase 3a moved the data from one big module into per-item files, so object
+    // identity is gone for good; what must survive is the exact structure, order
+    // and values the legacy tables had (order feeds the shop pools and RNG).
     for (const key of CONTENT_KEYS) {
-      expect(Content[key], key).toBe(LegacyData[key]);
+      expect(Content[key], key).toEqual(LegacyData[key]);
     }
   });
 });

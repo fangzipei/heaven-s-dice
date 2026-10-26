@@ -1,10 +1,12 @@
+// 重构前的原始套件，跑在 src/legacy/* 上；等价断言已搬进 tests/unit/*（vitest）。
+// Phase 3d 删除 legacy 时，这些文件一并退役。
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   BARRELS, BOSSES, DICE, ITEMS, LEVELS, MINIONS, TABLES, DICE_SETS,
   SHOP_RARITY_WEIGHTS, rarityShopWeight, chapterForLevel, chapterLevelSpan,
   MINION_GAPS, buildLevelTable, LEVEL_CURVE,
-} from '../src/data.js';
+} from '../src/legacy/data.js';
 
 const countBy = (list, key) => list.reduce((counts, entry) => {
   counts[entry[key]] = (counts[entry[key]] || 0) + 1;

@@ -12,7 +12,7 @@ import {
 import { makeRng, cashOutValue } from '../../src/legacy/engine.js';
 import {
   REROLL_REFUND, overshootTier, OVERSHOOT_TIERS, LEVELS, getLevelConfig,
-} from '../../src/legacy/data.js';
+} from '../../src/content/index.ts';
 
 function fresh(seed = 42) {
   return createRun({ rng: makeRng(seed) });

@@ -88,9 +88,18 @@ type EngineEvent =
 content/dice/iron-back.ts  →  export default { id, name, rarity, faces, effect, ... } satisfies DiceDef
 ```
 
-- `content/index.ts` 用 `import.meta.glob('./dice/*.ts', { eager: true })` 自动聚合。
-- 开发模式与 vitest 中跑一致性校验（id 唯一、稀有度合法、faces 概率和为 1、引用效果键存在）。
+- ~~`content/index.ts` 用 `import.meta.glob('./dice/*.ts', { eager: true })` 自动聚合。~~
+  Phase 3a 实施时改为**显式有序注册表**：`content/<类别>/index.ts` 手写数组顺序。
+  两个原因：① 数组顺序本身是数据（商店卡池按下标抽取、庄家关卡号按索引分配、
+  RNG 消耗顺序随之改变），glob 按文件名字母排序会静默改平衡；② `tools/*.mjs`
+  跑在裸 Node 上，没有 `vite-node`，`import.meta.glob` 需要 Vite SSR loader。
+  代价是加一项要多写一行注册，由 `tests/unit/content-registry.test.mjs`
+  兜底：目录里有文件却没进注册表 → 测试直接失败并点名该文件。
+- 一致性校验：`tests/unit/content-registry.test.mjs` 把整份内容表逐字段比对
+  `tests/fixtures/content-snapshot.json`（重构前的冻结快照），再加"文件 ↔ 注册表"完整性。
 - 商店价格、图鉴解锁、套装判定全部从注册表派生，不再散落 switch。
+  骰子售价由稀有度在聚合时盖章（`meta.ts` 的 `DIE_PRICE_BY_RARITY`），
+  庄家关卡号与章节由 `levels/structure.ts` 的空档表推出，条目文件一律不手写。
 
 ## 6. 工具链
 
@@ -124,7 +133,8 @@ content/dice/iron-back.ts  →  export default { id, name, rarity, faces, effect
 ## 9. 验收标准
 
 1. `src/app.js` 不复存在，任何单文件 < 500 行。
-2. 新增一枚测试骰子：只新建 `content/dice/*.ts` 一个文件即在游戏中生效。
+2. 新增一枚测试骰子：新建 `content/dice/<id>.ts` + 在 `content/dice/index.ts` 里插一行即生效
+   （Phase 3a 决定：顺序是数据，不用 glob 自动聚合，见 §5）。除这两处外不需要碰任何别的文件。
 3. vitest：core/content 覆盖率主体，`npm test` 全绿；CDP 回归脚本全绿。
 4. `window.HeavensDice` 契约字段不减；存档/codex 键名不变，老档可读。
 5. 相同 seed 下 33 关目标值、庄家行为与现版本逐位一致。

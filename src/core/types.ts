@@ -142,6 +142,10 @@ export interface BossDef {
   group: number;
 }
 
+/** A boss as authored in `content/bosses/<id>.ts`, before the level table is
+ *  derived: `level`/`group` come from MINION_GAPS, so they are never hand-typed. */
+export type BossContentDef = Omit<BossDef, 'level' | 'group'>;
+
 export type Opponent = MinionDef | BossDef;
 
 export interface LevelCurveDef {
