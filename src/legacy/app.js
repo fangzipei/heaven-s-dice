@@ -31,6 +31,7 @@ import {
   buyBarrel, buyDie, buyItem, closeShopScreen, confirmReplace, openShopScreen,
   refreshShop, sellShopItem,
 } from '../ui/screens/shop.ts';
+import { showDefeat, showVictory } from '../ui/screens/result.ts';
 
 /* ═══════════════════════════════════════════════════════════════════
    Boot
@@ -1230,95 +1231,6 @@ function bindCupDrag() {
 /* ═══════════════════════════════════════════════════════════════════
    Victory / defeat
    ═══════════════════════════════════════════════════════════════════ */
-function showVictory() {
-  if (!app.run || app.resultShown) return;
-  app.resultShown = true;
-  const run = app.run;
-  const opponent = getOpponent(run.level);
-  const table = getTable(run.level);
-  const isFinal = run.phase === 'run-won' || run.level >= LEVEL_COUNT;
-  const reward = run.levelReward || { total: projectedReward(), bonuses: [] };
-  sound.win();
-  if (isFinal) {
-    const summary = Engine.runSummary(run);
-    openOverlay(`
-      <div class="modal result-modal">
-        <div class="result-sigil"><svg><use href="#i-spark"></use></svg></div>
-        <p class="modal-kicker">THE HOUSE HAS FALLEN</p>
-        <h2>天穹已破</h2>
-        <p class="result-sub">你击败了钻石天使，赢下了整座天国骰局。</p>
-        <p class="result-quote">“${h(opponent.win)}”</p>
-        <div class="result-score">
-          <div><span>通关关卡</span><b>${LEVEL_COUNT} / ${LEVEL_COUNT}</b></div>
-          <div><span>最高单次计分</span><b>${num(summary.bestHit)}</b></div>
-          <div><span>银币</span><b><svg><use href="#i-coin"></use></svg>${num(summary.coins)}</b></div>
-        </div>
-        <div class="reward-breakdown">
-          <span>秘骰 ${run.bag.length} 枚</span>
-          <span>主动物品 ${run.activeItems.length}</span>
-          <span>被动物品 ${run.passiveItems.length}</span>
-          <span>重投 ${summary.rolls} 次落骰</span>
-        </div>
-        <div class="modal-actions">
-          <button class="secondary-button" data-action="confirm-home">返回首页</button>
-          <button class="primary-button" data-action="restart-run">再来一局 <svg><use href="#i-restart"></use></svg></button>
-        </div>
-      </div>
-    `, { dismissible: false });
-    return;
-  }
-  const next = run.level + 1;
-  const nextTable = getTable(next);
-  openOverlay(`
-    <div class="modal result-modal">
-      <div class="result-sigil"><svg><use href="#i-spark"></use></svg></div>
-      <p class="modal-kicker">TABLE CLEARED · ${h(table.subtitle)}</p>
-      <h2>${getLevelConfig(run.level).boss ? '庄家败北' : '本关告捷'}</h2>
-      <p class="result-sub">${h(opponent.name)}放下了骰子。第 ${run.level} 关达成。</p>
-      <p class="result-quote">“${h(opponent.win)}”</p>
-      <div class="result-score">
-        <div><span>本关得分</span><b>${num(run.score)}</b></div>
-        <div><span>目标</span><b>${num(run.target)}</b></div>
-        <div><span>奖励</span><b><svg><use href="#i-coin"></use></svg>${num(reward.total)}</b></div>
-      </div>
-      ${reward.bossPremium ? `<div class="reward-breakdown"><span style="border-color:rgba(196,170,240,.34);color:#c9b6f0">${h(reward.bossName)} 悬赏 ×${reward.bossScale.toFixed(2)} <b>基础 ${num(reward.curveBase)} → ${num(reward.base)}</b></span></div>` : ''}
-      ${reward.bonuses?.length ? `<div class="reward-breakdown">${reward.bonuses.map((b) => `<span>${h(b.label)} <b>+${num(b.value)}</b></span>`).join('')}</div>` : ''}
-      ${getLevelConfig(run.level).boss ? '<div class="reward-breakdown"><span style="border-color:rgba(217,180,106,.3);color:#e2c887">夺下庄家徽记 <b>后续重投上限 +1</b></span></div>' : ''}
-      <p class="result-sub" style="font-size:10px;margin-top:-5px">下一站：${h(nextTable.name)} · 第 ${next} 关</p>
-      <div class="modal-actions">
-        <button class="primary-button" data-action="go-shop">前往市集 <svg><use href="#i-shop"></use></svg></button>
-      </div>
-    </div>
-  `, { dismissible: false });
-}
-
-function showDefeat() {
-  if (!app.run || app.resultShown) return;
-  app.resultShown = true;
-  const run = app.run;
-  const opponent = getOpponent(run.level);
-  sound.lose();
-  openOverlay(`
-    <div class="modal result-modal loss">
-      <div class="result-sigil"><svg><use href="#i-skull"></use></svg></div>
-      <p class="modal-kicker">THE HOUSE COLLECTS</p>
-      <h2>赌局结束</h2>
-      <p class="result-sub">${h(opponent.name)}收走了桌上的银币。你没能达到 ${num(run.target)} 分。</p>
-      <p class="result-quote">“${h(opponent.taunts?.[0] || opponent.intro)}”</p>
-      <div class="result-score">
-        <div><span>本关得分</span><b>${num(run.score)}</b></div>
-        <div><span>目标</span><b>${num(run.target)}</b></div>
-        <div><span>剩余银币</span><b><svg><use href="#i-coin"></use></svg>${num(run.coins)}</b></div>
-      </div>
-      <p class="result-sub" style="font-size:10px">卷土重来会保留骰子、骰桶与物品，但会失去一半银币。</p>
-      <div class="modal-actions">
-        <button class="secondary-button" data-action="confirm-home">离开赌桌</button>
-        <button class="secondary-button" data-action="restart-run">重新开始</button>
-        <button class="primary-button" data-action="retry-level">卷土重来 <svg><use href="#i-restart"></use></svg></button>
-      </div>
-    </div>
-  `, { dismissible: false });
-}
 
 
 /* ═══════════════════════════════════════════════════════════════════
