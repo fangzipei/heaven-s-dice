@@ -6,3 +6,4 @@ tools/*.png
 Thumbs.db
 
 .deploy/
+dist/

@@ -9,7 +9,7 @@
  *
  * All face art still comes from dice-skins.js — nothing is hardcoded here.
  */
-import * as THREE from 'three';
+import * as THREE from '../vendor/three.module.js';
 import { dieSkin, dieFamily, dieMotifBody } from './dice-skins.js';
 
 const FACE_SIZE = 192;
