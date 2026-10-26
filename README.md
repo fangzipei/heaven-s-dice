@@ -18,9 +18,36 @@
 
 这台服务器的 80/443 在阿里云安全组未放行，所以先挂在已放行的 9999 端口独立路径下，不改动同端口原有站点。80 端口的 Nginx 站点也已配置好；在安全组放行 80/TCP 后，可直接访问裸 IP。
 
-## 开局教程
+## 首页与图鉴
 
-点击「入座开局」会先询问是否进入教程，也可以从开始页的「教程」或「先读一遍图解教程」直接打开。
+首页只保留主题图、logo、三个按钮和底部小字声明：
+
+- **开始游戏**：先询问是否进入图解教程，然后入座。
+- **查看图鉴**：骰子、骰桶、物品、赌桌、庄家与小兵。
+- **查看规则**：打开完整的图解教程。
+
+![首页](docs/screenshots/23-home.png)
+
+手机端首页：
+
+![手机端首页](docs/screenshots/26-home-mobile.png)
+
+### 图鉴解锁
+
+物品、骰桶和骰子只有在**局内或市集中遇见过**之后才会显示名称、插画、概率与说明：
+
+- 开局后解锁当前骰袋、当前骰桶和随身物品。
+- 市集里刷新出来的货品，即使没有购买，只要出现过就会解锁。
+- 解锁记录保存在浏览器 `localStorage`，跨局、刷新页面后仍然保留。
+- 未遇见的条目只显示锁定占位，不显示名称、属性或概率。
+
+| 未遇见 | 已解锁 |
+|---|---|
+| ![锁定图鉴](docs/screenshots/24-codex-locked.png) | ![已解锁图鉴](docs/screenshots/25-codex-unlocked.png) |
+
+## 图解教程
+
+点击「开始游戏」会先询问是否进入教程，也可以从首页「查看规则」直接打开。
 
 教程用骰子图逐条解释：
 
@@ -375,6 +402,7 @@ node tools/bust-test.mjs                   # 掷空后本轮分数作废
 node tools/next-level-test.mjs             # 达标后继续得分，手动下一关
 node tools/mobile-select-test.mjs          # 手机端选中后的两个计分按钮
 node tools/tutorial-test.mjs               # 开局询问 + 教程图解 + 从教程开局
+node tools/codex-test.mjs                  # 首页三按钮 + 图鉴锁定/市集解锁/持久化
 node tools/interaction-test.mjs           # 手动摇桶、旋涡绘制、响应式
 node tools/final-check.mjs                # 悬停概率、图鉴、Boss 抽成
 node tools/campaign-test.mjs              # 真实 UI 连打 15 关、Boss 徽记、终局
@@ -382,7 +410,7 @@ node tools/responsive-test.mjs            # 平板/手机/笔记本断点
 node tools/capture-final.mjs              # 重新生成 docs/screenshots
 ```
 
-浏览器验收使用本机 Microsoft Edge 的 CDP 无头模式；测试脚本会把过程截图写到 `tools/` 作为本地检查记录，不需要随生产部署。`docs/screenshots` 中的展示图由 `capture-final.mjs`、`cup-anim-test.mjs`、`cup-range-test.mjs`、`spin-test.mjs`、`bust-test.mjs`、`next-level-test.mjs`、`mobile-select-test.mjs` 与 `tutorial-test.mjs` 生成。
+浏览器验收使用本机 Microsoft Edge 的 CDP 无头模式；测试脚本会把过程截图写到 `tools/` 作为本地检查记录，不需要随生产部署。`docs/screenshots` 中的展示图由 `capture-final.mjs`、`cup-anim-test.mjs`、`cup-range-test.mjs`、`spin-test.mjs`、`bust-test.mjs`、`next-level-test.mjs`、`mobile-select-test.mjs`、`tutorial-test.mjs` 与 `codex-test.mjs` 生成。
 
 ---
 

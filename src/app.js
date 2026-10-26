@@ -26,8 +26,12 @@ const PIP_MAP = {
   5: [0, 2, 4, 6, 8], 6: [0, 2, 3, 5, 6, 8],
 };
 
+const DISCOVERY_KEY = 'heavensDice.codex.v1';
+const codexDice = () => DICE.filter((die) => !die.isStandard);
+
 const app = {
   run: null,
+  discovered: { dice: [], barrels: [], items: [] },
   busy: false,
   rolling: false,
   introOpen: false,
@@ -55,6 +59,56 @@ function readSoundPref() {
     const value = localStorage.getItem('heavens-dice-sound');
     return value === null ? true : value === '1';
   } catch { return true; }
+}
+
+function emptyDiscovery() {
+  return { dice: [], barrels: [], items: [] };
+}
+
+function loadDiscovery() {
+  try {
+    const raw = JSON.parse(localStorage.getItem(DISCOVERY_KEY) || '{}');
+    const clean = emptyDiscovery();
+    Object.keys(clean).forEach((kind) => {
+      if (Array.isArray(raw[kind])) clean[kind] = [...new Set(raw[kind].filter((id) => typeof id === 'string'))];
+    });
+    return clean;
+  } catch { return emptyDiscovery(); }
+}
+
+function saveDiscovery() {
+  try { localStorage.setItem(DISCOVERY_KEY, JSON.stringify(app.discovered)); } catch { /* private mode */ }
+}
+
+function isDiscovered(kind, id) {
+  return Boolean(id && app.discovered[kind]?.includes(id));
+}
+
+function discover(kind, id) {
+  if (!id || !app.discovered[kind]) return false;
+  if (app.discovered[kind].includes(id)) return false;
+  app.discovered[kind].push(id);
+  saveDiscovery();
+  return true;
+}
+
+function discoverLoadout(run) {
+  if (!run) return;
+  run.bag?.forEach((entry) => {
+    const spec = Engine.getDieSpec(entry.dieId);
+    if (!spec?.isStandard) discover('dice', entry.dieId);
+  });
+  if (run.barrelId) discover('barrels', run.barrelId);
+  run.ownedBarrels?.forEach((id) => discover('barrels', id));
+  run.activeItems?.forEach((id) => discover('items', id));
+  run.passiveItems?.forEach((id) => discover('items', id));
+}
+
+function discoverShop(run) {
+  if (!run?.shop) return;
+  run.shop.dice?.forEach((entry) => entry.id && discover('dice', entry.id));
+  run.shop.barrel?.forEach((entry) => entry.id && discover('barrels', entry.id));
+  run.shop.item?.forEach((entry) => entry.id && discover('items', entry.id));
 }
 function saveSoundPref(value) {
   try { localStorage.setItem('heavens-dice-sound', value ? '1' : '0'); } catch { /* ignore */ }
@@ -151,6 +205,7 @@ const sound = new SoundKit();
    Boot
    ═══════════════════════════════════════════════════════════════════ */
 document.addEventListener('DOMContentLoaded', () => {
+  app.discovered = loadDiscovery();
   app.soundEnabled = readSoundPref();
   sound.setEnabled(app.soundEnabled);
   updateSoundButtons();
@@ -400,6 +455,7 @@ function startRun() {
   closeOverlay();
   closeShopScreen();
   app.run = Engine.createRun();
+  discoverLoadout(app.run);
   app.screen = 'game';
   app.busy = false;
   app.rolling = false;
@@ -581,6 +637,7 @@ function retryLevel() {
 function renderGame() {
   if (!app.run) return;
   const run = app.run;
+  discoverLoadout(run);
   renderTopbar();
   renderScorePanel();
   renderRail();
@@ -1894,6 +1951,8 @@ function renderShopScreen() {
   if (!screen) return;
   const bodyScroll = $('.shop-body', screen)?.scrollTop || 0;
   const run = app.run;
+  discoverLoadout(run);
+  discoverShop(run);
   const shop = run.shop;
   const nextLevel = run.level + 1;
   const nextTable = getTable(nextLevel);
@@ -2663,6 +2722,10 @@ function openRules() {
    ═══════════════════════════════════════════════════════════════════ */
 function openCompendium(tab = app.compendiumTab) {
   if (app.introOpen) app.introOpen = false;
+  if (app.run) {
+    discoverLoadout(app.run);
+    discoverShop(app.run);
+  }
   app.compendiumTab = tab;
   const tabs = [
     ['dice', '秘骰 20'], ['barrels', '骰桶 6'], ['items', '物品 10'], ['tables', '赌桌 5'], ['bosses', '庄家与小兵'],
@@ -2688,10 +2751,23 @@ function switchCompendiumTab(tab) {
   if (body) body.innerHTML = compendiumBody(tab);
 }
 
+function compendiumLockedCard(category) {
+  return `<article class="compendium-card is-locked" aria-label="${h(category)}尚未遇见">
+    <div class="locked-card"><svg><use href="#i-lock"></use></svg><b>尚未遇见</b><span>在赌局或市集中遇见后解锁</span></div>
+  </article>`;
+}
+
+function compendiumProgress(kind, total) {
+  const seen = app.discovered[kind]?.filter((id) => kind !== 'dice' || codexDice().some((die) => die.id === id)).length || 0;
+  return `<strong class="codex-progress">已遇见 ${seen} / ${total}</strong>`;
+}
+
 function compendiumBody(tab) {
   if (tab === 'dice') {
-    return `<p class="compendium-intro">每一枚秘骰都像一张有偏向的牌：点数概率不同，且归属于五个套组之一。同套组集齐 2 枚与 4 枚会解锁额外效果。</p>
-      <div class="compendium-grid">${DICE.map((spec) => {
+    const dice = codexDice();
+    return `<p class="compendium-intro">每一枚秘骰都像一张有偏向的牌：点数概率不同，且归属于五个套组之一。同套组集齐 2 枚与 4 枚会解锁额外效果。${compendiumProgress('dice', dice.length)}</p>
+      <div class="compendium-grid">${dice.map((spec) => {
+        if (!isDiscovered('dice', spec.id)) return compendiumLockedCard('这枚骰子');
         const rarity = rarityOf(spec);
         const set = DICE_SETS[spec.setId];
         const bars = probabilityBars(spec.probs, spec.rarity);
@@ -2706,8 +2782,9 @@ function compendiumBody(tab) {
       }).join('')}</div>`;
   }
   if (tab === 'barrels') {
-    return `<p class="compendium-intro">骰桶决定骰子怎样离手。三只偏向特定点数，两只要求你先在桌上画出一个仪式。默认的旧橡木桶不偏不倚。</p>
+    return `<p class="compendium-intro">骰桶决定骰子怎样离手。三只偏向特定点数，两只要求你先在桌上画出一个仪式。默认的旧橡木桶不偏不倚。${compendiumProgress('barrels', BARRELS.length)}</p>
       <div class="compendium-grid">${BARRELS.map((barrel) => {
+        if (!isDiscovered('barrels', barrel.id)) return compendiumLockedCard('这只骰桶');
         const rarity = rarityOf(barrel);
         return `<article class="compendium-card barrel-compendium" style="--rarity:${rarity.color};--glow:${rarity.glow}" data-barrel-tip="${h(barrel.id)}">
           <div class="card-topline"><span class="rarity-tag">${rarity.name}</span><span class="set-tag">${barrel.type === 'gesture' ? '仪式' : barrel.type === 'probability' ? '概率' : '普通'}</span></div>
@@ -2719,8 +2796,9 @@ function compendiumBody(tab) {
       }).join('')}</div>`;
   }
   if (tab === 'items') {
-    return `<p class="compendium-intro">八件主动物品，两件被动物品。主动物品每关恢复一次，不占用骰子，但会占用你的判断力。</p>
+    return `<p class="compendium-intro">八件主动物品，两件被动物品。主动物品每关恢复一次，不占用骰子，但会占用你的判断力。${compendiumProgress('items', ITEMS.length)}</p>
       <div class="compendium-grid">${ITEMS.map((item) => {
+        if (!isDiscovered('items', item.id)) return compendiumLockedCard('这件物品');
         const rarity = rarityOf(item);
         return `<article class="compendium-card item-compendium" style="--rarity:${rarity.color};--glow:${rarity.glow}" data-item-tip="${h(item.id)}">
           <div class="card-topline"><span class="rarity-tag">${rarity.name}</span><span class="set-tag">${item.type === 'active' ? '主动' : '被动'}</span></div>

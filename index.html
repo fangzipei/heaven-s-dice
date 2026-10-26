@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#0b0805">
   <meta name="description" content="天国骰局 — 一款以《天国：拯救 2》骰子规则为核心的肉鸽网页游戏。摇骰、留骰、画阵，挑战五位庄家。">
   <title>天国骰局 · Heaven's Dice</title>
-  <link rel="stylesheet" href="css/main.css?v=20261026-1200">
+  <link rel="stylesheet" href="css/main.css?v=20261026-1230">
   <link rel="icon" href="assets/items/coin.svg" type="image/svg+xml">
 </head>
 <body>
@@ -31,61 +31,41 @@
   </svg>
 
   <div id="app">
-    <section id="start-screen" class="start-screen">
-      <div class="start-backdrop" aria-hidden="true"></div>
-      <div class="start-veil" aria-hidden="true"></div>
+    <section id="start-screen" class="start-screen home-screen">
+      <div class="home-art" aria-hidden="true">
+        <img class="home-table" src="assets/tables/diamond.svg" alt="">
+        <div class="home-shade"></div>
+        <div class="home-halo"></div>
+        <img class="home-cup" src="assets/cups/astral.svg" alt="">
+        <div class="home-dice">
+          <span class="home-die"><i style="grid-row:1;grid-column:1"></i><i style="grid-row:1;grid-column:3"></i><i style="grid-row:2;grid-column:2"></i><i style="grid-row:3;grid-column:1"></i><i style="grid-row:3;grid-column:3"></i></span>
+          <span class="home-die"><i style="grid-row:1;grid-column:1"></i><i style="grid-row:2;grid-column:2"></i><i style="grid-row:3;grid-column:3"></i></span>
+          <span class="home-die"><i style="grid-row:1;grid-column:1"></i><i style="grid-row:1;grid-column:3"></i><i style="grid-row:2;grid-column:1"></i><i style="grid-row:2;grid-column:3"></i><i style="grid-row:3;grid-column:1"></i><i style="grid-row:3;grid-column:3"></i></span>
+        </div>
+      </div>
       <div class="start-grain" aria-hidden="true"></div>
 
-      <header class="start-header">
-        <a class="wordmark" href="#" aria-label="天国骰局首页">
-          <span class="wordmark-mark"><svg><use href="#i-die"></use></svg></span>
-          <span><b>HEAVEN'S DICE</b><em>天国骰局</em></span>
-        </a>
-        <nav class="start-nav">
-          <button class="ghost-button" data-action="open-compendium"><svg><use href="#i-book"></use></svg><span>赌徒图鉴</span></button>
-          <button class="ghost-button" data-action="open-tutorial"><svg><use href="#i-help"></use></svg><span>教程</span></button>
-          <button class="icon-button sound-toggle" data-action="toggle-sound" aria-label="开关声音"><svg><use href="#i-volume"></use></svg></button>
-        </nav>
-      </header>
-
-      <main class="start-main">
-        <div class="start-copy">
-          <p class="eyebrow"><span></span> A ROGUE DICE DUEL <span></span></p>
-          <h1><span>天国</span><span>骰局</span></h1>
-          <p class="start-subtitle">骰子落下之前，命运只是一句空话。</p>
-          <p class="start-lede">以《天国：拯救 2》的骰子规则，穿过五张赌桌、五位庄家。留住点数、押上银币、画下禁忌的仪式——然后在天亮前赢回自己的名字。</p>
-          <div class="start-actions">
-            <button class="primary-button large" data-action="start-run">
-              <span class="button-shine"></span>
-              <span class="primary-label">入座开局</span>
-              <svg><use href="#i-arrow"></use></svg>
-            </button>
-            <button class="text-button" data-action="open-tutorial">先读一遍图解教程 <span>↗</span></button>
-          </div>
-          <div class="start-meta">
-            <span><i class="meta-dot"></i>15 关 · 5 位庄家</span>
-            <span><i class="meta-dot"></i>20 枚秘骰 · 5 套收藏</span>
-            <span><i class="meta-dot"></i>原版 Farkle 计分</span>
-          </div>
+      <main class="home-main">
+        <div class="home-logo">
+          <div class="home-crest"><svg><use href="#i-die"></use></svg></div>
+          <span class="home-logo-en">HEAVEN'S DICE</span>
+          <h1>天国骰局</h1>
         </div>
 
-        <div class="start-visual" aria-hidden="true">
-          <div class="hero-portrait boss-diamond-portrait">
-            <img src="assets/portraits/boss-diamond.svg" alt="">
+        <div class="home-actions">
+          <button class="home-play" data-action="start-run">
+            <span>开始游戏</span>
+            <svg><use href="#i-arrow"></use></svg>
+          </button>
+          <div class="home-secondary-actions">
+            <button class="home-option" data-action="open-compendium"><svg><use href="#i-book"></use></svg><span>查看图鉴</span></button>
+            <button class="home-option" data-action="open-tutorial"><svg><use href="#i-help"></use></svg><span>查看规则</span></button>
           </div>
-          <div class="hero-die die-show die-show-one"><span class="show-pip"></span></div>
-          <div class="hero-die die-show die-show-five"><i></i><i></i><i></i><i></i><i></i></div>
-          <div class="hero-cup"><img src="assets/cups/astral.svg" alt=""></div>
-          <div class="hero-orbit"></div>
-          <div class="hero-caption"><span>FINAL DEALER</span><b>钻石天使</b><em>“证明你的运气不是别人借给你的。”</em></div>
         </div>
       </main>
 
-      <footer class="start-footer">
-        <div class="start-chapters">
-          <span><b>I</b>腐烂的根系</span><span><b>II</b>石头的证词</span><span><b>III</b>炉火不熄</span><span><b>IV</b>王冠的重量</span><span><b>V</b>天穹之上</span>
-        </div>
-        <p>每一局都是新的牌桌。每一次落骰，都有人替你记着。</p>
+      <footer class="home-legal">
+        <p>非商业同人演示 · 骰子规则灵感来自《天国：拯救 2》 · 美术与文案仅用于玩法展示 · © 2026 HEAVEN'S DICE</p>
       </footer>
     </section>
 
@@ -277,6 +257,6 @@
     </article>
   </template>
 
-  <script type="module" src="src/app.js?v=20261026-1200"></script>
+  <script type="module" src="src/app.js?v=20261026-1230"></script>
 </body>
 </html>
