@@ -15,6 +15,8 @@ function makeNode(selector) {
     src: '',
     className: '',
     offsetWidth: 0,
+    offsetTop: 0,
+    scrollTop: 0,
     dataset: {},
     attrs: {},
     listeners: {},
@@ -33,6 +35,7 @@ function makeNode(selector) {
     getAttribute(key) { return node.attrs[key] ?? null; },
     setAttribute(key, value) { node.attrs[key] = String(value); },
     focus() { node.focused = true; },
+    scrollTo(options) { node.scrolled = options; },
     append(child) { node.children.push(child); child.parent = node; },
     remove() {
       if (node.parent) node.parent.children = node.parent.children.filter((child) => child !== node);
@@ -54,6 +57,7 @@ export function installDomStub() {
   };
   globalThis.document = {
     querySelector: (selector) => nodeFor(selector),
+    getElementById: (id) => nodeFor(`#${id}`),
     querySelectorAll: () => [],
     createElement: () => makeNode('created'),
   };

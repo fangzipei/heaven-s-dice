@@ -74,7 +74,13 @@ describe('the duplicated tables are really gone', () => {
     const gl = readFileSync(new URL('../../src/legacy/dice-3d.js', import.meta.url), 'utf8');
     for (const [name, source] of [['app.js', app], ['dice-3d.js', gl]]) {
       expect(source, `${name} must not keep its own pip table`).not.toMatch(/\bPIP_(MAP|LAYOUT)\s*=\s*\{/);
-      expect(source, `${name} imports the shared layout`).toMatch(/render\/pip-layout\.ts/);
+    }
+    /* app.js 原本是 DOM 侧唯一的读取方；3c 之后点字排版在教程屏，骰面在
+       render/dice-dom.ts，两边都必须走共享表。 */
+    const tutorial = readFileSync(new URL('../../src/ui/screens/tutorial.ts', import.meta.url), 'utf8');
+    const dom = readFileSync(new URL('../../src/render/dice-dom.ts', import.meta.url), 'utf8');
+    for (const [name, source] of [['tutorial.ts', tutorial], ['dice-dom.ts', dom], ['dice-3d.js', gl]]) {
+      expect(source, `${name} imports the shared layout`).toMatch(/pip-layout\.ts/);
     }
   });
 
