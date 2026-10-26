@@ -31,8 +31,8 @@ await js(`document.querySelector('[data-action="close-intro"]').click()`); await
 for (let level = 1; level <= 15; level += 1) {
   const before = await state();
   if (before.level !== level) throw new Error(`Expected level ${level}, got ${before.level}`);
-  // Put the run one point away, with a legal single-1 selection, then let the
-  // real UI action (计分并继续) complete the level through Engine.applyScore.
+  // Put the run one point away, score through the real UI, then leave the
+  // level through the explicit next-level button.
   await js(`(() => {
     const r=window.HeavensDice.run;
     r.score=r.target-1; r.phase='selecting'; r.rerolls=5;
@@ -42,7 +42,9 @@ for (let level = 1; level <= 15; level += 1) {
   })()`);
   await sleep(150);
   await js(`document.querySelector('[data-action="score-continue"]').click()`);
-  await sleep(1200);
+  await sleep(750);
+  await js(`document.querySelector('[data-action="advance-level"]').click()`);
+  await sleep(1100);
   const won = await state();
   const expectPhase = level === 15 ? 'run-won' : 'won';
   if (won.phase !== expectPhase) throw new Error(`Level ${level} expected ${expectPhase}, got ${won.phase}`);

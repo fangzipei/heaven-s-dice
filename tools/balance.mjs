@@ -2,7 +2,7 @@
 import {
   createRun, rollDice, applyScore, getScorePreview, availableDice,
   initLevel, createShop, buyDie, buyBarrel, buyItem, leaveShop,
-  getDiceCapacity, useItem, canUseItem, getBarrel, shopPrice,
+  getDiceCapacity, useItem, canUseItem, getBarrel, shopPrice, advanceLevel,
 } from '../src/engine.js';
 import { bestSelection } from '../src/scoring.js';
 import {
@@ -44,6 +44,10 @@ function playLevel(run) {
   maybeUseItems(run);
   let guard = 0;
   while (!['won', 'run-won', 'lost'].includes(run.phase) && guard++ < 120) {
+    if (run.score >= run.target) {
+      if (!advanceLevel(run).ok) break;
+      break;
+    }
     if (['ready', 'dead', 'hot'].includes(run.phase)) {
       if (run.phase === 'dead' && run.itemCharges.smoke) {
         useItem(run, 'smoke');
@@ -69,6 +73,10 @@ function playLevel(run) {
           ? 'continue' : 'reroll';
       const result = applyScore(run, action);
       if (!result.ok) break;
+      if (run.score >= run.target) {
+        if (!advanceLevel(run).ok) break;
+        break;
+      }
       if (run.phase === 'reroll-pending') {
         const roll = rollDice(run);
         if (!roll.ok) break;

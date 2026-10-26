@@ -294,6 +294,9 @@ async function handleAction(action, target) {
     case 'score-bank':
       handleScore('bank');
       break;
+    case 'advance-level':
+      advanceCurrentLevel();
+      break;
     case 'use-item':
       useItem(target.dataset.itemId);
       break;
@@ -602,6 +605,11 @@ function renderScorePanel() {
   $('#score-progress-pending').style.width = `${totalProgress}%`;
   $('#reroll-inline').textContent = `重投 ×${run.rerolls}`;
   $('#score-panel').classList.toggle('is-danger', run.rerolls <= 0 && run.score < run.target);
+  const canAdvance = run.score >= run.target && !['won', 'run-won', 'lost', 'shop'].includes(run.phase);
+  const nextButton = $('#next-level');
+  nextButton.hidden = !canAdvance || app.busy;
+  $('#next-level-label').textContent = run.level >= LEVEL_COUNT ? '查看结局' : '下一关';
+  $('#score-panel').classList.toggle('is-cleared', canAdvance);
   if (round > 0 || run.throwNumber === 0 || run.phase === 'selecting') {
     $('#score-bust').hidden = true;
     $('#score-panel').classList.remove('is-bust');
@@ -674,7 +682,7 @@ function renderRail() {
   if (barrel.gesture) {
     gestureButton.hidden = false;
     const used = run.flags.gestureUsedThisThrow || (barrel.gesture === 'circle' && run.flags.vortexUsed);
-    gestureButton.disabled = used || run.phase === 'won' || run.phase === 'run-won' || run.phase === 'lost' || app.busy;
+    gestureButton.disabled = used || ['won', 'run-won', 'lost', 'cleared'].includes(run.phase) || app.busy;
     gestureButton.innerHTML = `<svg><use href="#i-gesture"></use></svg>${used ? '已完成' : '画阵'}`;
   } else {
     gestureButton.hidden = true;
@@ -860,7 +868,9 @@ function renderDiceTray() {
           ? '选择骰子'
           : run.phase === 'reroll-pending'
             ? '选择重投方式'
-            : '本关结束';
+            : run.phase === 'cleared'
+              ? '目标达成'
+              : '本关结束';
   const throwLabel = run.throwNumber ? `第 ${run.throwNumber} 掷 · ${stateLabel}` : stateLabel;
   const throwNode = $('#throw-label');
   throwNode.textContent = selectedCount && run.phase === 'selecting'
@@ -891,6 +901,10 @@ function renderComboPreview() {
   }
   if (run.phase === 'reroll-pending') {
     preview.innerHTML = '<span class="combo-label">准备重投</span><span class="combo-total">选择自己摇桶，或让系统重投 <em>等待操作</em></span>';
+    return;
+  }
+  if (run.phase === 'cleared') {
+    preview.innerHTML = '<span class="combo-label">目标已达成</span><span class="combo-total">可继续得分 · 点击左上角「下一关」收手</span>';
     return;
   }
   if (run.phase === 'dead') {
@@ -940,6 +954,21 @@ function renderActionDock() {
   const phase = run.phase;
   if (phase === 'won' || phase === 'run-won' || phase === 'lost' || phase === 'shop') {
     dock.innerHTML = '<div class="action-dock-inner"><div class="action-hint">本关已结束。</div></div>';
+    return;
+  }
+  if (phase === 'cleared') {
+    const final = run.level >= LEVEL_COUNT;
+    dock.innerHTML = `
+      <div class="action-dock-inner">
+        <div class="action-hint">目标已达成 · 可以继续得分，准备好了再离开</div>
+        <div class="action-buttons">
+          <button class="score-action primary single-action" data-action="advance-level">
+            <span class="action-icon"><svg><use href="#i-arrow"></use></svg></span>
+            <span class="action-copy"><b>${final ? '查看结局' : '进入下一关'}</b><em>${final ? '结束这场天穹赌局' : '收下本关奖励，前往市集'}</em></span>
+            <span class="action-points">→</span>
+          </button>
+        </div>
+      </div>`;
     return;
   }
   if (phase === 'reroll-pending') {
@@ -1056,6 +1085,7 @@ function renderAutoButton() {
   let label = '自动摇骰';
   let sub = '点击或按空格';
   if (run.phase === 'hot') { label = '全骰重投'; sub = '本次免费'; }
+  else if (run.phase === 'cleared') { label = '目标达成'; sub = '点击下一关'; }
   else if (run.phase === 'reroll-pending') {
     label = run.flags.rerollAll ? '系统全骰重投' : '系统重投';
     sub = `消耗 1 次 · 剩 ${run.rerolls}`;
@@ -1071,7 +1101,8 @@ function renderDangerStrip() {
   const run = app.run;
   const strip = $('#danger-strip');
   if (!run) return;
-  const show = run.rerolls <= 0 && !['won', 'run-won', 'lost', 'shop', 'hot'].includes(run.phase);
+  const show = run.rerolls <= 0 && run.score < run.target
+    && !['won', 'run-won', 'lost', 'shop', 'hot', 'cleared'].includes(run.phase);
   strip.hidden = !show;
 }
 
@@ -1339,6 +1370,7 @@ function handleScore(action) {
   if (!preview.valid) { showToast(preview.error, 'error'); return; }
   if (action !== 'bank' && run.rerolls <= 0) { showToast('没有剩余重投次数。', 'error'); return; }
   const rect = selected[0] ? $(`[data-die-uid="${CSS.escape(selected[0].uid)}"]`)?.getBoundingClientRect() : null;
+  const wasReached = run.score >= run.target;
   const result = Engine.applyScore(run, action);
   if (!result.ok) { showToast(result.error, 'error'); return; }
   app.busy = true;
@@ -1350,9 +1382,10 @@ function handleScore(action) {
   app.rollTimer = setTimeout(() => {
     app.busy = false;
     renderGame();
-    if (result.won || run.phase === 'won' || run.phase === 'run-won') {
-      setTimeout(() => showVictory(), 420);
-    } else if (result.hot) {
+    if (result.targetReached && !wasReached) {
+      showToast('目标已达成 · 可以继续得分，准备好后再点「下一关」。', 'good');
+    }
+    if (result.hot) {
       showHotBurst();
       renderGame();
     } else if (run.phase === 'lost') {
@@ -1365,6 +1398,23 @@ function handleScore(action) {
       speakRandomTaunt(0.35);
     }
   }, 520);
+}
+
+function advanceCurrentLevel() {
+  if (!app.run || app.busy || app.introOpen) return;
+  const result = Engine.advanceLevel(app.run);
+  if (!result.ok) {
+    showToast(result.error, 'error');
+    return;
+  }
+  app.busy = true;
+  app.resultShown = false;
+  clearTimeout(app.rollTimer);
+  renderGame();
+  setTimeout(() => {
+    app.busy = false;
+    showVictory();
+  }, 260);
 }
 
 function showScoreFloat(total, rect) {
@@ -1420,6 +1470,7 @@ function setSpeech(text) {
    ═══════════════════════════════════════════════════════════════════ */
 function useItem(itemId) {
   if (!app.run || app.busy || app.introOpen) return;
+  const wasReached = app.run.score >= app.run.target;
   const check = Engine.canUseItem(app.run, itemId);
   if (!check.ok) { showToast(check.error, 'error'); return; }
   const result = Engine.useItem(app.run, itemId);
@@ -1429,8 +1480,8 @@ function useItem(itemId) {
   renderGame();
   if (result.rerollFree) {
     setTimeout(() => beginRoll({ free: true }), 380);
-  } else if (app.run.phase === 'won' || app.run.phase === 'run-won') {
-    setTimeout(() => showVictory(), 620);
+  } else if (!wasReached && app.run.score >= app.run.target) {
+    showToast('目标已达成 · 可以继续得分，准备好后再点「下一关」。', 'good');
   } else if (app.run.phase === 'lost') {
     setTimeout(() => showDefeat(), 500);
   }
@@ -1454,6 +1505,8 @@ function bindCupDrag() {
   let pointerId = null;
   let startX = 0;
   let dx = 0;
+  let dragMin = -138;
+  let dragMax = 138;
 
   const canDrag = () => app.run && !app.busy && !app.introOpen
     && (app.run.phase === 'ready' || app.run.phase === 'hot' || app.run.phase === 'reroll-pending'
@@ -1467,19 +1520,33 @@ function bindCupDrag() {
     pointerId = event.pointerId;
     startX = event.clientX;
     dx = 0;
+    const scene = $('#scene');
+    const cupRect = cup.getBoundingClientRect();
+    const sceneRect = scene?.getBoundingClientRect();
+    if (sceneRect) {
+      const margin = Math.max(12, sceneRect.width * .018);
+      dragMin = sceneRect.left + margin - cupRect.left;
+      dragMax = sceneRect.right - margin - cupRect.right;
+      if (dragMax < dragMin) { dragMin = 0; dragMax = 0; }
+    }
     try { cup.setPointerCapture(pointerId); } catch { /* pointerup fallback below */ }
     cup.classList.add('is-dragging');
   });
 
-  cup.addEventListener('pointermove', (event) => {
+  const onCupMove = (event) => {
     if (!dragging || event.pointerId !== pointerId) return;
-    dx = clamp(event.clientX - startX, -138, 138);
-    cup.style.transform = `translateX(${dx}px) rotate(${dx * .045}deg)`;
+    dx = clamp(event.clientX - startX, dragMin, dragMax);
+    const tilt = clamp(dx * .02, -9, 9);
+    cup.style.transform = `translateX(${dx}px) rotate(${tilt}deg)`;
     if (Math.abs(dx) > 8) {
       sound.rattle();
       if (!app.cupHoldStarted) startCupHold();
     }
-  });
+  };
+  cup.addEventListener('pointermove', onCupMove);
+  // Pointer capture is not guaranteed in every browser/headless shell. Keep
+  // tracking on window so the cup can travel across the entire tabletop.
+  window.addEventListener('pointermove', onCupMove);
 
   const finish = async (event) => {
     if (!dragging) return;

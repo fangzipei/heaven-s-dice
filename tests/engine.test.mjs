@@ -4,7 +4,7 @@ import {
   createRun, rollDice, applyScore, initLevel, targetForLevel,
   effectiveProbs, useItem, canUseItem, createShop, buyDie,
   buyBarrel, buyItem, leaveShop, applyGesture, getDiceCapacity,
-  openShop, refreshSection, getBarrel, BASE_REROLLS,
+  openShop, refreshSection, getBarrel, BASE_REROLLS, advanceLevel,
 } from '../src/engine.js';
 import { makeRng } from '../src/engine.js';
 
@@ -228,6 +228,31 @@ test('passive dice bag adds a seventh die slot', () => {
   }
 });
 
+test('reaching the target stays open until the player advances', () => {
+  const state = fresh();
+  state.target = 10;
+  forceRoll(state, [1, 2, 3, 4, 6, 6]);
+  const one = state.dice.find((d) => d.value === 1);
+  state.selected = [one.uid];
+  const result = applyScore(state, 'continue');
+  assert.equal(result.ok, true);
+  assert.equal(result.targetReached, true);
+  assert.equal(state.targetReached, true);
+  assert.equal(state.phase, 'reroll-pending');
+  assert.notEqual(state.phase, 'won');
+  assert.equal(advanceLevel(state).ok, true);
+  assert.equal(state.phase, 'won');
+});
+
+test('advanceLevel refuses a score below target', () => {
+  const state = fresh();
+  state.target = 1000;
+  state.score = 999;
+  const result = advanceLevel(state);
+  assert.equal(result.ok, false);
+  assert.equal(state.phase, 'ready');
+});
+
 test('defeating a boss grants a permanent reroll boon', () => {
   const state = fresh(7);
   state.level = 3;
@@ -239,6 +264,10 @@ test('defeating a boss grants a permanent reroll boon', () => {
   state.selected = [one.uid];
   const result = applyScore(state, 'continue');
   assert.equal(result.ok, true);
+  assert.equal(state.targetReached, true);
+  assert.notEqual(state.phase, 'won');
+  const advance = advanceLevel(state);
+  assert.equal(advance.ok, true);
   assert.equal(state.phase, 'won');
   assert.equal(state.roundScore, 0);
   assert.equal(state.bossBoons, 1);

@@ -25,8 +25,10 @@
 | ![骰桶倒扣](docs/screenshots/10-cup-inverted.png) | ![重投慢转](docs/screenshots/11-reroll-spin.png) |
 | **已得 / 本轮未计入** | **计分后选择重投方式** |
 | ![本轮拆分](docs/screenshots/13-score-split.png) | ![选择重投](docs/screenshots/14-reroll-choice.png) |
-| **掷空作废** | **五芒星仪式** |
-| ![掷空作废](docs/screenshots/12-round-bust.png) | ![仪式](docs/screenshots/04-gesture.png) |
+| **掷空作废** | **目标达成后继续得分** |
+| ![掷空作废](docs/screenshots/12-round-bust.png) | ![目标达成](docs/screenshots/16-next-level.png) |
+| **骰桶全桌拖动** | **五芒星仪式** |
+| ![全桌拖动](docs/screenshots/17-cup-range.png) | ![仪式](docs/screenshots/04-gesture.png) |
 | **赌徒图鉴** | **市集** |
 | ![图鉴](docs/screenshots/07-compendium-tables.png) | ![市集](docs/screenshots/03-shop.png) |
 | **终局赌桌** | **庄家登场** |
@@ -81,7 +83,7 @@ node tools/balance.mjs 400
 
 ## 玩法
 
-- **目标**：每关达到目标分数，进入市集，再前往下一关。共 15 关。
+- **目标**：每关达到目标分数后不会自动结束，可以继续得分；准备好后点击左上角「下一关」（终局为「查看结局」），再进入市集或结局。共 15 关。
 - **骰子**：默认 6 颗，默认 5 次重投。第一次投掷免费。
 - **流程**：投掷 → 点击选择要计分的骰子 → 选择：
   1. **计分并继续**：选中骰计分并移出，重投剩余骰子；
@@ -90,7 +92,7 @@ node tools/balance.mjs 400
 - **计分后不自动重投**：计分动作结算完成后会停在“选择重投方式”，不会替玩家自动掷下一次。此时可以拖动左侧骰桶自己摇，或点「系统重投」/右侧自动按钮让系统代摇。
 - **本轮与掷空**：继续/重投得到的分数先进入“本轮未计入”池；下一次投掷若仍存在合法计分组合，这笔分数转为“已得”，若完全没有可计分组合，则本轮这笔分数全部作废，此前的“已得”保留。左上角会拆开显示“已得 / 本轮未计入”，掷空时给出红色作废提示。
 - **全骰（Hot Dice）**：如果六颗骰子全部被计分，六颗骰子全部归位，可以免费重投全部骰子，不消耗重投次数；本轮分数仍然处于未计入状态。
-- **无重投次数**：选择「计分并结算」，计分后本关直接结算；达到目标即过关，否则失败。
+- **无重投次数**：选择「计分并结算」；若已达到目标，可以继续停留或点击下一关，否则本关失败。
 - **失败**：重投耗尽且分数仍不足目标，本关失败。可以**卷土重来**：保留骰袋、骰桶与物品，失去一半银币。
 - **庄家徽记**：每击败一位庄家，后续关卡的重投上限永久 +1（基础仍是 5 次）。
 - **门房赠礼**：开局自带一枚主动物品「幸运币」，每关可花费一次，立即 +150 分。
@@ -120,7 +122,7 @@ node tools/balance.mjs 400
 
 | 操作 | 方式 |
 |---|---|
-| 手动摇骰 | 按住左侧骰桶左右拖动；骰子入桶、桶倒扣后松手落骰 |
+| 手动摇骰 | 按住左侧骰桶拖动；拖动范围覆盖整张桌面，骰子入桶、桶倒扣后松手落骰 |
 | 自动摇骰 | 点击右侧「自动摇骰」或按空格 |
 | 选择骰子 | 点击骰子；可多选 |
 | 计分并继续 | 底部左侧按钮 / 数字键 `1`（重投剩余骰子） |
@@ -337,12 +339,14 @@ python tools/generate_portraits.py   # 10 张角色画像
 ## 验收
 
 ```bash
-npm test                                  # 29 项规则/引擎/内容测试
+npm test                                  # 31 项规则/引擎/内容测试
 node tools/flow-test.mjs                  # 物品、商店、骰袋替换、五芒星
 node tools/reroll-test.mjs                # 继续=重投剩余；重投=全部六颗
 node tools/cup-anim-test.mjs               # 手动入骰、倒扣、落骰
+node tools/cup-range-test.mjs               # 骰桶可拖遍整张桌面
 node tools/spin-test.mjs                   # 重投前六骰慢转
 node tools/bust-test.mjs                   # 掷空后本轮分数作废
+node tools/next-level-test.mjs             # 达标后继续得分，手动下一关
 node tools/interaction-test.mjs           # 手动摇桶、旋涡绘制、响应式
 node tools/final-check.mjs                # 悬停概率、图鉴、Boss 抽成
 node tools/campaign-test.mjs              # 真实 UI 连打 15 关、Boss 徽记、终局
@@ -350,7 +354,7 @@ node tools/responsive-test.mjs            # 平板/手机/笔记本断点
 node tools/capture-final.mjs              # 重新生成 docs/screenshots
 ```
 
-浏览器验收使用本机 Microsoft Edge 的 CDP 无头模式；测试脚本会把过程截图写到 `tools/` 作为本地检查记录，不需要随生产部署。`docs/screenshots` 中的展示图由 `capture-final.mjs`、`cup-anim-test.mjs`、`spin-test.mjs` 与 `bust-test.mjs` 生成。
+浏览器验收使用本机 Microsoft Edge 的 CDP 无头模式；测试脚本会把过程截图写到 `tools/` 作为本地检查记录，不需要随生产部署。`docs/screenshots` 中的展示图由 `capture-final.mjs`、`cup-anim-test.mjs`、`cup-range-test.mjs`、`spin-test.mjs`、`bust-test.mjs` 与 `next-level-test.mjs` 生成。
 
 ---
 

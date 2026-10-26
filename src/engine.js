@@ -135,6 +135,7 @@ export function initLevel(state) {
   state.target = state.targetBase;
   state.score = 0;
   state.roundScore = 0;
+  state.targetReached = false;
   state.lastBust = null;
   state.lastScore = null;
   state.selected = [];
@@ -176,6 +177,7 @@ export function createRun({ rng = Math.random } = {}) {
     selected: [],
     score: 0,
     roundScore: 0,
+    targetReached: false,
     lastBust: null,
     target: 0,
     targetBase: 0,
@@ -486,10 +488,33 @@ function completeLevel(state) {
 
 function checkWin(state) {
   if (state.score >= state.target && state.phase !== 'won' && state.phase !== 'run-won') {
-    completeLevel(state);
+    if (!state.targetReached) {
+      state.targetReached = true;
+      pushLog(state, `达到 ${state.target} 分。可以继续加注，或点击「下一关」收手。`, 'win');
+    }
     return true;
   }
   return false;
+}
+
+/**
+ * The target is a milestone, not an automatic ending. The player may keep
+ * scoring past it until they explicitly choose to leave for the next level.
+ */
+export function advanceLevel(state) {
+  if (!state || ['won', 'run-won', 'lost', 'shop'].includes(state.phase)) {
+    return { ok: false, error: '当前无法进入下一关。' };
+  }
+  if (state.score < state.target) {
+    return { ok: false, error: `还差 ${state.target - state.score} 分。` };
+  }
+  state.roundScore = 0;
+  completeLevel(state);
+  return {
+    ok: true,
+    final: state.phase === 'run-won',
+    reward: state.levelReward,
+  };
 }
 
 export function activeCharges(state) {
@@ -645,10 +670,7 @@ export function applyScore(state, action) {
   state.selected = [];
   pushLog(state, `计分 ${total} 分（${scoringValues.join(' · ')}）。`, 'score');
 
-  if (checkWin(state)) {
-    state.phase = state.level >= LEVEL_COUNT ? 'run-won' : 'won';
-    return { ok: true, total, action, won: true, breakdown: chosen.breakdown };
-  }
+  const reachedTarget = checkWin(state);
 
   const allScored = state.dice.every((d) => d.scored);
   if (allScored) {
@@ -660,12 +682,17 @@ export function applyScore(state, action) {
       die.scored = false;
     }
     pushLog(state, '全骰！所有骰子都已计分，可以免费重掷全部骰子。', 'hot');
-    return { ok: true, total, action, hot: true, won: false, breakdown: chosen.breakdown };
+    return { ok: true, total, action, hot: true, won: false, targetReached: reachedTarget, breakdown: chosen.breakdown };
   }
 
   if (action === 'bank') {
-    state.phase = 'lost';
     state.roundScore = 0;
+    if (state.score >= state.target) {
+      state.phase = 'cleared';
+      pushLog(state, '目标已达成，等待你进入下一关。', 'win');
+      return { ok: true, total, action, won: false, hot: false, cleared: true, targetReached: true, breakdown: chosen.breakdown };
+    }
+    state.phase = 'lost';
     pushLog(state, `重投耗尽，计分 ${total} 后仍未达到目标。`, 'lose');
     return { ok: true, total, action, won: false, hot: false, settled: true, breakdown: chosen.breakdown };
   }
@@ -675,7 +702,7 @@ export function applyScore(state, action) {
   state.phase = 'reroll-pending';
   state.flags.rerollAll = action === 'reroll';
   return {
-    ok: true, total, action, won: false, hot: false,
+    ok: true, total, action, won: false, hot: false, targetReached: reachedTarget,
     reroll: true, rerollAll: action === 'reroll', breakdown: chosen.breakdown,
   };
 }

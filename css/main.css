@@ -534,6 +534,19 @@ svg { width: 1em; height: 1em; display: block; }
 .progress-shine { position: absolute; z-index: 3; inset: 0; background: linear-gradient(90deg, transparent, rgba(255,255,255,.17), transparent); transform: translateX(-100%); animation: progress-shine 3.2s ease-in-out infinite; }
 @keyframes progress-shine { 0%,60% { transform: translateX(-100%); } 85%,100% { transform: translateX(100%); } }
 .score-bust { margin-top: 6px; color: #e7a092; font-size: 9px; letter-spacing: .06em; }
+.next-level-button {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  width: 100%; margin-top: 8px; padding: 8px 10px;
+  border: 1px solid rgba(255,211,127,.55); border-radius: 2px;
+  background: linear-gradient(100deg, rgba(203,151,63,.28), rgba(255,225,160,.16));
+  color: #ffe1a2; font-family: var(--serif); font-size: 11px; letter-spacing: .12em;
+  cursor: pointer; transition: background .2s, border-color .2s, box-shadow .2s;
+  box-shadow: inset 0 0 18px rgba(255,196,92,.06);
+}
+.next-level-button b { font-family: var(--sans); font-size: 15px; font-weight: 400; }
+.next-level-button:hover { background: linear-gradient(100deg, rgba(221,167,72,.4), rgba(255,236,190,.24)); border-color: rgba(255,226,157,.9); box-shadow: 0 0 22px rgba(255,190,80,.2); }
+.next-level-button[hidden] { display: none; }
+.score-panel.is-cleared { border-left-color: #ffd489; box-shadow: 0 0 28px rgba(217,180,106,.16); }
 .score-panel-bottom { display: flex; justify-content: space-between; gap: 8px; margin-top: 8px; color: #887a64; font-size: 9px; letter-spacing: .04em; }
 .score-panel.is-danger { border-left-color: var(--blood); }
 .score-panel.is-danger .score-number strong { color: #f0a298; }
@@ -1275,6 +1288,7 @@ svg { width: 1em; height: 1em; display: block; }
   .score-number .score-pending { font-size: 12px; }
   .score-number .score-pending em { font-size: 7px; }
   .score-breakdown { gap: 4px; font-size: 8px; letter-spacing: .02em; }
+  .next-level-button { padding: 7px 8px; font-size: 10px; }
   .opponent { width: 270px; height: 300px; top: 14px; }
   .opponent.is-boss { width: 300px; height: 340px; }
   .speech-bubble, .boss-effect-card { display: none; }
