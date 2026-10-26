@@ -198,4 +198,25 @@ export function dieFamily(spec) {
   return DIE_FAMILY[spec?.id] || 'bone';
 }
 
+/* Faces whose odds are pushed get their motif burned brighter.
+   Single source of truth: the texture baker and the WebGL runtime both ask
+   this, so a face can never look weighted on screen and plain in the atlas. */
+export function favoredFaces(spec) {
+  if (Array.isArray(spec?.favored)) return spec.favored;
+  const probs = spec?.probs || [];
+  if (!probs.length || spec?.id === 'standard') return [];
+  return probs.map((weight, index) => (weight >= 0.2 ? index + 1 : 0)).filter(Boolean);
+}
+
+export function peakFace(spec) {
+  const probs = spec?.probs || [];
+  if (!probs.length || spec?.id === 'standard') return 0;
+  return probs.indexOf(Math.max(...probs)) + 1;
+}
+
+export function faceEmphasis(spec, value) {
+  if (peakFace(spec) === value) return 'peak';
+  return favoredFaces(spec).includes(value) ? 'favored' : 'none';
+}
+
 export const MOTIF_KEYS = Object.keys(MOTIFS);
