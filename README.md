@@ -87,6 +87,8 @@
 | ![图鉴](docs/screenshots/07-compendium-tables.png) | ![市集](docs/screenshots/03-shop.png) |
 | **终局赌桌** | **庄家登场** |
 | ![终局赌桌](docs/screenshots/05-diamond-table.png) | ![庄家登场](docs/screenshots/06-boss-intro.png) |
+| **手机庄家开场** | **手机庄家就绪** |
+| ![手机庄家开场](docs/screenshots/41-mobile-boss-intro.png) | ![手机庄家就绪](docs/screenshots/40-mobile-boss-ready.png) |
 
 线上运行：
 
@@ -440,6 +442,7 @@ node tools/spin-test.mjs                   # 重投前六骰慢转
 node tools/bust-test.mjs                   # 掷空后本轮分数作废
 node tools/next-level-test.mjs             # 达标后继续得分，手动下一关
 node tools/mobile-select-test.mjs          # 手机端选中后的两个计分按钮
+node tools/mobile-boss-test.mjs            # 手机端庄家开场、开始按钮与就绪状态
 node tools/tutorial-test.mjs               # 开局询问 + 教程图解 + 从教程开局
 node tools/codex-test.mjs                  # 首页三按钮 + 图鉴锁定/市集解锁/持久化
 node tools/boss-test.mjs                   # 七位庄家的白骰、禁六、牌型限制、计分税与静默赦令
@@ -454,7 +457,7 @@ node tools/responsive-test.mjs            # 平板/手机/笔记本断点
 node tools/capture-final.mjs              # 重新生成 docs/screenshots
 ```
 
-浏览器验收使用本机 Microsoft Edge 的 CDP 无头模式；测试脚本会把过程截图写到 `tools/` 作为本地检查记录，不需要随生产部署。`docs/screenshots` 中的展示图由 `capture-final.mjs`、`cup-anim-test.mjs`、`cup-range-test.mjs`、`spin-test.mjs`、`bust-test.mjs`、`next-level-test.mjs`、`mobile-select-test.mjs`、`tutorial-test.mjs`、`codex-test.mjs`、`boss-test.mjs`、`shop-sell-test.mjs`、`cup-trace-test.mjs`、`cup-ui-test.mjs`、`tooltip-test.mjs` 与 `round-test.mjs` 生成。
+浏览器验收使用本机 Microsoft Edge 的 CDP 无头模式；测试脚本会把过程截图写到 `tools/` 作为本地检查记录，不需要随生产部署。`docs/screenshots` 中的展示图由 `capture-final.mjs`、`cup-anim-test.mjs`、`cup-range-test.mjs`、`spin-test.mjs`、`bust-test.mjs`、`next-level-test.mjs`、`mobile-select-test.mjs`、`mobile-boss-test.mjs`、`tutorial-test.mjs`、`codex-test.mjs`、`boss-test.mjs`、`shop-sell-test.mjs`、`cup-trace-test.mjs`、`cup-ui-test.mjs`、`tooltip-test.mjs` 与 `round-test.mjs` 生成。
 
 ---
 

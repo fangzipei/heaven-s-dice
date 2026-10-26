@@ -1839,9 +1839,13 @@ svg { width: 1em; height: 1em; display: block; }
   .score-action .action-points { font-size: 16px; min-width: 42px; }
   .score-action em { font-size: 7px; }
   .rail { top: 70px; max-height: calc(100vh - 84px); max-height: calc(100dvh - 84px); width: 280px; }
-  .intro-modal { grid-template-columns: 1fr; }
-  .intro-portrait { min-height: 260px; }
-  .intro-body { padding: 24px; }
+  .intro-modal { grid-template-columns: 1fr; overflow-y: auto; align-content: start; }
+  .intro-portrait { min-height: 170px; }
+  .intro-body { padding: 18px 20px 22px; justify-content: flex-start; }
+  .intro-quote { margin: 12px 0; padding: 10px 0 10px 14px; font-size: 12px; line-height: 1.75; }
+  .intro-effect { margin-bottom: 14px; padding: 9px 11px; }
+  .intro-stats { gap: 10px 18px; margin: 4px 0 14px; }
+  .intro-actions { flex-wrap: wrap; gap: 10px; }
   .overlay { padding: 12px; }
   .modal { max-height: calc(100vh - 24px); }
   .rules-modal, .result-modal { padding: 30px 22px 24px; }
