@@ -31,12 +31,12 @@ const reports = {};
 
 await js(`window.HeavensDice.setLevel(3); window.HeavensDice.render()`); await sleep(350);
 await js(`(() => { const r=window.HeavensDice.run; r.phase='selecting'; r.bossDiceRolled=8; r.dice.forEach((d,i)=>{d.value=[1,2,3,4,5,6][i];d.blank=false;d.scored=false}); r.dice[0].blank=true; r.dice[0].value=0; r.selected=[]; window.HeavensDice.render(); })()`); await sleep(250);
-reports.blank = await js(`({boss:document.querySelector('#opponent-name')?.textContent,effect:document.querySelector('#boss-effect-desc')?.textContent,blankDice:document.querySelectorAll('.die.is-blank').length,disabled:document.querySelectorAll('.die.is-blank[disabled]').length})`);
+reports.blank = await js(`({boss:document.querySelector('#opponent-name')?.textContent,effect:document.querySelector('#boss-effect-desc')?.textContent,blankDice:document.querySelectorAll('.die.is-blank').length,disabled:document.querySelectorAll('.die.is-blank[aria-disabled="true"]').length})`);
 await shot('boss-blank', '27-boss-blank.png');
 
 await js(`window.HeavensDice.setLevel(7); window.HeavensDice.render()`); await sleep(350);
 await js(`(() => { const r=window.HeavensDice.run; r.phase='selecting'; r.dice.forEach((d,i)=>{d.value=[6,6,1,2,3,4][i];d.blank=false;d.scored=false}); r.selected=[]; window.HeavensDice.render(); })()`); await sleep(250);
-reports.noSix = await js(`({boss:document.querySelector('#opponent-name')?.textContent,blocked:document.querySelectorAll('.die.is-boss-blocked').length,disabled:document.querySelectorAll('.die.is-boss-blocked[disabled]').length})`);
+reports.noSix = await js(`({boss:document.querySelector('#opponent-name')?.textContent,blocked:document.querySelectorAll('.die.is-boss-blocked').length,disabled:document.querySelectorAll('.die.is-boss-blocked[aria-disabled="true"]').length})`);
 await shot('boss-nosix', '28-boss-nosix.png');
 
 await js(`window.HeavensDice.setLevel(5); window.HeavensDice.render()`); await sleep(350);
@@ -73,3 +73,4 @@ await shot('boss-ward', '33-boss-ward.png');
 reports.errors = events.filter((e) => e.method === 'Runtime.exceptionThrown' || (e.method === 'Log.entryAdded' && e.params.entry.level === 'error')).map((e) => e.params.exceptionDetails?.exception?.description || e.params.entry?.text);
 console.log(JSON.stringify(reports, null, 2));
 ws.close(); edge.kill();
+

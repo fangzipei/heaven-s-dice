@@ -909,7 +909,8 @@ svg { width: 1em; height: 1em; display: block; }
   color: #2a1a07; opacity: 0; background: linear-gradient(180deg, #ffe6a8, #c99b4b);
   box-shadow: 0 2px 7px rgba(0,0,0,.35); transition: opacity .25s, transform .25s; transform: scale(.6);
 }
-.die:hover:not(:disabled) { transform: translateY(-5px) scale(1.02); }
+.die:hover:not([aria-disabled="true"]) { transform: translateY(-5px) scale(1.02); }
+.die[aria-disabled="true"] { cursor: help; }
 .die.is-selected {
   transform: translateY(-13px) scale(1.06);
   z-index: 5;
@@ -1080,8 +1081,7 @@ svg { width: 1em; height: 1em; display: block; }
 .die.is-new { animation: die-land .4s var(--ease) both; }
 @keyframes die-land { 0% { transform: translateY(-12px) scale(.94); } 60% { transform: translateY(2px) scale(1.02); } 100% { transform: translateY(0) scale(1); } }
 .die.is-bonus { z-index: 4; }
-.die:disabled { cursor: default; }
-.die:disabled:hover { transform: none; }
+.die[aria-disabled="true"]:hover { transform: none; }
 
 /* Premium pips are carved deeper and rimmed in the tier's metal. */
 .die.rarity-legendary .die-face .pip {
@@ -1214,9 +1214,9 @@ svg { width: 1em; height: 1em; display: block; }
 .active-items { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
 .item-slot { position: relative; aspect-ratio: 1; border: 1px solid rgba(255,255,255,.08); background: rgba(0,0,0,.18); border-radius: 3px; display: grid; place-items: center; transition: .2s; overflow: hidden; }
 .item-slot img { width: 76%; transition: .2s; }
-.item-slot:hover:not([disabled]) { border-color: rgba(217,180,106,.38); background: rgba(217,180,106,.06); transform: translateY(-2px); }
-.item-slot:hover:not([disabled]) img { transform: scale(1.08); }
-.item-slot[disabled] { opacity: .3; cursor: not-allowed; filter: grayscale(.6); }
+.item-slot:hover:not([aria-disabled="true"]) { border-color: rgba(217,180,106,.38); background: rgba(217,180,106,.06); transform: translateY(-2px); }
+.item-slot:hover:not([aria-disabled="true"]) img { transform: scale(1.08); }
+.item-slot[aria-disabled="true"] { opacity: .3; cursor: help; filter: grayscale(.6); }
 .item-slot .charge { position: absolute; right: 2px; bottom: 1px; font-family: var(--serif); font-size: 10px; color: var(--gold-bright); text-shadow: 0 1px 3px #000; }
 .item-slot .item-name { position: absolute; left: 0; right: 0; bottom: 0; padding: 2px 3px; background: linear-gradient(transparent, rgba(0,0,0,.8)); color: #bbaa8e; font-size: 6px; text-align: center; letter-spacing: .02em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .item-slot.is-empty { border-style: dashed; opacity: .5; }
@@ -1710,6 +1710,7 @@ svg { width: 1em; height: 1em; display: block; }
 @keyframes toast-out { to { opacity: 0; transform: translateX(12px); } }
 
 /* tooltip */
+.shop-card, .sell-card, .compendium-card, .mini-die, .loadout-items img, .barrel-thumb, .passive-chip { cursor: help; }
 .floating-tooltip { position: fixed; z-index: 300; width: 280px; padding: 13px 14px; pointer-events: none; border: 1px solid rgba(217,180,106,.28); background: rgba(12,9,6,.97); box-shadow: 0 20px 50px rgba(0,0,0,.65); color: #b2a188; font-size: 9px; line-height: 1.65; backdrop-filter: blur(10px); }
 .floating-tooltip h5 { margin: 0 0 3px; font-family: var(--serif); font-size: 14px; font-weight: 400; color: #efdfc1; letter-spacing: .04em; }
 .floating-tooltip .tip-sub { color: var(--gold-soft); font-size: 7px; letter-spacing: .1em; margin-bottom: 5px; }

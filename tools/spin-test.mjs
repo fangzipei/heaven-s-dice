@@ -24,7 +24,7 @@ async function shot(name, docsName = null) {
 }
 await js(`document.querySelector('[data-action="start-run"]').click(); document.querySelector('[data-action="start-direct"]')?.click()`); await sleep(400);
 await js(`document.querySelector('[data-action="close-intro"]').click()`); await sleep(500);
-await js(`document.querySelector('[data-action="auto-roll"]').click()`);
+await js(`document.querySelector('[data-action="manual-roll"]').click()`);
 await sleep(2800);
 const afterRoll = await js(`({phase:window.HeavensDice.run.phase,values:window.HeavensDice.run.dice.map(d=>d.value),rolls:window.HeavensDice.run.stats.levelRolls})`);
 await js(`(() => { const run=window.HeavensDice.run; [1,2,3,4,5,6].forEach((v,i)=>{ run.dice[i].value=v; run.dice[i].scored=false; }); run.selected=[run.dice[0].uid]; window.HeavensDice.render(); })()`);
@@ -32,11 +32,10 @@ await sleep(120);
 const selected = await js(`window.HeavensDice.run.selected.length`);
 await js(`document.querySelector('[data-action="score-reroll"]').click()`);
 await sleep(900);
-const choice = await js(`({phase:window.HeavensDice.run.phase,busy:window.HeavensDice.app.busy,autoEnabled:!document.querySelector('#auto-roll').disabled,cueButton:!!document.querySelector('[data-action="cue-cup"]')})`);
+const choice = await js(`({phase:window.HeavensDice.run.phase,busy:window.HeavensDice.app.busy,autoEnabled:!!document.querySelector('#action-dock [data-action="auto-roll"]'),manualCup:!!document.querySelector('#cup')})`);
 await shot('reroll-choice', '14-reroll-choice.png');
-await js(`document.querySelector('[data-action="cue-cup"]').click()`);
 const cue = await js(`({cue:document.querySelector('#cup').classList.contains('is-cue'),phase:window.HeavensDice.run.phase,throwNumber:window.HeavensDice.run.throwNumber})`);
-await js(`document.querySelector('#auto-roll').click()`);
+await js(`document.querySelector('#action-dock [data-action="auto-roll"]').click()`);
 await sleep(650);
 const spin = await js(`({phase:window.HeavensDice.run.phase,busy:window.HeavensDice.app.busy,anim:document.querySelectorAll('.die-roller').length, moving:[...document.querySelectorAll('.die-roller')].filter(el=>el.getAnimations().length).length, durations:[...document.querySelectorAll('.die-roller')].flatMap(el=>el.getAnimations().map(a=>a.effect.getTiming().duration))})`);
 const pausedTimes = await js(`(async () => {

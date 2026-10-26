@@ -81,6 +81,8 @@
 | ![桌面五芒星](docs/screenshots/34-cup-trace.png) | ![桌面圆轨迹](docs/screenshots/35-cup-circle.png) |
 | **计分后单按钮续投** | **手机全界面摇桶** |
 | ![单按钮续投](docs/screenshots/36-single-throw-button.png) | ![手机全界面摇桶](docs/screenshots/37-cup-mobile-range.png) |
+| **骰桶与卡牌悬浮详情** | |
+| ![悬浮详情](docs/screenshots/38-tooltip-details.png) | |
 | **赌徒图鉴** | **市集** |
 | ![图鉴](docs/screenshots/07-compendium-tables.png) | ![市集](docs/screenshots/03-shop.png) |
 | **终局赌桌** | **庄家登场** |
@@ -189,6 +191,7 @@ node tools/balance.mjs 400
 | 计分并重投 | 底部右侧按钮 / 数字键 `2`（全部六颗重新投） |
 | 计分并结算 | 无重投次数时出现的单一按钮（也可按 `1`） |
 | 使用物品 | 右侧「随身物品」栏 |
+| 查看详情 | 悬浮任意骰子、物品、骰桶或对应卡牌，显示名称、稀有度、效果、概率与说明 |
 | 画阵 | 装备仪式骰桶后，也可点击「画阵」使用独立画布 |
 | 关闭弹窗 | `Esc` 或右上角关闭 |
 
@@ -441,6 +444,7 @@ node tools/boss-test.mjs                   # 七位庄家的白骰、禁六、�
 node tools/shop-sell-test.mjs              # 市集随身物品半价出售
 node tools/cup-trace-test.mjs              # 骰桶 2 秒倒计时与桌面仪式轨迹
 node tools/cup-ui-test.mjs                 # 单按钮续投、全界面摇桶与手机布局
+node tools/tooltip-test.mjs                # 骰子/物品/骰桶在局内、市集、图鉴的悬浮详情
 node tools/interaction-test.mjs           # 手动摇桶、旋涡绘制、响应式
 node tools/final-check.mjs                # 悬停概率、图鉴、Boss 抽成
 node tools/campaign-test.mjs              # 真实 UI 连打 15 关、Boss 徽记、终局
@@ -448,7 +452,7 @@ node tools/responsive-test.mjs            # 平板/手机/笔记本断点
 node tools/capture-final.mjs              # 重新生成 docs/screenshots
 ```
 
-浏览器验收使用本机 Microsoft Edge 的 CDP 无头模式；测试脚本会把过程截图写到 `tools/` 作为本地检查记录，不需要随生产部署。`docs/screenshots` 中的展示图由 `capture-final.mjs`、`cup-anim-test.mjs`、`cup-range-test.mjs`、`spin-test.mjs`、`bust-test.mjs`、`next-level-test.mjs`、`mobile-select-test.mjs`、`tutorial-test.mjs`、`codex-test.mjs`、`boss-test.mjs`、`shop-sell-test.mjs`、`cup-trace-test.mjs` 与 `cup-ui-test.mjs` 生成。
+浏览器验收使用本机 Microsoft Edge 的 CDP 无头模式；测试脚本会把过程截图写到 `tools/` 作为本地检查记录，不需要随生产部署。`docs/screenshots` 中的展示图由 `capture-final.mjs`、`cup-anim-test.mjs`、`cup-range-test.mjs`、`spin-test.mjs`、`bust-test.mjs`、`next-level-test.mjs`、`mobile-select-test.mjs`、`tutorial-test.mjs`、`codex-test.mjs`、`boss-test.mjs`、`shop-sell-test.mjs`、`cup-trace-test.mjs`、`cup-ui-test.mjs` 与 `tooltip-test.mjs` 生成。
 
 ---
 

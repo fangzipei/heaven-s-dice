@@ -286,7 +286,7 @@ function bindGlobalEvents() {
   document.addEventListener('click', (event) => {
     hideTooltip();
     const die = event.target.closest('[data-die-uid]');
-    if (die && !die.disabled && app.run?.phase === 'selecting' && !app.busy && !app.introOpen) {
+    if (die && die.getAttribute('aria-disabled') !== 'true' && app.run?.phase === 'selecting' && !app.busy && !app.introOpen) {
       sound.unlock();
       if (Engine.toggleDie(app.run, die.dataset.dieUid)) {
         sound.click();
@@ -550,7 +550,9 @@ function setupLevelScene(force = false) {
   const cup = Engine.getBarrel(app.run);
   $('#cup-image').src = `assets/cups/${cup.art}.svg`;
   $('#cup-badge').textContent = cup.name;
+  $('#cup').dataset.barrelTip = cup.id;
   $('#barrel-thumb').src = `assets/cups/${cup.art}.svg`;
+  $('#barrel-thumb').dataset.barrelTip = cup.id;
   setSpeech(introLine(opponent, app.run.level, isBoss));
   renderTopbar();
   if (force) {
@@ -782,6 +784,8 @@ function renderRail() {
   $('#barrel-name').textContent = barrel.name;
   $('#barrel-short').textContent = barrel.short;
   $('#barrel-thumb').src = `assets/cups/${barrel.art}.svg`;
+  $('#barrel-thumb').dataset.barrelTip = barrel.id;
+  $('#cup').dataset.barrelTip = barrel.id;
   const gestureButton = $('#gesture-button');
   if (barrel.gesture) {
     gestureButton.hidden = false;
@@ -839,7 +843,7 @@ function renderItems() {
     const check = Engine.canUseItem(run, id);
     slots.push(`
       <button class="item-slot" data-action="use-item" data-item-id="${h(id)}" data-item-tip="${h(id)}"
-        ${check.ok ? '' : 'disabled'} title="${h(item.name)}" aria-label="使用${h(item.name)}">
+        aria-disabled="${check.ok ? 'false' : 'true'}" title="${h(item.name)}" aria-label="使用${h(item.name)}">
         <img src="assets/items/${item.icon}.svg" alt="">
         <span class="charge">${charges > 0 ? charges : '×'}</span>
         <span class="item-name">${h(item.name)}</span>
@@ -993,7 +997,7 @@ function renderDiceTray() {
     const label = hidden ? '未掷出的骰子' : blank ? '白骰，无法计分' : blocked ? '六点被庄家禁用' : `${spec.name}，${die.value} 点`;
     return `
       <button class="${classes}" data-die-uid="${h(die.uid)}" data-die-tip="${h(spec.id)}"
-        ${disabled ? 'disabled' : ''} aria-pressed="${selected}" aria-label="${h(label)}"
+        aria-disabled="${disabled ? 'true' : 'false'}" aria-pressed="${selected}" aria-label="${h(label)}"
         style="animation-delay:${app.rolling ? index * 45 : 0}ms;${dieSkinStyle(spec)}">
         <span class="die-roller"><span class="die-cube">${dieFacesHtml(die.value, spec, hidden, blank)}</span></span>
         ${hidden ? '<span class="die-mark" style="left:50%;top:50%;transform:translate(-50%,-50%);font-size:12px;color:rgba(231,190,104,.7)">✦</span>' : blank ? `
@@ -2271,11 +2275,11 @@ function renderShopScreen() {
         <div class="loadout-dice">${run.bag.map((entry) => {
           const spec = Engine.getDieSpec(entry.dieId);
           const weighted = favoredFaces(spec).length > 0;
-          return `<span class="mini-die rarity-${spec.rarity} ${spec.demon ? 'is-demon' : ''} ${weighted ? 'is-weighted' : ''}" style="${dieSkinStyle(spec)}" data-pips="${spec.demon ? '魔' : (spec.setId ? spec.name[0] : '骰')}" title="${h(spec.name)}"></span>`;
+          return `<span class="mini-die rarity-${spec.rarity} ${spec.demon ? 'is-demon' : ''} ${weighted ? 'is-weighted' : ''}" style="${dieSkinStyle(spec)}" data-pips="${spec.demon ? '魔' : (spec.setId ? spec.name[0] : '骰')}" data-die-tip="${h(spec.id)}" title="${h(spec.name)}"></span>`;
         }).join('')}</div>
         <span class="loadout-label" style="margin-left:8px">骰桶</span>
-        <div class="barrel-thumb" style="width:25px;height:32px"><img src="assets/cups/${Engine.getBarrel(run).art}.svg" alt=""></div>
-        <div class="loadout-items">${run.activeItems.concat(run.passiveItems).map((id) => `<img src="assets/items/${ITEM_BY_ID[id].icon}.svg" alt="${h(ITEM_BY_ID[id].name)}" title="${h(ITEM_BY_ID[id].name)}">`).join('')}</div>
+        <div class="barrel-thumb" style="width:25px;height:32px" data-barrel-tip="${h(Engine.getBarrel(run).id)}"><img src="assets/cups/${Engine.getBarrel(run).art}.svg" alt=""></div>
+        <div class="loadout-items">${run.activeItems.concat(run.passiveItems).map((id) => `<img src="assets/items/${ITEM_BY_ID[id].icon}.svg" alt="${h(ITEM_BY_ID[id].name)}" data-item-tip="${h(id)}" title="${h(ITEM_BY_ID[id].name)}">`).join('')}</div>
       </div>
       <div class="shop-continue">
         <button class="primary-button" data-action="leave-shop">前往第 ${nextLevel} 关 · ${h(nextTable.name)} <svg><use href="#i-arrow"></use></svg></button>
@@ -2294,7 +2298,7 @@ function renderSellShelf(run) {
     const check = Engine.canSellItem(run, id);
     const rarity = rarityOf(item);
     const price = Engine.itemSellPrice(item);
-    return `<article class="sell-card" style="--rarity:${rarity.color}">
+    return `<article class="sell-card" style="--rarity:${rarity.color}" data-item-tip="${h(item.id)}">
       <img src="assets/items/${item.icon}.svg" alt="${h(item.name)}">
       <div class="sell-copy">
         <div class="sell-tags"><span>${item.consumable ? '一次性' : item.type === 'active' ? '主动' : '被动'}</span><b>${rarity.name}</b></div>
@@ -2344,9 +2348,9 @@ function renderDiceShopCard(entry, index) {
   const probs = Engine.effectiveProbs(spec.id, Engine.getBarrel(app.run).id);
   const bars = probabilityBars(probs, spec.rarity);
   return `
-    <article class="shop-card ${entry.sold ? 'is-sold' : ''}" style="--rarity:${rarity.color};--glow:${rarity.glow}">
+    <article class="shop-card ${entry.sold ? 'is-sold' : ''}" style="--rarity:${rarity.color};--glow:${rarity.glow}" data-die-tip="${h(spec.id)}">
       <div class="card-topline"><span class="rarity-tag">${rarity.name}</span><span class="set-tag">${set ? h(set.name) + '套组' : '无套组'}</span></div>
-      <div class="card-art" data-die-tip="${h(spec.id)}">${artDieHtml(spec)}</div>
+      <div class="card-art">${artDieHtml(spec)}</div>
       <h4>${h(spec.name)}</h4>
       <div class="card-sub">${h(spec.desc)}</div>
       ${bars}
@@ -2491,7 +2495,7 @@ function showReplaceModal() {
     const spec = Engine.getDieSpec(entry.dieId);
     const rarity = rarityOf(spec);
     return `
-      <button class="replace-option" data-action="confirm-replace" data-bag-uid="${h(entry.uid)}">
+      <button class="replace-option" data-action="confirm-replace" data-bag-uid="${h(entry.uid)}" data-die-tip="${h(spec.id)}">
         ${artDieHtml(spec)}
         <b>${h(spec.name)}</b><span>${rarity.name}${spec.setId ? ` · ${DICE_SETS[spec.setId].name}` : ''}</span>
       </button>`;

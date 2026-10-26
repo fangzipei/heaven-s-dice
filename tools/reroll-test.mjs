@@ -45,8 +45,8 @@ report.clickSelected = await js(`window.HeavensDice.run.selected.length`);
 await sleep(200);
 await js(`document.querySelector('[data-action="score-continue"]').click()`); await sleep(900);
 report.continueAwaiting = await state();
-report.continueAutoEnabled = await js(`!document.querySelector('#auto-roll').disabled`);
-await js(`document.querySelector('#auto-roll').click()`); await sleep(4000);
+report.continueAutoEnabled = await js(`!!document.querySelector('#action-dock [data-action="auto-roll"]')`);
+await js(`document.querySelector('#action-dock [data-action="auto-roll"]').click()`); await sleep(4000);
 report.continue = await state();
 report.continueCount = report.continue.scored.filter(Boolean).length;
 
@@ -54,7 +54,7 @@ report.continueCount = report.continue.scored.filter(Boolean).length;
 await setup([1,1,1,2,3,4], 3, 5);
 await js(`document.querySelector('[data-action="score-reroll"]').click()`); await sleep(900);
 report.rerollAwaiting = await state();
-await js(`document.querySelector('#auto-roll').click()`); await sleep(4000);
+await js(`document.querySelector('#action-dock [data-action="auto-roll"]').click()`); await sleep(4000);
 report.rerollAll = await state();
 report.rerollAllCount = report.rerollAll.scored.filter(Boolean).length;
 
