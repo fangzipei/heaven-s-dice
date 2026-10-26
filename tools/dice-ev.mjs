@@ -27,13 +27,13 @@
 import {
   DICE, DICE_SETS, STANDARD_DIE, BARRELS, SHOP_RARITY_WEIGHTS,
   rarityShopWeight, getLevelConfig, LEVEL_COUNT,
-} from '../src/data.js';
+} from '../src/content/index.ts';
 import {
   createRun, rollDice, applyScore, getScorePreview, availableDice,
   advanceLevel, isBossDieBlocked, initLevel, createShop, makeRng,
   getDieSpec, effectiveProbs,
-} from '../src/engine.js';
-import { bestSelection } from '../src/scoring.js';
+} from '../src/core/engine.ts';
+import { bestSelection } from '../src/core/scoring.ts';
 
 // ── CLI ────────────────────────────────────────────────────────────────────
 const argv = process.argv.slice(2);

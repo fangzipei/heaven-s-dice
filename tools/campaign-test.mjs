@@ -2,7 +2,7 @@
    关卡数、庄家关卡、每个庄家的重投修正全部从 src/data.js 取，改关卡表不用改这里。 */
 import { spawn } from 'node:child_process';
 import { writeFile, mkdir } from 'node:fs/promises';
-import { LEVELS, BOSSES } from '../src/data.js';
+import { LEVELS, BOSSES } from '../src/content/index.ts';
 
 const TOTAL = LEVELS.length;
 const bossAt = new Map(BOSSES.map((boss) => [boss.level, boss]));

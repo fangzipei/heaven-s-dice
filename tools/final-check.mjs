@@ -33,7 +33,7 @@ for (let i = 0; i < 8; i += 1) {
   if (await js(`window.HeavensDice.run.phase === 'selecting'`)) break;
 }
 const best = await js(`(async () => {
-  const { bestSelection } = await import('/src/scoring.js');
+  const { bestSelection } = await import('/src/core/scoring.ts');
   const run=window.HeavensDice.run;
   const b=bestSelection(window.HeavensDice.Engine.availableDice(run));
   if(!b) return null;

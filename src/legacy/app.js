@@ -4,9 +4,9 @@ import {
   SHOP_RARITY_WEIGHTS, rarityShopWeight, REROLL_REFUND, OVERSHOOT_TIERS,
   MINION_GAPS, LEVEL_CURVE,
   activeSetBonuses, chapterForLevel, chapterLevelSpan, getLevelConfig, getOpponent, getTable,
-} from './data.js';
-import * as Engine from './engine.js';
-import { SCORING_ROWS, analyzeSelection } from './scoring.js';
+} from '../compat/content.ts';
+import * as Engine from '../core/engine.ts';
+import { SCORING_ROWS, analyzeSelection } from '../core/scoring.ts';
 import { dieMotifSvg, dieSkinStyle } from './dice-skins.js';
 import { motion } from './motion.js';
 

@@ -1,4 +1,4 @@
-﻿import { DICE, ITEMS, BARRELS, BOSSES, MINIONS, TABLES, LEVELS } from '../src/data.js';
+﻿import { DICE, ITEMS, BARRELS, BOSSES, MINIONS, TABLES, LEVELS } from '../src/content/index.ts';
 const by = (arr, key) => arr.reduce((m,x)=>(m[x[key]]=(m[x[key]]||0)+1,m),{});
 console.log('dice', DICE.length, by(DICE,'rarity'));
 console.log('items', ITEMS.length, by(ITEMS,'type'));

@@ -2,16 +2,21 @@
 import {
   createRun, rollDice, applyScore, getScorePreview, availableDice,
   initLevel, createShop, buyDie, buyBarrel, buyItem, leaveShop,
-  getDiceCapacity, useItem, canUseItem, getBarrel, shopPrice, advanceLevel,
+  getDiceCapacity, useItem, canUseItem, getBarrel, shopPrice, advanceLevel, makeRng,
   isBossDieBlocked,
-} from '../src/engine.js';
-import { bestSelection } from '../src/scoring.js';
+} from '../src/core/engine.ts';
+import { bestSelection } from '../src/core/scoring.ts';
 import {
   LEVELS, DICE_BY_ID, ITEM_BY_ID, BARREL_BY_ID, STANDARD_DIE, DICE_SETS,
-} from '../src/data.js';
-import { getDieSpec } from '../src/engine.js';
+} from '../src/content/index.ts';
+import { getDieSpec } from '../src/core/engine.ts';
 
 const RUNS = Number(process.argv[2] || 500);
+
+/* SEED makes the whole sweep reproducible: every run gets its own stream from
+   the engine's splitmix rng, so two engines can be compared number for number.
+     SEED=1 node tools/balance.mjs 200 */
+const SEED = Number(process.env.SEED || 0);
 
 /* Optional overrides so the 28-level curve can be swept without editing data:
      TARGET_GROWTH=1.08 REWARD_GROWTH=1.05 node tools/balance.mjs 200 */
@@ -206,7 +211,7 @@ const marginByLevel = Array(TOTAL_LEVELS).fill(0);
 const coinsEnd = [];
 const levelsAtEnd = [];
 for (let r = 0; r < RUNS; r += 1) {
-  const run = createRun();
+  const run = createRun({ rng: makeRng(SEED + r) });
   for (let level = 1; level <= TOTAL_LEVELS; level += 1) {
     run.level = level;
     initLevel(run);

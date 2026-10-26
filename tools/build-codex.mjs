@@ -16,8 +16,8 @@ import {
   DICE, STANDARD_DIE, DICE_SETS, BARRELS, ITEMS, LEVELS,
   RARITIES, SHOP_RARITY_WEIGHTS, REROLL_REFUND, OVERSHOOT_TIERS,
   BOSSES, LEVEL_CURVE,
-} from '../src/data.js';
-import { dieSkinStyle, dieMotifSvg } from '../src/dice-skins.js';
+} from '../src/content/index.ts';
+import { dieSkinStyle, dieMotifSvg } from '../src/legacy/dice-skins.js';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const OUT = join(ROOT, 'docs', 'codex.html');
