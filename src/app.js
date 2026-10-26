@@ -708,7 +708,10 @@ function renderScorePanel() {
   const totalProgress = clamp((run.score / target) * 100, 0, 100);
   $('#score-progress').style.width = `${securedProgress}%`;
   $('#score-progress-pending').style.width = `${totalProgress}%`;
-  $('#reroll-inline').textContent = `重投 ×${run.rerolls}`;
+  const rerollInline = $('#reroll-inline');
+  rerollInline.innerHTML = `<span class="reroll-hud-label">本关重投</span><b>${run.rerolls}</b><em>/ ${run.maxRerolls}</em>`;
+  rerollInline.classList.toggle('is-low', run.rerolls > 0 && run.rerolls <= 2);
+  rerollInline.classList.toggle('is-empty', run.rerolls <= 0);
   $('#score-panel').classList.toggle('is-danger', run.rerolls <= 0 && run.score < run.target);
   const canAdvance = run.score >= run.target && !['won', 'run-won', 'lost', 'shop'].includes(run.phase);
   const nextButton = $('#next-level');
@@ -2910,7 +2913,7 @@ function tutorialHtml() {
 
       <section class="tut-section" id="tut-risk">
         <div class="tut-section-head"><span>03</span><div><p>THE RISK OF THE NEXT THROW</p><h3>已得、本轮未计入、掷空与下一关</h3></div></div>
-        <p class="tut-lede">左上角的计分面板会拆成两笔：已经安全的分数，和本轮还没确认的分数。</p>
+        <p class="tut-lede">一轮可以从多次「计分并继续」持续累积；只有「计分并重投」会结束本轮并落袋，或者掷空让本轮全部作废。</p>
         <div class="tut-score-demo">
           <div class="tut-score-demo-top"><span>本关已得</span><span>目标 450</span></div>
           <div class="tut-score-demo-number"><strong>220</strong><em>+80 本轮</em><span>/450</span></div>
@@ -2918,13 +2921,17 @@ function tutorialHtml() {
           <div class="tut-score-demo-bar"><i style="width:49%"></i><b style="width:18%"></b></div>
         </div>
         <div class="tut-cards three">
-          <div class="tut-card"><b>下一次投掷仍能计分</b><p>上一笔“本轮未计入”会转为“已得”，然后你可以继续选骰计分。</p></div>
-          <div class="tut-card"><b>下一次投掷掷空</b><p>本次投掷没有任何可计分组合时，这一笔“本轮未计入”全部作废；已得分数保留。</p></div>
-          <div class="tut-card"><b>目标达成后</b><p>不会自动过关。可以继续得分，直到你亲自点击左上角「下一关」。终局按钮是「查看结局」。</p></div>
+          <div class="tut-card"><b>计分并继续</b><p>本轮分数继续累积，仍处于风险中。可以连续点很多次继续，直到你决定结束本轮。</p></div>
+          <div class="tut-card"><b>计分并重投</b><p>结束当前轮：本轮累计分全部落袋，然后重新投六颗骰子，开始新的一轮。</p></div>
+          <div class="tut-card"><b>掷空</b><p>投掷后没有任何可计分组合时，本轮累计的未计入分数全部清零；已经落袋的分数保留。</p></div>
         </div>
         <div class="tut-callout">
           <b>全骰（Hot Dice）</b>
-          <p>如果六颗骰子全部被计分，它们会全部归位，下一次投掷免费，不消耗重投次数。但本轮未计入的分数仍然要等下一次投掷确认。</p>
+          <p>六颗骰子全部被计分会免费重投全部骰子，但不会结束本轮；本轮累计分仍然处于风险中，直到你点击「计分并重投」。</p>
+        </div>
+        <div class="tut-callout">
+          <b>重投次数</b>
+          <p>计分面板右下角的大号「本关重投」显示当前剩余 / 上限。低于 2 次会变成橙色，耗尽会变成红色。</p>
         </div>
         <div class="tut-callout">
           <b>重投耗尽</b>
@@ -3020,7 +3027,8 @@ function openRules() {
           <div class="rules-note">一次计分必须把所选骰子全部纳入合法组合。1 和 5 可以单颗计分；其他点数至少三颗才能计分。所有组合取最高合法分值。</div>
           <h3 style="margin-top:18px">一掷的流程</h3>
           <p>1. 按住骰桶摇动，2 秒倒计时后落骰；或点击下方「自动投掷」。<br>2. 点击选择要计分的骰子。<br>3. 选择「计分并继续」，计分后把选中骰放一边、重投剩余骰子；或「计分并重投」，计分后把全部六颗骰子重新投。两者各消耗 1 次重投。<br>4. 六颗骰子全部计分会触发「全骰」，免费重投全部骰子。<br>5. 没有重投次数时，按钮变为「计分并结算」，得分后本关结束。</p>
-          <div class="rules-note">开局有 5 次重投。每击败一位庄家，你会夺下他的徽记：后续关卡重投上限 +1。门房还会送你一枚每关都能使用的幸运币。</div>
+          <div class="rules-note">轮次：可以连续「计分并继续」累积本轮挂账；「计分并重投」结束本轮并把累计分全部落袋，再开始新一轮。若某次投掷没有任何可计分组合，本轮累计分全部清零，已落袋分保留。</div>
+          <div class="rules-note">计分面板右下角的大号「本关重投」显示当前剩余 / 上限；低于 2 次变橙，耗尽变红。开局有 5 次重投；每击败一位庄家，后续关卡重投上限 +1。门房还会送你一枚每关都能使用的幸运币。</div>
         </div>
         <div class="rules-section">
           <h3>七位庄家</h3>

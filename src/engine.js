@@ -559,9 +559,10 @@ function bossScoreAmount(state, amount) {
 function addScore(state, amount, { round = false } = {}) {
   state.score += amount;
   state.stats.levelScore += amount;
-  // The newest scoring action is at risk until the next throw proves it has a
-  // scoring combination. Earlier confirmed rounds stay in the secured total.
-  if (round) state.roundScore = amount;
+  // Every "计分并继续" in a round adds to the same unbanked pool. The pool is
+  // only secured by "计分并重投" (which ends the round), and is lost in full
+  // if a later throw has no scoring combination.
+  if (round) state.roundScore = (state.roundScore || 0) + amount;
   if (amount > state.stats.bestHit) state.stats.bestHit = amount;
 }
 
@@ -575,6 +576,9 @@ function bustRound(state) {
   state.score = Math.max(0, state.score - lost);
   state.stats.levelScore = Math.max(0, state.stats.levelScore - lost);
   state.roundScore = 0;
+  // A bust can also take the player back below the target; the HUD must stop
+  // offering "next level" when the pending round that crossed it was lost.
+  state.targetReached = state.score >= state.target;
   state.lastBust = { lost };
   pushLog(state, `本轮 ${lost} 分作废。`, 'bad');
   return lost;
@@ -746,8 +750,8 @@ export function rollDice(state, { free = false, rng = getRng(state) } = {}) {
     pushLog(state, `掷出 ${state.lastRoll.map((v) => v === 0 ? '白' : v).join(' · ')}，没有可计分的组合。`, 'bad');
     bust = bustRound(state);
   } else {
-    // A scoring throw confirms the previous round's provisional points.
-    state.roundScore = 0;
+    // A scoring throw does not end the round: the pool stays at risk until the
+    // player ends it with "计分并重投" or busts.
     state.lastBust = null;
     pushLog(state, `掷出 ${state.lastRoll.map((v) => v === 0 ? '白' : v).join(' · ')}。`, 'roll');
   }
@@ -855,8 +859,10 @@ export function applyScore(state, action) {
     return { ok: true, total, action, won: false, hot: false, settled: true, breakdown: chosen.breakdown };
   }
 
-  // Both reroll choices are played by the cup animation before rollDice().
-  // "continue" leaves already-scored dice aside; "reroll" returns all six.
+  // "计分并重投" ends the current round: every point in the pool is banked,
+  // then all six dice return for a fresh round. "计分并继续" keeps the pool
+  // alive and only rerolls the remaining dice.
+  if (action === 'reroll') state.roundScore = 0;
   state.phase = 'reroll-pending';
   state.flags.rerollAll = action === 'reroll';
   return {

@@ -81,8 +81,8 @@
 | ![桌面五芒星](docs/screenshots/34-cup-trace.png) | ![桌面圆轨迹](docs/screenshots/35-cup-circle.png) |
 | **计分后单按钮续投** | **手机全界面摇桶** |
 | ![单按钮续投](docs/screenshots/36-single-throw-button.png) | ![手机全界面摇桶](docs/screenshots/37-cup-mobile-range.png) |
-| **骰桶与卡牌悬浮详情** | |
-| ![悬浮详情](docs/screenshots/38-tooltip-details.png) | |
+| **骰桶与卡牌悬浮详情** | **醒目重投计数** |
+| ![悬浮详情](docs/screenshots/38-tooltip-details.png) | ![重投计数](docs/screenshots/39-reroll-count-hud.png) |
 | **赌徒图鉴** | **市集** |
 | ![图鉴](docs/screenshots/07-compendium-tables.png) | ![市集](docs/screenshots/03-shop.png) |
 | **终局赌桌** | **庄家登场** |
@@ -149,8 +149,9 @@ node tools/balance.mjs 400
   2. **计分并重投**：选中骰计分并移出，全部六颗骰子重新投。
   - 两种选择各消耗 1 次重投。
 - **计分后不自动重投**：计分动作结算完成后会停在“准备续投”，不会替玩家自动掷下一次。此时可以拖动骰桶自己摇，或点下方唯一的「自动投掷」按钮让系统代摇；不再显示会重复扣减的「重投 −1」选项。
-- **本轮与掷空**：继续/重投得到的分数先进入“本轮未计入”池；下一次投掷若仍存在合法计分组合，这笔分数转为“已得”，若完全没有可计分组合，则本轮这笔分数全部作废，此前的“已得”保留。左上角会拆开显示“已得 / 本轮未计入”，掷空时给出红色作废提示。
-- **全骰（Hot Dice）**：如果六颗骰子全部被计分，六颗骰子全部归位，可以免费重投全部骰子，不消耗重投次数；本轮分数仍然处于未计入状态。
+- **轮次定义**：一轮由多次「计分并继续」组成。每次继续都把分数累加进本轮挂账，仍然有风险；直到点击「计分并重投」，本轮全部累计分落袋，再开始新的一轮。若中间某次投掷没有任何可计分组合，本轮累计分全部清零，已经落袋的分数保留。左上角会拆开显示“已得 / 本轮未计入”，掷空时给出红色作废提示。
+- **全骰（Hot Dice）**：六颗骰子全部计分会免费重投全部骰子，不消耗重投次数，但**不会结束本轮**；本轮累计分仍处于未计入状态。
+- **重投次数**：计分面板右下角有大号「本关重投 剩余 / 上限」；低于 2 次变橙色，耗尽变红。这个数字是整关的剩余重投，不随轮次重置。
 - **无重投次数**：选择「计分并结算」；若已达到目标，可以继续停留或点击下一关，否则本关失败。
 - **失败**：重投耗尽且分数仍不足目标，本关失败。可以**卷土重来**：保留骰袋、骰桶与物品，失去一半银币。
 - **庄家徽记**：每击败一位庄家，后续关卡的重投上限永久 +1（基础仍是 5 次）。
@@ -173,7 +174,7 @@ node tools/balance.mjs 400
 
 一次计分必须把所选的每一颗骰子都纳入合法组合。1 与 5 可以单颗计分；其他点数至少三颗。系统会在合法拆分中自动取最高分。
 
-每次计分先挂入“本轮未计入”；下一次投掷若仍有合法计分组合，自动转入“已得”，若掷空则这笔挂账作废。已得分数不会因后来的掷空回退。
+每次「计分并继续」都累加进“本轮未计入”；下一次投掷即使仍能计分，也不会提前落袋。只有「计分并重投」结束本轮并把累计分落袋，或者掷空让本轮累计全部作废。已得分数不会因后来的掷空回退。
 
 ---
 
@@ -429,9 +430,10 @@ python tools/generate_portraits.py   # 10 张角色画像
 ## 验收
 
 ```bash
-npm test                                  # 46 项规则/引擎/内容测试
+npm test                                  # 47 项规则/引擎/内容测试
 node tools/flow-test.mjs                  # 物品、商店、骰袋替换、五芒星
-node tools/reroll-test.mjs                # 继续=重投剩余；重投=全部六颗
+node tools/reroll-test.mjs                # 继续=同一轮；重投=落袋并开始新一轮
+node tools/round-test.mjs                 # 连续继续累加、重投落袋、掷空清零与重投 HUD
 node tools/cup-anim-test.mjs               # 手动入骰、倒扣、落骰
 node tools/cup-range-test.mjs               # 骰桶可拖遍整个界面
 node tools/spin-test.mjs                   # 重投前六骰慢转
@@ -452,7 +454,7 @@ node tools/responsive-test.mjs            # 平板/手机/笔记本断点
 node tools/capture-final.mjs              # 重新生成 docs/screenshots
 ```
 
-浏览器验收使用本机 Microsoft Edge 的 CDP 无头模式；测试脚本会把过程截图写到 `tools/` 作为本地检查记录，不需要随生产部署。`docs/screenshots` 中的展示图由 `capture-final.mjs`、`cup-anim-test.mjs`、`cup-range-test.mjs`、`spin-test.mjs`、`bust-test.mjs`、`next-level-test.mjs`、`mobile-select-test.mjs`、`tutorial-test.mjs`、`codex-test.mjs`、`boss-test.mjs`、`shop-sell-test.mjs`、`cup-trace-test.mjs`、`cup-ui-test.mjs` 与 `tooltip-test.mjs` 生成。
+浏览器验收使用本机 Microsoft Edge 的 CDP 无头模式；测试脚本会把过程截图写到 `tools/` 作为本地检查记录，不需要随生产部署。`docs/screenshots` 中的展示图由 `capture-final.mjs`、`cup-anim-test.mjs`、`cup-range-test.mjs`、`spin-test.mjs`、`bust-test.mjs`、`next-level-test.mjs`、`mobile-select-test.mjs`、`tutorial-test.mjs`、`codex-test.mjs`、`boss-test.mjs`、`shop-sell-test.mjs`、`cup-trace-test.mjs`、`cup-ui-test.mjs`、`tooltip-test.mjs` 与 `round-test.mjs` 生成。
 
 ---
 

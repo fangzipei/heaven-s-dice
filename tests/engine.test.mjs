@@ -82,10 +82,11 @@ test('a dead reroll burns the whole unbanked round', () => {
   assert.equal(state.phase, 'dead');
   assert.equal(state.score, 0);
   assert.equal(state.roundScore, 0);
+  assert.equal(state.targetReached, false);
   assert.equal(state.lastBust.lost, 150);
 });
 
-test('a scoring throw confirms the previous round before a later bust', () => {
+test('a scoring throw keeps the whole round at risk until a later bust', () => {
   const state = fresh();
   state.target = 9999;
   forceRoll(state, [1, 5, 2, 3, 4, 6]);
@@ -98,18 +99,38 @@ test('a scoring throw confirms the previous round before a later bust', () => {
   assert.equal(roll.ok, true);
   assert.equal(state.phase, 'selecting');
   assert.equal(state.score, 150);
-  assert.equal(state.roundScore, 0);
+  assert.equal(state.roundScore, 150);
   const newOne = state.dice.find((d) => d.value === 1 && !d.scored);
   state.selected = [newOne.uid];
   const second = applyScore(state, 'continue');
   assert.equal(second.total, 100);
   assert.equal(state.score, 250);
-  assert.equal(state.roundScore, 100);
+  assert.equal(state.roundScore, 250);
   const deadSeq = [0.2, 0.4, 0.6]; // remaining 2/3/4
   const bust = rollDice(state, { rng: () => deadSeq.shift() ?? 0.6 });
-  assert.equal(bust.bust, 100);
-  assert.equal(state.score, 150);
+  assert.equal(bust.bust, 250);
+  assert.equal(state.score, 0);
   assert.equal(state.roundScore, 0);
+});
+
+test('score and reroll banks the whole round and starts a fresh one', () => {
+  const state = fresh();
+  state.target = 9999;
+  forceRoll(state, [1, 5, 2, 3, 4, 6]);
+  state.selected = state.dice.filter((d) => d.value === 1 || d.value === 5).map((d) => d.uid);
+  applyScore(state, 'continue');
+  const scoringSeq = [0.01, 0.2, 0.4, 0.6];
+  rollDice(state, { rng: () => scoringSeq.shift() ?? 0.2 });
+  const newOne = state.dice.find((d) => d.value === 1 && !d.scored);
+  state.selected = [newOne.uid];
+  const banked = applyScore(state, 'reroll');
+  assert.equal(banked.total, 100);
+  assert.equal(state.roundScore, 0);
+  assert.equal(state.score, 250);
+  const deadSeq = [0.2, 0.4, 0.6, 0.95, 0.2, 0.4]; // all six dice, no scoring combo
+  const bust = rollDice(state, { rng: () => deadSeq.shift() ?? 0.4 });
+  assert.equal(bust.bust, 0);
+  assert.equal(state.score, 250);
 });
 
 test('hot dice resets all six dice for a free reroll', () => {
