@@ -525,7 +525,7 @@ export function beginRoll({ free = false }: { free?: boolean } = {}): void {
  * Starts the cup/shake half of a manual drag: dice gather into the cup, then
  * the cup inverts and keeps rattling while held. Release pours and rolls.
  */
-export function startCupHold(): boolean {
+export function startCupHold(onReady?: () => void): boolean {
   if (!app.run || app.busy || app.introOpen) return false;
   const run = app.run;
   if (!['ready', 'dead', 'hot', 'reroll-pending'].includes(run.phase)) return false;
@@ -548,11 +548,18 @@ export function startCupHold(): boolean {
   const ritualHold = Boolean(cupGestureInfo(run));
   const gatherUids = cupDiceToGather(run).map((die) => die.uid);
   app.cupHoldPromise = (async () => {
-    if (prefersReducedMotion()) return;
-    await capped(slowSpinTableDice(run), 1500);
-    if (!app.cupHoldStarted) return;
+    if (prefersReducedMotion()) {
+      onReady?.();
+      return;
+    }
+    // The held cup is already the anticipation beat; skip the slow table spin
+    // so the gather starts immediately and the 2s countdown is not competing
+    // with a delayed animation.
     await capped(gatherDiceToCup(gatherUids), 1500);
     if (!app.cupHoldStarted) return;
+    // Start the throw timer once the dice have visibly reached the cup. The
+    // cup can finish rattling/inverting during the countdown.
+    onReady?.();
     motion.cupRattle($('#cup-vessel'), { cycles: 1 });
     sound.rattle();
     await sleep(320);
@@ -792,15 +799,11 @@ export function bindCupDrag(): void {
     if (Math.abs(dx) > 8 || Math.abs(dy) > 8) {
       sound.rattle();
       if (!app.cupHoldStarted) {
-        if (startCupHold()) {
+        if (startCupHold(() => {
+          if (dragging && app.cupHoldStarted) beginCupCountdown(finish);
+        })) {
           const info = cupGestureInfo(app.run!);
           if (info) beginCupTrace(traceCenter, traceRadius, info);
-          // The gather is part of the ceremony, not the 2-second throw timer.
-          // Start the countdown only once the dice are actually in the cup so
-          // short holds never cut the sweep into a scale-only shrink.
-          app.cupHoldPromise?.then(() => {
-            if (dragging && app.cupHoldStarted) beginCupCountdown(finish);
-          }).catch(() => {});
         }
       }
       if (app.cupTrace) recordCupTrace(cupCenter.x + dx, cupCenter.y + dy);
