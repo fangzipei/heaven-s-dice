@@ -4,7 +4,7 @@
 
 一款以《天国：拯救 2》骰子规则为骨架的**肉鸽网页游戏**。你坐在长桌这一侧，用六颗骰子、三次重投和一件件不太干净的赌具，去够到每关的目标分数；八位庄家分别在 3、6、10、14、18、23、28、33 关落座，之间的小兵关越排越长。三十三关，五张桌子，八位庄家——赢下他们，天就亮了。
 
-项目为**原生 HTML / CSS / JavaScript**，无框架、无构建步骤、无外部运行时依赖；所有插画与图标都是仓库内的原创 SVG。
+项目采用 **Vite + TypeScript** 分层架构：`src/core` 规则引擎、`src/content` 内容注册表、`src/render` WebGL/GSAP 渲染、`src/ui` 界面组装。生产发布先执行 `npm run build`，只部署 `dist/`；GSAP 与 three.js 均从本地 vendor 加载，所有插画与图标都是仓库内的原创 SVG。
 
 源码仓库：`git@github.com:fangzipei/heaven-s-dice.git`
 
