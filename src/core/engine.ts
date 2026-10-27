@@ -1043,7 +1043,7 @@ function shuffleTable(state: RunState, rng: () => number): void {
   shuffleInPlace(state.dice, rng);
 }
 
-export function rollDice(state: RunState, { free = false, rng = getRng(state) }: { free?: boolean; rng?: () => number } = {}): RollResult {  if (state.phase === 'won' || state.phase === 'run-won' || state.phase === 'lost') {
+export function rollDice(state: RunState, { free = false, rng = getRng(state), forced = [] }: { free?: boolean; rng?: () => number; forced?: number[] } = {}): RollResult {  if (state.phase === 'won' || state.phase === 'run-won' || state.phase === 'lost') {
     return { ok: false, error: '本关已结束。' };
   }
   if (state.phase === 'shop') return { ok: false, error: '商店阶段不能投掷。' };
@@ -1117,7 +1117,8 @@ export function rollDice(state: RunState, { free = false, rng = getRng(state) }:
       rolledNow.push(die);
       return;
     }
-    die.value = rollValue(effectiveProbs(die.dieId, barrel.id, die.probs), rng);
+    const forcedValue = forced.length ? forced.shift() : undefined;
+    die.value = forcedValue ?? rollValue(effectiveProbs(die.dieId, barrel.id, die.probs), rng);
     // Demon dice turn their 1 face into a joker, never a plain 100 points.
     die.wild = getDieSpec(die.dieId).setId === 'demon' && die.value === 1;
     rolledNow.push(die);

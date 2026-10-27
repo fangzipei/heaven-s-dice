@@ -21,6 +21,7 @@ import { recordScore, recordThrow, getRunRecord } from '../platform/run-record.t
 import { saveGame } from '../platform/save.ts';
 import { closeOverlay, openOverlay } from './components/overlay.ts';
 import { showToast } from './components/toast.ts';
+import { guideEvent, nextTutorialRoll } from './tutorial-guide.ts';
 import { renderActionDock, renderComboPreview, renderDangerStrip } from './dock.ts';
 import { $, setCss } from './dom.ts';
 import { renderOpponentPlate, renderRail, renderScorePanel, renderTopbar, showBustNotice } from './hud.ts';
@@ -451,7 +452,7 @@ async function performCupRoll({ free = false, prepared = false, from = null }: {
   try {
     /* Commit the throw first. The token has to be spent the instant the
        player commits; the ceremony below is only theatre. */
-    const result = rollDice(run, { free: isFreeThrow });
+    const result = rollDice(run, { free: isFreeThrow, forced: nextTutorialRoll() });
     if (!result.ok) {
       resetCupVisuals();
       app.busy = false;
@@ -460,6 +461,7 @@ async function performCupRoll({ free = false, prepared = false, from = null }: {
       showToast(result.error!, 'error');
       return;
     }
+    guideEvent('roll', run);
     recordThrow(run, {
       values: run.lastRoll ? [...run.lastRoll] : [],
       hot: Boolean(result.hot),
@@ -661,6 +663,7 @@ export function handleScore(action: ScoreAction): void {
   const combos = chosen.analysis.combos.map((combo) => combo.label);
   const result = applyScore(run, action);
   if (!result.ok) { showToast(result.error!, 'error'); return; }
+  guideEvent(action === 'continue' ? 'continue' : 'reroll', run);
   recordScore(run, {
     selectedValues,
     selectedDice: selected.map((die) => ({
