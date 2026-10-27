@@ -47,6 +47,7 @@ import {
   refreshShop, sellShopItem,
 } from './screens/shop.ts';
 import { openRules, openTutorial, scrollTutorial, showStartPrompt } from './screens/tutorial.ts';
+import { startTutorialGuide } from './tutorial-guide.ts';
 import { app } from './state.ts';
 import { diceTable, ensureDiceTable, renderDiceTray, setTrayRepaint } from './tray.ts';
 
@@ -275,6 +276,10 @@ async function handleAction(action: string, target: HTMLElement, _event?: MouseE
       break;
     case 'start-direct':
       startRun();
+      break;
+    case 'start-guided':
+      startRun();
+      setTimeout(startTutorialGuide, 260);
       break;
     case 'restart-run':
       startRun();

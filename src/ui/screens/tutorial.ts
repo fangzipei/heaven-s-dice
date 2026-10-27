@@ -201,8 +201,9 @@ function tutorialHtml(): string {
       </section>
     </div>
     <footer class="tutorial-foot">
-      <span>${app.run ? '教程随时可以在右上角规则里重看。' : '教程看完了，准备好就入座。'}</span>
-      <button class="primary-button" data-action="${app.run ? 'close-overlay' : 'start-direct'}">${app.run ? '回到赌桌' : '入座开局'} <svg><use href="#i-arrow"></use></svg></button>
+      <span>${app.run ? '教程随时可以在右上角规则里重看。' : '想边玩边学的话，直接进入第一关引导。'}</span>
+      ${app.run ? '<button class="primary-button" data-action="close-overlay">回到赌桌 <svg><use href="#i-arrow"></use></svg></button>'
+    : '<button class="secondary-button" data-action="start-direct">直接开局</button><button class="primary-button" data-action="start-guided">进入第一关引导 <svg><use href="#i-arrow"></use></svg></button>'}
     </footer>
   </div>`;
 }
