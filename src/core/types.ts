@@ -315,5 +315,6 @@ export interface RunState {
   lastRoll?: (number | string)[];
   levelReward: LevelRewardInfo | null;
   pendingReward: LevelRewardInfo | null;
+  pendingCoinGain: LevelRewardInfo | null;
   runWon?: boolean;
 }

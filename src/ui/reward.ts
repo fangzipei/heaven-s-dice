@@ -2,7 +2,7 @@
 //
 // 只是显示用的预估，实际结算仍由 core/engine.ts 的 awardLevel 决定。
 // baseReward 里的 gold_cuff +15 必须和引擎那条保持一致。
-import { REROLL_REFUND, getLevelConfig } from '../content/index.ts';
+import { REROLL_BONUS_RATE, OVERSHOOT_BONUS_RATE, getLevelConfig } from '../content/index.ts';
 import { cashOutValue } from '../core/engine.ts';
 import { app } from './state.ts';
 
@@ -27,7 +27,9 @@ export function cashOutHint(): string {
   const cash = cashOutValue(run);
   const parts = [`基础 ${getLevelConfig(run.level).reward}`];
   if (run.passiveItems.includes('gold_cuff')) parts.push('镀金袖扣 +15');
-  parts.push(`剩余重投 ${cash.spare} × ${REROLL_REFUND} = ${cash.refund}`);
-  parts.push(cash.tier ? `${cash.tier.label} +${cash.tierValue}` : '超额赏金 未达成（1.5 倍 +25 / 2 倍 +60 / 3 倍 +140）');
+  parts.push(`未用重投 ${cash.spare} × ${Math.round(REROLL_BONUS_RATE * 100)}% = ${cash.refund}`);
+  parts.push(cash.overshoot
+    ? `超过目标 2 倍 · +${Math.round(OVERSHOOT_BONUS_RATE * 100)}% = ${cash.overshootValue}`
+    : `超过目标 2 倍 · 未达成（+${Math.round(OVERSHOOT_BONUS_RATE * 100)}% 基础赏金）`);
   return parts.join('\n');
 }

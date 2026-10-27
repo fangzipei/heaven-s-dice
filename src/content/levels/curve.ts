@@ -7,7 +7,7 @@ import type { BossDef, LevelCurveDef, LevelRow } from '../../core/types.ts';
    自己那一档抬起来。改难度只要动 curve、改曲线只要动 LEVEL_CURVE，
    不用再手改 33 行数字（改一行忘三行才是真正的 bug 来源）。 */
 export const LEVEL_CURVE: LevelCurveDef = {
-  targetBase: 200,      // 第 1 关目标分
+  targetBase: 500,      // 第 1 关目标分
   targetGrowth: 1.05,   // 每关目标 ×1.05
   rewardBase: 55,       // 第 1 关基础赏金
   rewardGrowth: 1.055,  // 每关赏金 ×1.055

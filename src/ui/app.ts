@@ -3,7 +3,7 @@
 // src/legacy/app.js 的最后一块。到这里，每个屏与牌桌控制都有自己的模块，
 // 这个文件只做三件事：把 DOM 事件翻译成动作、把一关的场景摆好、把调试桥交给 tools/。
 import {
-  LEVEL_COUNT, OVERSHOOT_TIERS, REROLL_REFUND,
+  LEVEL_COUNT, REROLL_BONUS_RATE, OVERSHOOT_BONUS_RATE,
   chapterForLevel, getLevelConfig, getOpponent, getTable,
 } from '../content/index.ts';
 import * as Engine from '../core/engine.ts';
@@ -243,6 +243,7 @@ async function handleAction(action: string, target: HTMLElement, _event?: MouseE
       app.introOpen = false;
       closeOverlay();
       renderGame();
+      showCoinGainNotice();
       break;
     case 'go-shop':
       goToShop();
@@ -444,7 +445,7 @@ export function showLevelIntro(): void {
           <div class="intro-stat ${isBoss ? 'boss' : ''}"><span>重投次数</span><b>${run.rerolls}</b></div>
           <div class="intro-stat"><span>章节</span><b>${roman}</b></div>
         </div>
-        <p class="intro-role" style="margin-top:-12px;margin-bottom:18px;font-size:10px;color:#a08c6c">收手奖金：每剩 1 次重投 +${REROLL_REFUND} 银币；得分达到目标 1.5 / 2 / 3 倍再 +${OVERSHOOT_TIERS.slice().reverse().map((t) => t.value).join(' / ')}。</p>
+        <p class="intro-role" style="margin-top:-12px;margin-bottom:18px;font-size:10px;color:#a08c6c">收手奖金：每次未用重投 +${Math.round(REROLL_BONUS_RATE * 100)}% 基础赏金；得分超过目标 2 倍再 +${Math.round(OVERSHOOT_BONUS_RATE * 100)}%。</p>
         <div class="intro-actions">
           <button class="primary-button" data-action="close-intro">入座应战 <svg><use href="#i-arrow"></use></svg></button>
           <button class="text-button" data-action="open-rules">查看计分规则 <span>↗</span></button>
@@ -463,6 +464,24 @@ function goToShop(): void {
   const shop = Engine.openShop(app.run);
   if (!shop) { showToast('市集没有开门。', 'error'); return; }
   openShopScreen();
+}
+
+function showCoinGainNotice(): void {
+  const run = app.run;
+  const gain = run?.pendingCoinGain;
+  const el = $('#coin-gain');
+  if (!run || !gain || !el) return;
+  run.pendingCoinGain = null;
+  const lines = [
+    `<div class="coin-gain-line"><span>基础赏金</span><b>+${num(gain.base)}</b></div>`,
+    ...gain.bonuses.map((b) => `<div class="coin-gain-line"><span>${h(b.label)}</span><b>+${num(b.value)}</b></div>`),
+  ].join('');
+  el.innerHTML = `<div class="coin-gain-head"><span>本关收入</span><strong>+${num(gain.total)}</strong></div>${lines}`;
+  el.hidden = false;
+  $('#coin-pill')!.title = `本关收入 +${gain.total} 银币\n基础赏金 ${gain.base}`
+    + gain.bonuses.map((b) => `\n${b.label} +${b.value}`).join('');
+  clearTimeout(app.coinGainTimer ?? undefined);
+  app.coinGainTimer = setTimeout(() => { el.hidden = true; }, 9000);
 }
 
 function leaveShop(): void {

@@ -374,9 +374,15 @@ svg { width: 1em; height: 1em; display: block; }
 .level-pip.is-boss.is-current::after { color: var(--gold-bright); text-shadow: 0 0 8px var(--gold); }
 .level-pip-group { display: flex; gap: 3px; flex: 3; }
 .topbar-actions { display: flex; align-items: center; gap: 8px; flex: 0 0 auto; }
-.coin-pill { display: flex; align-items: center; gap: 7px; height: 38px; padding: 0 13px; border: 1px solid var(--line); background: rgba(36, 27, 17, .42); border-radius: 3px; color: var(--gold-bright); }
+.coin-pill { position: relative; display: flex; align-items: center; gap: 7px; height: 38px; padding: 0 13px; border: 1px solid var(--line); background: rgba(36, 27, 17, .42); border-radius: 3px; color: var(--gold-bright); }
 .coin-pill svg { width: 16px; height: 16px; color: var(--gold); }
-.coin-pill strong { font-family: var(--serif); font-size: 16px; font-weight: 400; letter-spacing: .05em; min-width: 18px; }
+.coin-pill > strong { font-family: var(--serif); font-size: 16px; font-weight: 400; letter-spacing: .05em; min-width: 18px; }
+.coin-gain { position: absolute; z-index: 60; top: calc(100% + 9px); right: 0; width: min(286px, calc(100vw - 24px)); padding: 10px 12px; border: 1px solid rgba(217,180,106,.36); background: rgba(12,9,6,.98); box-shadow: 0 18px 44px rgba(0,0,0,.65), 0 0 26px rgba(217,180,106,.1); animation: coin-gain-in .28s var(--ease) both; }
+@keyframes coin-gain-in { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
+.coin-gain-head { display: flex; justify-content: space-between; align-items: baseline; padding-bottom: 6px; margin-bottom: 5px; border-bottom: 1px solid rgba(217,180,106,.14); color: #c9ad78; font-size: 8px; letter-spacing: .16em; }
+.coin-gain-head strong { color: #ffe0a0; font-family: var(--serif); font-size: 20px; font-weight: 400; letter-spacing: .02em; }
+.coin-gain-line { display: flex; justify-content: space-between; gap: 12px; color: #98886f; font-size: 9px; line-height: 1.8; }
+.coin-gain-line b { color: #d9c39a; font-weight: 400; white-space: nowrap; }
 
 .game-layout { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) 332px; }
 .scene {

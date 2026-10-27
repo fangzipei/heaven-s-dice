@@ -22,7 +22,7 @@ const SNAPSHOT = JSON.parse(
 const FROZEN_KEYS = [
   'RARITIES', 'DICE_SETS', 'DICE', 'STANDARD_DIE', 'BARRELS', 'ITEMS', 'TABLES',
   'MINIONS', 'BOSSES', 'MINION_GAPS', 'SHOP_RARITY_WEIGHTS', 'LEVEL_CURVE',
-  'LEVELS', 'LEVEL_COUNT', 'REROLL_REFUND', 'OVERSHOOT_TIERS',
+  'LEVELS', 'LEVEL_COUNT', 'REROLL_BONUS_RATE', 'OVERSHOOT_RATIO', 'OVERSHOOT_BONUS_RATE',
 ];
 
 describe('content registry equals the frozen pre-refactor tables', () => {

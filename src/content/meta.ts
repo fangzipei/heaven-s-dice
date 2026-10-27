@@ -1,7 +1,7 @@
 // content/meta.ts — 不属于某个条目、却决定全局平衡的元数据。
 // 稀有度、套组、商店出货权重与过关奖金细则都在这里；条目文件只写自己。
 import type {
-  RarityTable, DiceSetDef, RarityId, ShopWeightBand, OvershootTierDef,
+  RarityTable, DiceSetDef, RarityId, ShopWeightBand,
 } from '../core/types.ts';
 
 export const RARITIES: RarityTable = {
@@ -72,19 +72,14 @@ export function rarityShopWeight(rarity: string, level = 1): number {
 }
 
 /* ── 过关奖金细则 ───────────────────────────────────────────────────────────
-   收手是一门技术：没用掉的重投次数可以折成银币带走，把目标分甩开一大截
-   也有阶梯赏金。两者都由 engine 结算、app 实时预览，共用下面这套数据。 */
-export const REROLL_REFUND = 8;
+   基础赏金之外只有两笔浮动奖励：
+   - 每次未使用的重投，奖励基础赏金的 20%；
+   - 得分严格超过目标的 2 倍，额外奖励基础赏金的 50%。
+   基础赏金本身不因得分高低膨胀。 */
+export const REROLL_BONUS_RATE = 0.2;
+export const OVERSHOOT_RATIO = 2;
+export const OVERSHOOT_BONUS_RATE = 0.5;
 
-export const OVERSHOOT_TIERS: OvershootTierDef[] = [
-  { ratio: 3, value: 140, key: 'miracle', label: '天胡 · 3 倍目标' },
-  { ratio: 2, value: 60, key: 'sweep', label: '通杀 · 2 倍目标' },
-  { ratio: 1.5, value: 25, key: 'clean', label: '赢得漂亮 · 1.5 倍目标' },
-];
-
-/** Highest overshoot tier reached by a score, or null when it just scraped by. */
-export function overshootTier(score: number, target: number): OvershootTierDef | null {
-  if (!target || target <= 0) return null;
-  const ratio = score / target;
-  return OVERSHOOT_TIERS.find((tier) => ratio >= tier.ratio) || null;
+export function exceedsOvershoot(score: number, target: number): boolean {
+  return Boolean(target && target > 0 && score > target * OVERSHOOT_RATIO);
 }

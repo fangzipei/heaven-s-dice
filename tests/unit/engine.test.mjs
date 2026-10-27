@@ -11,7 +11,7 @@ import {
 } from '../../src/core/engine.ts';
 import { makeRng, cashOutValue } from '../../src/core/engine.ts';
 import {
-  REROLL_REFUND, overshootTier, OVERSHOOT_TIERS, LEVELS, getLevelConfig, ITEM_BY_ID,
+  REROLL_BONUS_RATE, OVERSHOOT_BONUS_RATE, LEVELS, getLevelConfig, ITEM_BY_ID,
 } from '../../src/content/index.ts';
 
 function fresh(seed = 42) {
@@ -26,6 +26,14 @@ function forceRoll(state, values) {
   state.selected = [];
   state.phase = 'selecting';
 }
+
+test('a new run starts with zero coins and a 500-point first target', () => {
+  const state = fresh();
+  expect(state.coins).toBe(0);
+  expect(state.level).toBe(1);
+  expect(state.target).toBe(500);
+  expect(getLevelConfig(2).target).toBe(530);
+});
 
 test('opening throw is free, later throws spend the three fixed rerolls', () => {
   const state = fresh();
@@ -313,11 +321,12 @@ test('defeating a boss never raises the reroll budget', () => {
   expect(advance.ok).toBe(true);
   expect(state.phase).toBe('won');
   expect(state.roundScore).toBe(0);
-  // Base reward from the level table + every unspent reroll × 8 + the 3×
-  // overshoot bounty, which 100 points against a 10 target hits.
-  expect(state.levelReward.total).toBe(getLevelConfig(3).reward + state.rerolls * REROLL_REFUND + 140);
-  expect(state.levelReward.bonuses.some((b) => b.label.includes('剩余重投'))).toBeTruthy();
-  expect(state.levelReward.bonuses.some((b) => b.label.includes('天胡'))).toBeTruthy();
+  const cfg3 = getLevelConfig(3);
+  const perReroll = Math.round(cfg3.reward * REROLL_BONUS_RATE);
+  const overshoot = Math.round(cfg3.reward * OVERSHOOT_BONUS_RATE);
+  expect(state.levelReward.total).toBe(cfg3.reward + state.rerolls * perReroll + overshoot);
+  expect(state.levelReward.bonuses.some((b) => b.label.includes('未用重投'))).toBeTruthy();
+  expect(state.levelReward.bonuses.some((b) => b.label.includes('超过目标'))).toBeTruthy();
   openShop(state);
   leaveShop(state);
   expect(state.level).toBe(4);
@@ -693,29 +702,49 @@ test('unspent rerolls cash out as coins on a level win', () => {
   state.score = 100;
   // Spend two of the five tokens, leave three on the table.
   state.rerolls = 3;
+  const cfg = getLevelConfig(1);
+  const perReroll = Math.round(cfg.reward * REROLL_BONUS_RATE);
   const cash = cashOutValue(state);
   expect(cash.spare).toBe(3);
-  expect(cash.refund).toBe(3 * REROLL_REFUND);
-  expect(cash.tier).toBe(null);
+  expect(cash.refund).toBe(3 * perReroll);
+  expect(cash.overshoot).toBe(false);
   advanceLevel(state);
-  expect(state.levelReward.total).toBe(getLevelConfig(1).reward + 3 * REROLL_REFUND);
-  expect(state.levelReward.bonuses.some((b) => b.label === `剩余重投 3 × ${REROLL_REFUND}`)).toBeTruthy();
+  expect(state.levelReward.total).toBe(cfg.reward + 3 * perReroll);
+  expect(state.levelReward.bonuses.some((b) => b.label.includes('未用重投 3'))).toBeTruthy();
+  const reward = state.levelReward;
+  expect(state.pendingCoinGain).toBe(reward);
+  openShop(state);
+  leaveShop(state);
+  expect(state.pendingCoinGain).toBe(reward);
 });
 
-test('overshoot bounty pays the highest tier reached, not the sum of tiers', () => {
+test('overshoot only pays when score is strictly above 2× target', () => {
   const state = fresh();
   state.level = 2;
   initLevel(state);
+  const cfg = getLevelConfig(2);
+  const overshoot = Math.round(cfg.reward * OVERSHOOT_BONUS_RATE);
   state.target = 500;
-  state.score = 1000; // exactly 2x, below the 3x tier
+  state.score = 1000; // exactly 2x does not count
   state.rerolls = 0;
-  const cash = cashOutValue(state);
+  let cash = cashOutValue(state);
   expect(cash.refund).toBe(0);
-  expect(cash.tier.key).toBe('sweep');
-  expect(cash.tierValue).toBe(60);
+  expect(cash.overshoot).toBe(false);
   advanceLevel(state);
-  expect(state.levelReward.total).toBe(getLevelConfig(2).reward + 60);
-  expect(state.levelReward.bonuses.filter((b) => b.label.includes('目标')).length).toBe(1);
+  expect(state.levelReward.total).toBe(cfg.reward);
+
+  const state2 = fresh(3);
+  state2.level = 2;
+  initLevel(state2);
+  state2.target = 500;
+  state2.score = 1001;
+  state2.rerolls = 0;
+  cash = cashOutValue(state2);
+  expect(cash.overshoot).toBe(true);
+  expect(cash.overshootValue).toBe(overshoot);
+  advanceLevel(state2);
+  expect(state2.levelReward.total).toBe(cfg.reward + overshoot);
+  expect(state2.levelReward.bonuses.filter((b) => b.label.includes('超过目标')).length).toBe(1);
 });
 
 test('a bare pass earns no overshoot bounty and no refund when rerolls are spent', () => {
@@ -1019,14 +1048,17 @@ test('floating points still pay the overshoot bounty once they settle', () => {
   state.level = 28;
   initLevel(state);
   state.target = 100;
-  state.score = 400; // 4 倍目标 → 天胡
+  state.score = 400; // 4× target: still the single 2× overshoot bonus
   state.rerolls = 2;
-  expect(cashOutValue(state).tier.key).toBe('miracle');
-  expect(cashOutValue(state).total).toBe(2 * REROLL_REFUND + 140);
+  const cfg = getLevelConfig(28);
+  const perReroll = Math.round(cfg.reward * REROLL_BONUS_RATE);
+  const overshoot = Math.round(cfg.reward * OVERSHOOT_BONUS_RATE);
+  expect(cashOutValue(state).overshoot).toBe(true);
+  expect(cashOutValue(state).total).toBe(2 * perReroll + overshoot);
 
   // 赏金和分数在同一个时刻兑现：落秤（过关）时一起到账。
   advanceLevel(state);
-  expect(state.levelReward.total).toBe(getLevelConfig(28).reward + 2 * REROLL_REFUND + 140);
+  expect(state.levelReward.total).toBe(cfg.reward + 2 * perReroll + overshoot);
 });
 
 test('silencing the suspensor is enough to stop the floating', () => {

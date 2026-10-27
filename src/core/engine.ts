@@ -1,8 +1,8 @@
 // TS port of legacy engine.js (Phase 1). Mutating-style pure core: zero DOM.
 import {
   BARRELS, BARREL_BY_ID, DICE, DICE_BY_ID, ITEMS, ITEM_BY_ID,
-  LEVEL_COUNT, STANDARD_DIE, REROLL_REFUND,
-  rarityShopWeight, overshootTier, activeSetBonuses, chapterForLevel,
+  LEVEL_COUNT, STANDARD_DIE, REROLL_BONUS_RATE, OVERSHOOT_RATIO, OVERSHOOT_BONUS_RATE,
+  rarityShopWeight, exceedsOvershoot, activeSetBonuses, chapterForLevel,
   getLevelConfig, getOpponent, getTable,
 } from '../content/index.ts';
 import {
@@ -11,8 +11,7 @@ import {
 } from './scoring.ts';
 import type {
   RunState, BoardDie, BagEntry, DiceDef, PricedDie, BarrelDef, ItemDef, BossDef,
-  MinionDef, Opponent, HandType, LevelRewardInfo, ShopOffer, ShopState,
-  ById, OvershootTierDef,
+  MinionDef, Opponent, HandType, LevelRewardInfo, ShopOffer, ShopState, ById,
 } from './types.ts';
 
 export interface RunScoreBreakdown {
@@ -27,7 +26,7 @@ export interface RunScoreBreakdown {
 }
 
 export const BASE_REROLLS = 3;
-export const STARTING_COINS = 40;
+export const STARTING_COINS = 0;
 export const ACTIVE_ITEM_SLOTS = 4;
 export const DEBUG = false;
 
@@ -337,6 +336,7 @@ export function createRun({ rng = Math.random }: { rng?: () => number } = {}): R
     rng,
     levelReward: null,
     pendingReward: null,
+    pendingCoinGain: null,
     lastScore: null,
   };
   state.stats.wins = 0;
@@ -657,22 +657,30 @@ function penalizeScore(state: RunState, amount: number) {
 
 export interface CashOutResult {
   spare: number;
+  base: number;
+  perReroll: number;
   refund: number;
-  tier: OvershootTierDef | null;
-  tierValue: number;
+  overshoot: boolean;
+  overshootValue: number;
   total: number;
 }
 
 /**
  * What banking right now would pay, on top of the level's base reward:
- * unspent reroll tokens converted to coins, plus a tiered overshoot bounty.
+ * each unused reroll is worth 20% of the base reward; strictly exceeding
+ * 2× the target adds another 50% of the base reward.
  */
 export function cashOutValue(state: RunState): CashOutResult {
   const spare = Math.max(0, state.rerolls || 0);
-  const refund = spare * REROLL_REFUND;
-  // 漂浮分照样能追超额赏金——它在落秤的那一刻才兑现，和分数同一个时刻。
-  const tier = overshootTier(state.score || 0, state.target || 0);
-  return { spare, refund, tier: tier || null, tierValue: tier?.value || 0, total: refund + (tier?.value || 0) };
+  const base = getLevelConfig(state.level).reward;
+  const perReroll = Math.round(base * REROLL_BONUS_RATE);
+  const refund = spare * perReroll;
+  const overshoot = exceedsOvershoot(state.score || 0, state.target || 0);
+  const overshootValue = overshoot ? Math.round(base * OVERSHOOT_BONUS_RATE) : 0;
+  return {
+    spare, base, perReroll, refund,
+    overshoot, overshootValue, total: refund + overshootValue,
+  };
 }
 
 function awardLevel(state: RunState): LevelRewardInfo {
@@ -689,15 +697,21 @@ function awardLevel(state: RunState): LevelRewardInfo {
     total += 15;
     bonuses.push({ label: '镀金袖扣', value: 15 });
   }
-  // Leaving with tokens in hand pays: every unspent reroll is cashed out.
+  // Leaving with tokens in hand pays: each unused reroll is 20% of base.
   const cash = cashOutValue(state);
   if (cash.spare > 0) {
     total += cash.refund;
-    bonuses.push({ label: `剩余重投 ${cash.spare} × ${REROLL_REFUND}`, value: cash.refund });
+    bonuses.push({
+      label: `未用重投 ${cash.spare} × ${Math.round(REROLL_BONUS_RATE * 100)}%`,
+      value: cash.refund,
+    });
   }
-  if (cash.tier) {
-    total += cash.tierValue;
-    bonuses.push({ label: cash.tier.label, value: cash.tierValue });
+  if (cash.overshoot) {
+    total += cash.overshootValue;
+    bonuses.push({
+      label: `超过目标 ${OVERSHOOT_RATIO} 倍 · +${Math.round(OVERSHOOT_BONUS_RATE * 100)}%`,
+      value: cash.overshootValue,
+    });
   }
   state.coins += total;
   state.levelReward = {
@@ -705,6 +719,7 @@ function awardLevel(state: RunState): LevelRewardInfo {
     bossName: boss?.name || null, bossScale: boss?.curve?.reward ?? 1, bonuses, total,
   };
   state.pendingReward = state.levelReward;
+  state.pendingCoinGain = state.levelReward;
   state.stats.wins += 1;
   pushLog(state, `第 ${state.level} 关获胜，获得 ${total} 银币。`, 'reward');
   if (bossPremium > 0 && boss) {
@@ -713,9 +728,9 @@ function awardLevel(state: RunState): LevelRewardInfo {
   if (cash.spare > 0) {
     pushLog(state, `收手带走 ${cash.spare} 次未用重投，折 ${cash.refund} 银币。`, 'reward');
   }
-  if (cash.tier) {
+  if (cash.overshoot) {
     const times = ((state.score || 0) / (state.target || 1)).toFixed(1);
-    pushLog(state, `本关得分达到目标的 ${times} 倍：${cash.tier.label.split(' · ')[0]} +${cash.tierValue} 银币。`, 'reward');
+    pushLog(state, `本关得分达到目标的 ${times} 倍：超额奖励 +${cash.overshootValue} 银币。`, 'reward');
   }
   return state.levelReward;
 }
@@ -749,19 +764,19 @@ function checkWin(state: RunState): boolean {
       } else {
         pushLog(
           state,
-          `达到 ${state.target} 分。继续加注可以追更高的赏金（1.5 倍 +25 / 2 倍 +60 / 3 倍 +140）；`
-          + `现在收手则带走 ${cash.total} 银币（含剩余重投 ${cash.spare} 次折 ${cash.refund}）。`,
+          `达到 ${state.target} 分。超过目标的 2 倍才有额外 50% 赏金；`
+          + `现在收手则带走 ${cash.total} 银币（含未用重投 ${cash.spare} 次折 ${cash.refund}）。`,
           'win',
         );
       }
     }
-    // Announce each new overshoot tier as the player pushes past the target.
-    const tier = overshootTier(state.score, state.target);
-    if (tier && tier.key !== state.overshootTierKey) {
-      state.overshootTierKey = tier.key;
+    // Announce the single overshoot threshold once per level.
+    const cash = cashOutValue(state);
+    if (cash.overshoot && state.overshootTierKey !== 'double') {
+      state.overshootTierKey = 'double';
       pushLog(state, isFloatingScore(state)
-        ? `${tier.label}：落秤时可额外带走 ${tier.value} 银币——前提是秤没翻。`
-        : `${tier.label}：收手时可额外带走 ${tier.value} 银币。`, 'good');
+        ? `超过目标 2 倍：落秤时可额外带走 ${cash.overshootValue} 银币——前提是秤没翻。`
+        : `超过目标 2 倍：收手时可额外带走 ${cash.overshootValue} 银币。`, 'good');
     }
     return true;
   }

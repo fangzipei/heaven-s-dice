@@ -6,7 +6,7 @@ import { beforeAll, describe, expect, test } from 'vitest';
 
 import { app } from '../../src/ui/state.ts';
 import { openRules, openTutorial, scrollTutorial, showStartPrompt } from '../../src/ui/screens/tutorial.ts';
-import { BOSSES, DICE, ITEMS, LEVEL_COUNT, REROLL_REFUND, TABLES } from '../../src/content/index.ts';
+import { BOSSES, DICE, ITEMS, LEVEL_COUNT, REROLL_BONUS_RATE, TABLES } from '../../src/content/index.ts';
 import { SCORING_ROWS } from '../../src/core/scoring.ts';
 import { installDomStub } from '../helpers/stub-dom.mjs';
 import { assemblySource, legacyAppSource } from '../helpers/legacy-app.mjs';
@@ -57,7 +57,7 @@ describe('图解教程搬到 ui/screens/tutorial.ts 之后仍然写同样的正�
     expect(html).toContain(`骰子 · ${DICE.length} 枚 · 两套 + 无套`);
     expect(html).toContain(`物品 · ${ITEMS.length} 件`);
     expect(html).toContain(`赌桌 · ${TABLES.length} 张`);
-    expect(html).toContain(`折 ${REROLL_REFUND} 银币`);
+    expect(html).toContain(`基础赏金的 ${Math.round(REROLL_BONUS_RATE * 100)}%`);
     expect(html).toContain(`${BOSSES.length} 位庄家的桌规`);
     expect(html).toContain('六点回炉');
   });

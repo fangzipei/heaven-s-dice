@@ -17,7 +17,7 @@ import { MINION_DEFS } from './minions/index.ts';
 
 export {
   RARITIES, rarityOf, DICE_SETS, SHOP_RARITY_WEIGHTS, rarityShopWeight,
-  REROLL_REFUND, OVERSHOOT_TIERS, overshootTier,
+  REROLL_BONUS_RATE, OVERSHOOT_RATIO, OVERSHOOT_BONUS_RATE, exceedsOvershoot,
 } from './meta.ts';
 export { STANDARD_DIE } from './standard_die.ts';
 export { BOSSES } from './bosses/index.ts';

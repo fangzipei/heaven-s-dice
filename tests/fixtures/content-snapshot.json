@@ -1205,7 +1205,7 @@
     }
   ],
   "LEVEL_CURVE": {
-    "targetBase": 200,
+    "targetBase": 500,
     "targetGrowth": 1.05,
     "rewardBase": 55,
     "rewardGrowth": 1.055,
@@ -1215,330 +1215,312 @@
   "LEVELS": [
     {
       "level": 1,
-      "target": 200,
+      "target": 500,
       "reward": 55,
       "curve": {
-        "target": 200,
+        "target": 500,
         "reward": 55
       }
     },
     {
       "level": 2,
-      "target": 210,
+      "target": 530,
       "reward": 60,
       "curve": {
-        "target": 210,
+        "target": 530,
         "reward": 60
       }
     },
     {
       "level": 3,
-      "target": 220,
+      "target": 550,
       "reward": 100,
       "curve": {
-        "target": 220,
+        "target": 550,
         "reward": 60
       },
       "boss": true
     },
     {
       "level": 4,
-      "target": 230,
+      "target": 580,
       "reward": 65,
       "curve": {
-        "target": 230,
+        "target": 580,
         "reward": 65
       }
     },
     {
       "level": 5,
-      "target": 240,
+      "target": 610,
       "reward": 70,
       "curve": {
-        "target": 240,
+        "target": 610,
         "reward": 70
       }
     },
     {
       "level": 6,
-      "target": 260,
+      "target": 640,
       "reward": 110,
       "curve": {
-        "target": 260,
+        "target": 640,
         "reward": 70
       },
       "boss": true
     },
     {
       "level": 7,
-      "target": 270,
+      "target": 670,
       "reward": 75,
       "curve": {
-        "target": 270,
+        "target": 670,
         "reward": 75
       }
     },
     {
       "level": 8,
-      "target": 280,
+      "target": 700,
       "reward": 80,
       "curve": {
-        "target": 280,
+        "target": 700,
         "reward": 80
       }
     },
     {
       "level": 9,
-      "target": 300,
+      "target": 740,
       "reward": 85,
       "curve": {
-        "target": 300,
+        "target": 740,
         "reward": 85
       }
     },
     {
       "level": 10,
-      "target": 310,
+      "target": 780,
       "reward": 130,
       "curve": {
-        "target": 310,
+        "target": 780,
         "reward": 90
       },
       "boss": true
     },
     {
       "level": 11,
-      "target": 330,
+      "target": 810,
       "reward": 95,
       "curve": {
-        "target": 330,
+        "target": 810,
         "reward": 95
       }
     },
     {
       "level": 12,
-      "target": 340,
+      "target": 860,
       "reward": 100,
       "curve": {
-        "target": 340,
+        "target": 860,
         "reward": 100
       }
     },
     {
       "level": 13,
-      "target": 360,
+      "target": 900,
       "reward": 105,
       "curve": {
-        "target": 360,
+        "target": 900,
         "reward": 105
       }
     },
     {
       "level": 14,
-      "target": 380,
+      "target": 940,
       "reward": 155,
       "curve": {
-        "target": 380,
+        "target": 940,
         "reward": 110
       },
       "boss": true
     },
     {
       "level": 15,
-      "target": 400,
+      "target": 990,
       "reward": 115,
       "curve": {
-        "target": 400,
+        "target": 990,
         "reward": 115
       }
     },
     {
       "level": 16,
-      "target": 420,
+      "target": 1040,
       "reward": 125,
       "curve": {
-        "target": 420,
+        "target": 1040,
         "reward": 125
       }
     },
     {
       "level": 17,
-      "target": 440,
+      "target": 1090,
       "reward": 130,
       "curve": {
-        "target": 440,
+        "target": 1090,
         "reward": 130
       }
     },
     {
       "level": 18,
-      "target": 460,
+      "target": 1150,
       "reward": 185,
       "curve": {
-        "target": 460,
+        "target": 1150,
         "reward": 135
       },
       "boss": true
     },
     {
       "level": 19,
-      "target": 480,
+      "target": 1200,
       "reward": 145,
       "curve": {
-        "target": 480,
+        "target": 1200,
         "reward": 145
       }
     },
     {
       "level": 20,
-      "target": 510,
+      "target": 1260,
       "reward": 150,
       "curve": {
-        "target": 510,
+        "target": 1260,
         "reward": 150
       }
     },
     {
       "level": 21,
-      "target": 530,
+      "target": 1330,
       "reward": 160,
       "curve": {
-        "target": 530,
+        "target": 1330,
         "reward": 160
       }
     },
     {
       "level": 22,
-      "target": 560,
+      "target": 1390,
       "reward": 170,
       "curve": {
-        "target": 560,
+        "target": 1390,
         "reward": 170
       }
     },
     {
       "level": 23,
-      "target": 590,
+      "target": 1460,
       "reward": 230,
       "curve": {
-        "target": 590,
+        "target": 1460,
         "reward": 180
       },
       "boss": true
     },
     {
       "level": 24,
-      "target": 610,
+      "target": 1540,
       "reward": 190,
       "curve": {
-        "target": 610,
+        "target": 1540,
         "reward": 190
       }
     },
     {
       "level": 25,
-      "target": 650,
+      "target": 1610,
       "reward": 200,
       "curve": {
-        "target": 650,
+        "target": 1610,
         "reward": 200
       }
     },
     {
       "level": 26,
-      "target": 680,
+      "target": 1690,
       "reward": 210,
       "curve": {
-        "target": 680,
+        "target": 1690,
         "reward": 210
       }
     },
     {
       "level": 27,
-      "target": 710,
+      "target": 1780,
       "reward": 220,
       "curve": {
-        "target": 710,
+        "target": 1780,
         "reward": 220
       }
     },
     {
       "level": 28,
-      "target": 750,
+      "target": 1870,
       "reward": 350,
       "curve": {
-        "target": 750,
+        "target": 1870,
         "reward": 235
       },
       "boss": true
     },
     {
       "level": 29,
-      "target": 780,
+      "target": 1960,
       "reward": 245,
       "curve": {
-        "target": 780,
+        "target": 1960,
         "reward": 245
       }
     },
     {
       "level": 30,
-      "target": 820,
+      "target": 2060,
       "reward": 260,
       "curve": {
-        "target": 820,
+        "target": 2060,
         "reward": 260
       }
     },
     {
       "level": 31,
-      "target": 860,
+      "target": 2160,
       "reward": 275,
       "curve": {
-        "target": 860,
+        "target": 2160,
         "reward": 275
       }
     },
     {
       "level": 32,
-      "target": 910,
+      "target": 2270,
       "reward": 290,
       "curve": {
-        "target": 910,
+        "target": 2270,
         "reward": 290
       }
     },
     {
       "level": 33,
-      "target": 950,
+      "target": 2380,
       "reward": 440,
       "curve": {
-        "target": 950,
+        "target": 2380,
         "reward": 305
       },
       "boss": true
     }
   ],
   "LEVEL_COUNT": 33,
-  "REROLL_REFUND": 8,
-  "OVERSHOOT_TIERS": [
-    {
-      "ratio": 3,
-      "value": 140,
-      "key": "miracle",
-      "label": "天胡 · 3 倍目标"
-    },
-    {
-      "ratio": 2,
-      "value": 60,
-      "key": "sweep",
-      "label": "通杀 · 2 倍目标"
-    },
-    {
-      "ratio": 1.5,
-      "value": 25,
-      "key": "clean",
-      "label": "赢得漂亮 · 1.5 倍目标"
-    }
-  ]
+  "REROLL_BONUS_RATE": 0.2,
+  "OVERSHOOT_RATIO": 2,
+  "OVERSHOOT_BONUS_RATE": 0.5
 }

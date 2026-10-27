@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#0b0805">
   <meta name="description" content="天国骰局 — 一款以《天国：拯救 2》骰子规则为核心的肉鸽网页游戏。摇骰、留骰、画阵，挑战八位庄家。">
   <title>天国骰局 · Heaven's Dice</title>
-  <link rel="stylesheet" href="css/main.css?v=20261027-port01">
+  <link rel="stylesheet" href="css/main.css?v=20261027-econ01">
   <link rel="icon" href="assets/items/coin.svg" type="image/svg+xml">
   <!-- Animation + 3D stack, served locally from /vendor so the game runs offline. -->
   <script src="vendor/gsap.min.js?v=3.15.0"></script>
@@ -105,8 +105,9 @@
         </div>
         <div class="topbar-actions">
           <button class="icon-button rail-toggle" data-action="toggle-rail" aria-label="展开侧栏" title="展开侧栏"><svg><use href="#i-menu"></use></svg></button>
-          <div class="coin-pill" title="银币">
-            <svg><use href="#i-coin"></use></svg><strong id="coin-value">40</strong>
+          <div class="coin-pill" id="coin-pill" title="银币">
+            <svg><use href="#i-coin"></use></svg><strong id="coin-value">0</strong>
+            <div class="coin-gain" id="coin-gain" hidden></div>
           </div>
           <button class="icon-button" data-action="open-compendium" aria-label="赌徒图鉴" title="赌徒图鉴"><svg><use href="#i-book"></use></svg></button>
           <button class="icon-button help-button" data-action="open-rules" aria-label="规则" title="规则"><svg><use href="#i-help"></use></svg></button>
@@ -283,6 +284,6 @@
     </article>
   </template>
 
-  <script type="module" src="src/ui/app.ts?v=20261027-port01"></script>
+  <script type="module" src="src/ui/app.ts?v=20261027-econ01"></script>
 </body>
 </html>

@@ -3,8 +3,8 @@
 // 从 app.js「Rules」「Tutorial / first-run briefing」两节原样搬出。教程正文、
 // 计分示例与规则表是截图脚本与新手体验的验收对象，这里只改 import、类型标注。
 import {
-  BOSSES, DICE, ITEMS, LEVEL_COUNT, LEVEL_CURVE, MINION_GAPS, OVERSHOOT_TIERS,
-  RARITIES, REROLL_REFUND, TABLES,
+  BOSSES, DICE, ITEMS, LEVEL_COUNT, LEVEL_CURVE, MINION_GAPS,
+  RARITIES, REROLL_BONUS_RATE, OVERSHOOT_BONUS_RATE, TABLES,
 } from '../../content/index.ts';
 import { SCORING_ROWS } from '../../core/scoring.ts';
 import { h, num } from '../../core/util.ts';
@@ -153,14 +153,13 @@ function tutorialHtml(): string {
           <div class="tut-card"><b>计分并继续</b><p>本轮挂账继续累积，仍处于风险中。继续多少次都可以，直到你决定结束本轮。</p></div>
           <div class="tut-card"><b>计分并重投</b><p>结束本轮：本轮累计分全部落袋，再重新投六颗骰子，开始新的一轮。</p></div>
           <div class="tut-card"><b>掷空</b><p>投掷后没有任何可计分组合时，本轮累计分全部作废；已经落袋的分数保留。</p></div>
-          <div class="tut-card is-gold"><b>收手换钱</b><p>过关结算时，每剩 1 次未使用的重投可以折 <b style="display:inline;font-size:10px;color:#e5c278">${REROLL_REFUND} 银币</b>带走。带着 3 次重投收手 = +${REROLL_REFUND * 3} 银币；想刷分就得把它花掉，这是明码标价的取舍。</p></div>
+          <div class="tut-card is-gold"><b>收手换钱</b><p>过关结算时，每次未使用的重投奖励<b style="display:inline;font-size:10px;color:#e5c278">基础赏金的 ${Math.round(REROLL_BONUS_RATE * 100)}%</b>。得分超过目标 2 倍，再奖励基础赏金的 ${Math.round(OVERSHOOT_BONUS_RATE * 100)}%。</p></div>
         </div>
-        <h4 class="tut-subtitle">超额赏金 · 把目标甩得越远，拿得越多</h4>
+        <h4 class="tut-subtitle">超额赏金 · 只有甩过目标 2 倍才加钱</h4>
         <div class="tut-cards three">
-          ${OVERSHOOT_TIERS.slice().reverse().map((tier) => `
-          <div class="tut-card is-gold"><b>${h(tier.label.split(' · ')[1])} · ${h(tier.label.split(' · ')[0])}</b><p>本关得分达到目标的 <b style="display:inline;font-size:10px;color:#e5c278">${tier.ratio} 倍</b>，结算额外 <b style="display:inline;font-size:10px;color:#e5c278">+${tier.value} 银币</b>。只取达到的最高一档，不叠加。</p></div>`).join('')}
+          <div class="tut-card is-gold"><b>超过 2 倍目标</b><p>本关得分严格超过目标分的 2 倍，结算额外奖励<b style="display:inline;font-size:10px;color:#e5c278">基础赏金的 ${Math.round(OVERSHOOT_BONUS_RATE * 100)}%</b>。刚好 2 倍不算。</p></div>
         </div>
-        <div class="tut-callout is-key"><b>收手还是加注？</b><p>达标那一刻，左上角「胜利奖励」会实时变成你现在收手能拿到的数目（含剩余重投折价与已达成的超额档位），鼠标悬停可以看到明细。再赌一把可能跨到 2 倍、3 倍，也可能一次掷空把本轮挂账全丢掉——已得分数不会丢，但也不会再多给你一枚银币。</p></div>
+        <div class="tut-callout is-key"><b>收手还是加注？</b><p>达标那一刻，左上角「胜利奖励」会实时变成你现在收手能拿到的数目（含未用重投奖励与 2 倍超额奖励），悬停可看明细。再赌一把可能跨过 2 倍目标，也可能一次掷空把本轮挂账全丢掉——已得分数不会丢。</p></div>
         <div class="tut-callout">
           <b>全骰（Hot Dice）</b>
           <p>六颗骰子全部计分会免费重投全部骰子，但不会结束本轮；本轮累计分仍然处于风险中，直到点击「计分并重投」。</p>
@@ -196,7 +195,7 @@ function tutorialHtml(): string {
           <li><b>记住乘以几：</b>四个 ×2、五个 ×4、六个 ×8。</li>
           <li><b>不要乱选：</b>所选骰子必须全部被合法组合吃掉。</li>
           <li><b>达标不等于结束：</b>可以继续刷分，准备好再点「下一关」。</li>
-          <li><b>收手有价：</b>每剩 1 次重投折 ${REROLL_REFUND} 银币；得分达到目标 1.5 / 2 / 3 倍，再分别 +25 / +60 / +140 银币。左上角奖励数字会实时告诉你现在收手能拿多少。</li>
+          <li><b>收手有价：</b>每次未用重投奖励基础赏金的 ${Math.round(REROLL_BONUS_RATE * 100)}%；得分超过目标 2 倍再奖励基础赏金的 ${Math.round(OVERSHOOT_BONUS_RATE * 100)}%。左上角奖励数字会实时告诉你现在收手能拿多少。</li>
         </ul>
         <div class="tut-final-line">骰子落下之前，命运只是一句空话。<br><span>现在，去把它掷出来。</span></div>
       </section>
@@ -263,7 +262,7 @@ export function openRules(): void {
           <div class="rules-note">轮次：可以连续「计分并继续」累积本轮挂账；「计分并重投」结束本轮并把累计分全部落袋，再开始新一轮。若某次投掷没有任何可计分组合，本轮累计分全部清零，已落袋分保留。计分面板右下角的大号「本关重投」显示剩余 / 上限，低于 2 次变橙，耗尽变红。</div>
           <div class="rules-note">每关基础 3 次重投；击败庄家不会累积上限。烈酒、时间沙漏、加注契约和旋涡桶仪式可以临时增加重投次数。门房还会送你一枚开局就能用的幸运币（一次性）。</div>
           <h3 style="margin-top:18px">收手换钱与超额赏金</h3>
-          <p>过关结算时，每剩 1 次<b style="color:#e5c278">未使用的重投折 ${REROLL_REFUND} 银币</b>带走——带着 3 次重投收手就是 +${REROLL_REFUND * 3}。此外，本关得分达到目标分的 <b style="color:#e5c278">1.5 倍 +25、2 倍 +60、3 倍 +140</b> 银币，只取达到的最高一档。</p>
+          <p>过关结算时，每次<b style="color:#e5c278">未使用的重投奖励基础赏金的 ${Math.round(REROLL_BONUS_RATE * 100)}%</b>。此外，本关得分严格超过目标分的 <b style="color:#e5c278">2 倍</b>，再奖励基础赏金的 ${Math.round(OVERSHOOT_BONUS_RATE * 100)}%。</p>
           <div class="rules-note">达标后左上角「胜利奖励」会实时变成你现在收手能拿到的数目，悬停可看明细：继续加注可以追更高的倍数，也可能一次掷空把本轮挂账全部丢掉。</div>
         </div>
         <div class="rules-section">

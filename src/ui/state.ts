@@ -78,6 +78,7 @@ export interface UiState {
   /** 最近一次仪式描线的判定结果。 */
   lastTraceResult: CupTraceResult | null;
   cupPointerId: number | null;
+  coinGainTimer: ReturnType<typeof setTimeout> | null;
   resultShown: boolean;
 }
 
@@ -108,6 +109,7 @@ export const app: UiState = {
   cupCountdownEnd: 0,
   cupAutoTimer: null,
   cupTrace: null,
+  coinGainTimer: null,
   lastTraceResult: null,
   cupPointerId: null,
   resultShown: false,
