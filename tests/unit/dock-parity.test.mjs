@@ -115,15 +115,16 @@ describe('操作坞搬到 ui/dock.ts 之后仍然写同样的文案', () => {
     expect(html('#action-dock')).toContain('data-action="score-reroll"');
   });
 
-  test('重投耗尽：只剩计分并结算，分值占位是破折号', () => {
+  test('全部重投耗尽：仍可免费继续，也可计分并结算', () => {
     app.run.phase = 'selecting';
     const keep = app.run.rerolls;
     app.run.rerolls = 0;
     renderActionDock();
     expect(html('#action-dock')).toContain('先选择要计分的骰子');
+    expect(html('#action-dock')).toContain('data-action="score-continue"');
     expect(html('#action-dock')).toContain('data-action="score-bank"');
+    expect(html('#action-dock')).toContain('<b>计分并继续</b>');
     expect(html('#action-dock')).toContain('<b>计分并结算</b>');
-    expect(html('#action-dock')).toContain('+—<small>计分</small>');
     expect(html('#action-dock')).not.toContain('data-action="score-reroll"');
     app.run.rerolls = keep;
   });

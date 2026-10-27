@@ -154,7 +154,7 @@ function bindGlobalEvents(): void {
       }
     } else if (event.key === '1' && app.run?.phase === 'selecting') {
       event.preventDefault();
-      handleScore(app.run.rerolls > 0 ? 'continue' : 'bank');
+      handleScore('continue');
     } else if (event.key === '2' && app.run?.phase === 'selecting' && app.run.rerolls > 0) {
       event.preventDefault();
       handleScore('reroll');

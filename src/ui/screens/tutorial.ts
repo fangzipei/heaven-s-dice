@@ -76,7 +76,7 @@ function tutorialHtml(): string {
         <p class="tut-lede">你坐在长桌这一侧，用六颗骰子去够每关的目标分。达到目标后不会自动结束，可以继续加注；准备好了，再亲自点击「下一关」。</p>
         <div class="tut-cards three">
           <div class="tut-card"><b>${LEVEL_COUNT} 关 · ${BOSSES.length} 位庄家</b><p>第 ${BOSSES.map((boss) => boss.level).join('、')} 关各有一位庄家，两场庄家之间的空档越拖越长：${MINION_GAPS.join('、')} 关。庄家有自己的桌规，击败他会拿到永久重投上限。</p></div>
-          <div class="tut-card"><b>6 颗骰子 · 3 次重投</b><p>每关第一掷免费；之后每掷一次消耗 1 次重投。骰子、骰桶、物品会改变你能走多远。</p></div>
+          <div class="tut-card"><b>6 颗骰子 · 3 次重投</b><p>每关第一掷免费；「计分并继续」免费重投剩余骰子，只有「计分并重投」消耗 1 次重投。骰子、骰桶、物品会改变你能走多远。</p></div>
           <div class="tut-card"><b>目标分是算出来的</b><p>第 1 关 ${LEVEL_CURVE.targetBase} 分，之后每关 ×${LEVEL_CURVE.targetGrowth}；庄家的桌子再乘上自己的系数（赏金最高 ×${Math.max(...BOSSES.map((boss) => boss.curve.reward!)).toFixed(2)}），所以庄家关总是比隔壁贵一档。分数在左上角：大字是“已得”，本轮挂账单独显示。</p></div>
         </div>
         <div class="tut-flow">
@@ -87,7 +87,7 @@ function tutorialHtml(): string {
         </div>
         <div class="tut-callout">
           <b>“继续”和“重投”有什么区别？</b>
-          <p><strong>计分并继续</strong>：把选中的骰子放到一边，只重投剩下的骰子。<strong>计分并重投</strong>：把六颗骰子全部收回骰桶，重新摇六颗。两种都消耗 1 次重投。</p>
+          <p><strong>计分并继续</strong>：把选中的骰子放到一边，只重投剩下的骰子，<strong>不消耗重投</strong>。<strong>计分并重投</strong>：把六颗骰子全部收回骰桶，重新摇六颗，消耗 1 次重投。</p>
         </div>
       </section>
 
@@ -259,7 +259,7 @@ export function openRules(): void {
           <table class="scoring-table">${rows}</table>
           <div class="rules-note">一次计分必须把所选骰子全部纳入合法组合。1 和 5 可以单颗计分；其他点数至少三颗才能计分。所有组合取最高合法分值。</div>
           <h3 style="margin-top:18px">一掷的流程</h3>
-          <p>1. 按住骰桶摇动，2 秒倒计时后落骰；或点击自动摇骰。<br>2. 点击选择要计分的骰子。<br>3. 选择「计分并继续」，计分后把选中骰放一边、重投剩余骰子；或「计分并重投」，计分后把全部六颗骰子重新投。两者各消耗 1 次重投。<br>4. 六颗骰子全部计分会触发「全骰」，免费重投全部骰子。<br>5. 没有重投次数时，按钮变为「计分并结算」，得分后本关结束。</p>
+          <p>1. 按住骰桶摇动，2 秒倒计时后落骰；或点击下方「自动投掷」。<br>2. 点击选择要计分的骰子。<br>3. 选择「计分并继续」，计分后把选中骰放一边、免费重投剩余骰子；或「计分并重投」，计分后把全部六颗骰子重新投，消耗 1 次重投。<br>4. 六颗骰子全部计分会触发「全骰」，免费重投全部骰子。<br>5. 没有重投次数时，仍可免费「计分并继续」，也可以「计分并结算」。</p>
           <div class="rules-note">轮次：可以连续「计分并继续」累积本轮挂账；「计分并重投」结束本轮并把累计分全部落袋，再开始新一轮。若某次投掷没有任何可计分组合，本轮累计分全部清零，已落袋分保留。计分面板右下角的大号「本关重投」显示剩余 / 上限，低于 2 次变橙，耗尽变红。</div>
           <div class="rules-note">每关基础 3 次重投；击败庄家不会累积上限。烈酒、时间沙漏、加注契约和旋涡桶仪式可以临时增加重投次数。门房还会送你一枚开局就能用的幸运币（一次性）。</div>
           <h3 style="margin-top:18px">收手换钱与超额赏金</h3>

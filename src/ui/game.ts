@@ -507,7 +507,8 @@ export function beginRoll({ free = false }: { free?: boolean } = {}): void {
   const allowedNormal = ['ready', 'dead', 'hot', 'reroll-pending'].includes(run.phase);
   if (!allowedNormal && !free) return;
   if (run.phase === 'selecting' && !free) return;
-  if (run.rerolls <= 0 && run.phase !== 'hot' && run.phase !== 'ready' && !free) {
+  const freeContinuation = run.phase === 'reroll-pending' && !run.flags.rerollAll;
+  if (run.rerolls <= 0 && run.phase !== 'hot' && run.phase !== 'ready' && !free && !freeContinuation) {
     showToast('没有剩余重投次数。', 'error');
     return;
   }
@@ -592,7 +593,7 @@ export function handleScore(action: ScoreAction): void {
   if (!selected.length) { showToast('先选择要计分的骰子。'); return; }
   const preview = getScorePreview(run);
   if (!preview.valid) { showToast(preview.error!, 'error'); return; }
-  if (action !== 'bank' && run.rerolls <= 0) { showToast('没有剩余重投次数。', 'error'); return; }
+  if (action === 'reroll' && run.rerolls <= 0) { showToast('没有剩余重投次数。', 'error'); return; }
   const rect = selected[0] ? $(`[data-die-uid="${CSS.escape(selected[0].uid)}"]`)?.getBoundingClientRect() : null;
   const wasReached = run.score >= run.target;
   const result = applyScore(run, action);
@@ -794,7 +795,12 @@ export function bindCupDrag(): void {
         if (startCupHold()) {
           const info = cupGestureInfo(app.run!);
           if (info) beginCupTrace(traceCenter, traceRadius, info);
-          beginCupCountdown(finish);
+          // The gather is part of the ceremony, not the 2-second throw timer.
+          // Start the countdown only once the dice are actually in the cup so
+          // short holds never cut the sweep into a scale-only shrink.
+          app.cupHoldPromise?.then(() => {
+            if (dragging && app.cupHoldStarted) beginCupCountdown(finish);
+          }).catch(() => {});
         }
       }
       if (app.cupTrace) recordCupTrace(cupCenter.x + dx, cupCenter.y + dy);

@@ -209,22 +209,27 @@ export const motion = {
   gather(table: MotionDiceTable | null, uids: string[], target?: MotionPoint | null,
     options: { duration?: number } = {}) {
     if (!table || !gsap) return Promise.resolve();
-    const duration = reduced() ? 0.01 : (options.duration ?? 0.34);
+    const duration = reduced() ? 0.01 : (options.duration ?? 0.5);
     const tweens = uids.map((uid, index) => {
       const entry = table.entries.find((item) => item.uid === uid);
       if (!entry) return null;
       const mesh = entry.mesh;
-      return gsap.timeline({ delay: reduced() ? 0 : index * 0.018 })
-        .to(mesh.position, {
-          x: (target?.x ?? 0) + (index - 2) * 0.05,
-          y: target?.y ?? 1.4,
-          z: target?.z ?? 0.9,
-          duration, ease: 'power2.in',
-        }, 0)
+      const tx = (target?.x ?? 0) + (index - 2) * 0.05;
+      const ty = target?.y ?? 1.4;
+      const tz = target?.z ?? 0.9;
+      // Move first, arc upward, and only shrink once the die is already on its
+      // way to the cup. The old tween started scaling almost immediately, so
+      // short holds made the dice look like they merely shrank in place.
+      return gsap.timeline({ delay: reduced() ? 0 : index * 0.022 })
+        .to(mesh.position, { x: tx, z: tz, duration, ease: 'power2.inOut' }, 0)
+        .to(mesh.position, { y: ty + 0.42, duration: duration * 0.46, ease: 'sine.out' }, 0)
+        .to(mesh.position, { y: ty, duration: duration * 0.54, ease: 'power2.in' }, duration * 0.46)
         .to(mesh.rotation, {
-          x: `+=${Math.PI * 0.8}`, y: `+=${Math.PI * 1.2}`, duration, ease: 'power1.in',
+          x: `+=${Math.PI * 0.8}`, y: `+=${Math.PI * 1.2}`, duration, ease: 'power1.inOut',
         }, 0)
-        .to(mesh.scale, { x: 0.14, y: 0.14, z: 0.14, duration: duration * 0.8, ease: 'power2.in' }, duration * 0.2)
+        .to(mesh.scale, {
+          x: 0.16, y: 0.16, z: 0.16, duration: duration * 0.34, ease: 'power2.in',
+        }, duration * 0.52)
         .then();
     }).filter(Boolean) as Promise<unknown>[];
     if (!tweens.length) return Promise.resolve();

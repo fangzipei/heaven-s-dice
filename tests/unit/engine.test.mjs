@@ -65,9 +65,25 @@ test('score and continue rerolls only the remaining dice', () => {
   const scoredUids = ones.map((d) => d.uid);
   const roll = rollDice(state);
   expect(roll.ok).toBe(true);
-  expect(state.rerolls).toBe(before - 1);
+  expect(state.rerolls).toBe(before);
   expect(state.dice.filter((d) => scoredUids.includes(d.uid)).every((d) => d.scored)).toBeTruthy();
   expect(state.dice.filter((d) => !d.scored).length).toBe(4);
+});
+
+test('score and continue stays free even with no reroll tokens', () => {
+  const state = fresh();
+  state.target = 9999;
+  state.rerolls = 0;
+  state.maxRerolls = 0;
+  forceRoll(state, [1, 5, 2, 3, 4, 6]);
+  state.selected = state.dice.filter((d) => d.value === 1 || d.value === 5).map((d) => d.uid);
+  const result = applyScore(state, 'continue');
+  expect(result.ok).toBe(true);
+  expect(state.phase).toBe('reroll-pending');
+  const roll = rollDice(state);
+  expect(roll.ok).toBe(true);
+  expect(state.rerolls).toBe(0);
+  expect(applyScore(state, 'reroll').ok).toBe(false);
 });
 
 test('a dead reroll burns the whole unbanked round', () => {

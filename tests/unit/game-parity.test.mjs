@@ -105,15 +105,15 @@ describe('摇骰与计分的前置检查仍然拦得住', () => {
   });
 });
 
-describe('系统摇骰与手动摇桶等价：当场扣重投', () => {
-  test('计分并继续后点系统重投，重投次数在动画开始前就减一', () => {
+describe('系统摇骰与手动摇桶等价：免费继续 vs 消耗重投', () => {
+  test('计分并继续后的投掷不扣重投次数', () => {
     app.run.phase = 'reroll-pending';
     app.run.rerolls = 3;
     app.run.maxRerolls = 5;
     app.run.flags.rerollAll = false;
     app.run.dice.forEach((die) => { die.value = 1; die.scored = false; });
     beginRoll();
-    expect(app.run.rerolls).toBe(2);
+    expect(app.run.rerolls).toBe(3);
     expect(app.run.stats.levelRolls).toBe(1);
     expect(app.run.phase).toBe('selecting');
   });

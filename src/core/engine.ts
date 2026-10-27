@@ -855,13 +855,15 @@ export function rollDice(state: RunState, { free = false, rng = getRng(state) }:
     return { ok: false, error: '本关已结束。' };
   }
   if (state.phase === 'shop') return { ok: false, error: '商店阶段不能投掷。' };
-  // The opening throw of a level is free; the five reroll tokens are spent on
-  // subsequent throws only, exactly as in KCD2's dice game.
+  // The opening throw is free, and "计分并继续" rerolls the remaining dice for
+  // free. Only "计分并重投" (rerollAll) spends a token on its next throw.
   const openingThrow = state.phase === 'ready' && state.stats.levelRolls === 0;
-  if (!free && !openingThrow && state.rerolls <= 0) {
+  const continuingRound = state.phase === 'reroll-pending' && !state.flags.rerollAll;
+  const freeThrow = free || openingThrow || continuingRound;
+  if (!freeThrow && state.rerolls <= 0) {
     return { ok: false, error: '没有剩余重投次数。' };
   }
-  if (!free && !openingThrow) state.rerolls -= 1;
+  if (!freeThrow) state.rerolls -= 1;
 
   // A new throw always discards the previous throw's gesture buff unless a new
   // gesture was armed before this roll.
@@ -974,8 +976,8 @@ export function applyScore(state: RunState, action: ScoreAction): ApplyScoreResu
   if (action === 'bank' && state.rerolls > 0) {
     return { ok: false, error: '还有重投次数，请选择继续或全部重投。' };
   }
-  if (action !== 'bank' && state.rerolls <= 0) {
-    return { ok: false, error: '没有剩余重投次数，只能计分并结算。' };
+  if (action === 'reroll' && state.rerolls <= 0) {
+    return { ok: false, error: '没有剩余重投次数，无法全部重投。' };
   }
   const preview = getScorePreview(state);
   const chosen = action === 'reroll'

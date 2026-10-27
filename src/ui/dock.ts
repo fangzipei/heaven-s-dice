@@ -171,11 +171,16 @@ export function renderActionDock() {
     if (noTokens) {
       dock.innerHTML = `
         <div class="action-dock-inner">
-          <div class="action-hint">${valid ? '重投已耗尽 · 计分后本关结算' : h(invalidHint)}</div>
+          <div class="action-hint">${valid ? '全部重投已耗尽 · 继续免费，或计分并结算' : h(invalidHint)}</div>
           <div class="action-buttons">
-            <button class="score-action primary single-action" data-action="score-bank" ${valid ? '' : 'disabled'}>
+            <button class="score-action" data-action="score-continue" ${valid ? '' : 'disabled'}>
+              <span class="action-icon"><svg><use href="#i-die"></use></svg></span>
+              <span class="action-copy"><b>计分并继续</b><em>免费重投剩余骰子 · 不消耗重投</em></span>
+              <span class="action-points">+${cont}<small>计分</small></span>
+            </button>
+            <button class="score-action primary" data-action="score-bank" ${valid ? '' : 'disabled'}>
               <span class="action-icon"><svg><use href="#i-spark"></use></svg></span>
-              <span class="action-copy"><b>计分并结算</b><em>重投耗尽 · 不再重投，直接结算本关</em></span>
+              <span class="action-copy"><b>计分并结算</b><em>收下本轮分数，直接结算本关</em></span>
               <span class="action-points">+${bank}<small>计分</small></span>
             </button>
           </div>
@@ -184,16 +189,16 @@ export function renderActionDock() {
     }
     dock.innerHTML = `
       <div class="action-dock-inner">
-        <div class="action-hint">${valid ? '选择重投范围 · 二者各消耗 1 次' : h(invalidHint)}</div>
+        <div class="action-hint">${valid ? '继续免费；只有全部重投消耗 1 次' : h(invalidHint)}</div>
         <div class="action-buttons">
           <button class="score-action" data-action="score-continue" ${valid ? '' : 'disabled'}>
             <span class="action-icon"><svg><use href="#i-die"></use></svg></span>
-            <span class="action-copy"><b>计分并继续</b><em>计分后重投剩余骰子 · 消耗 1 次（剩 ${run.rerolls}）</em></span>
+            <span class="action-copy"><b>计分并继续</b><em>免费重投剩余骰子 · 不消耗重投</em></span>
             <span class="action-points">+${cont}<small>计分</small></span>
           </button>
           <button class="score-action primary" data-action="score-reroll" ${valid ? '' : 'disabled'}>
             <span class="action-icon"><svg><use href="#i-cup"></use></svg></span>
-            <span class="action-copy"><b>计分并重投</b><em>计分后全部六颗骰子重新投 · 消耗 1 次</em></span>
+            <span class="action-copy"><b>计分并重投</b><em>全部六颗重新投 · 消耗 1 次（剩 ${run.rerolls}）</em></span>
             <span class="action-points">+${rer}<small>计分</small></span>
           </button>
         </div>
@@ -205,7 +210,6 @@ export function renderDangerStrip() {
   const run = app.run;
   const strip = $('#danger-strip')!;
   if (!run) return;
-  const show = run.rerolls <= 0 && run.score < run.target
-    && !['won', 'run-won', 'lost', 'shop', 'hot', 'cleared'].includes(run.phase);
+  const show = run.phase === 'dead' && run.rerolls <= 0 && run.score < run.target;
   strip.hidden = !show;
 }

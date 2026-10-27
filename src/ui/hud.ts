@@ -164,7 +164,7 @@ export function renderRollHint() {
   const run = app.run!;
   const hint = $('#roll-hint')!;
   if (run.phase === 'ready') {
-    hint.innerHTML = '<strong>首掷免费。</strong>按住左侧骰桶摇动，2 秒倒计时后落骰；仪式桶沿桌面轨迹描画。也可点击右侧自动摇骰。';
+    hint.innerHTML = '<strong>首掷免费。</strong>按住骰桶摇动，2 秒倒计时后落骰；仪式桶沿桌面轨迹描画。也可点下方「自动投掷」。';
   } else if (run.phase === 'hot') {
     hint.innerHTML = '<strong>全骰！</strong>六颗骰子全部归位，可免费重投全部骰子。';
   } else if (run.phase === 'dead') {
@@ -173,8 +173,8 @@ export function renderRollHint() {
       : '本掷无分可计，重投已经耗尽。可以使用物品，或结束本关。';
   } else if (run.phase === 'selecting') {
     hint.innerHTML = run.rerolls > 0
-      ? `重投剩余骰子，或重投全部六颗。二者各消耗 1 次，剩余 <strong>${run.rerolls}</strong> 次。`
-      : '重投已耗尽。计分后本关将直接结算。';
+      ? `继续免费；全部重投消耗 1 次，剩余 <strong>${run.rerolls}</strong> 次。`
+      : '全部重投已耗尽；仍可免费继续，或计分并结算。';
   } else if (run.phase === 'reroll-pending') {
     hint.textContent = '骰子正在重新落桌……';
   } else if (run.phase === 'won' || run.phase === 'run-won') {

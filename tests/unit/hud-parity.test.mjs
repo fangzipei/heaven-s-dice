@@ -65,7 +65,7 @@ describe('HUD 渲染器搬到 ui/hud.ts 之后仍然写同样的文案', () => {
     expect(text('#objective-level')).toBe('第 1 关');
     expect(text('#reroll-note')).toBe(`剩余 ${app.run.rerolls} 次`);
     expect(html('#roll-hint')).toBe(
-      '<strong>首掷免费。</strong>按住左侧骰桶摇动，2 秒倒计时后落骰；仪式桶沿桌面轨迹描画。也可点击右侧自动摇骰。',
+      '<strong>首掷免费。</strong>按住骰桶摇动，2 秒倒计时后落骰；仪式桶沿桌面轨迹描画。也可点下方「自动投掷」。',
     );
     expect(nodes.get('#gesture-button').hidden).toBe(true);
     expect(nodes.get('#barrel-thumb').src).toBe('assets/cups/oak.svg');
