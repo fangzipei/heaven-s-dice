@@ -25,7 +25,7 @@
 
 - 服务：`/opt/heavens-dice-api`，systemd 单元 `heavens-dice-api`，监听 `127.0.0.1:8787`
 - Nginx：`/heavens-dice/api/` 反向代理到该端口；配置片段在 `deploy/nginx-api-location.conf`
-- MySQL：复用现有 `wanjie` 数据库，表名统一 `hd_` 前缀；建表文件 `server/schema.sql`
+- MySQL：独立数据库 `heavens_dice` + 独立用户 `heavens_dice`，和 `wanjie` 库完全隔离；建表文件 `server/schema.sql`
 - 前端静态包与 API 同源，前端使用相对地址 `./api/...`
 
 首次部署/升级 API：
@@ -33,7 +33,7 @@
 ```bash
 tar -xzf /tmp/hd-api.tar.gz -C /opt/heavens-dice-api
 cd /opt/heavens-dice-api && npm install --omit=dev
-mysql -uwanjie -p wanjie < schema.sql   # 仅首次或迁移时
+mysql -uheavens_dice -p heavens_dice < schema.sql   # 仅首次或迁移时
 systemctl restart heavens-dice-api
 curl -fsS http://127.0.0.1:9999/heavens-dice/api/health
 ```

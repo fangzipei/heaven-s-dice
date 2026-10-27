@@ -1,5 +1,5 @@
--- Heaven's Dice analytics schema. Uses the existing `wanjie` database,
--- with hd_ prefixes so it never collides with the other application's tables.
+-- Heaven's Dice analytics schema. Dedicated `heavens_dice` database; it has
+-- no access to the other application's `wanjie` database.
 CREATE TABLE IF NOT EXISTS hd_users (
   id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
   public_id VARCHAR(24) NOT NULL,

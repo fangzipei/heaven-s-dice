@@ -17,17 +17,18 @@ npm install --omit=dev
 PORT=8787
 DB_HOST=127.0.0.1
 DB_PORT=3306
-DB_USER=wanjie
+DB_USER=heavens_dice
 DB_PASSWORD=...
-DB_NAME=wanjie
+DB_NAME=heavens_dice
 SESSION_DAYS=30
 ```
 
-The tables live in the existing `wanjie` database with the `hd_` prefix. Apply
-`schema.sql` once:
+Heaven's Dice uses a dedicated `heavens_dice` database and `heavens_dice`
+MySQL user; it has no privileges on the other application's `wanjie` database.
+Apply `schema.sql` once:
 
 ```bash
-mysql -uwanjie -p wanjie < schema.sql
+mysql -uheavens_dice -p heavens_dice < schema.sql
 ```
 
 systemd unit:
