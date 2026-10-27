@@ -4,6 +4,16 @@ import { analyzeSelection, bestSelection } from '../../src/core/scoring.ts';
 
 const score = (values) => analyzeSelection(values).base;
 
+test('multiple wilds can fill multiple straight gaps', () => {
+  const full = analyzeSelection([7, 7, 1, 2, 3, 4]);
+  expect(full.valid).toBe(true);
+  expect(full.base).toBe(1500);
+  expect(full.combos[0].type).toBe('straight');
+  expect(full.combos[0].wilds).toBe(2);
+  expect(analyzeSelection([7, 7, 7, 1, 2, 3]).base).toBe(1500);
+  expect(analyzeSelection([7, 1, 2, 3]).valid).toBe(false);
+});
+
 test('single dice', () => {
   expect(score([1])).toBe(100);
   expect(score([5])).toBe(50);
@@ -87,8 +97,9 @@ test('demon jokers complete triples and straights', () => {
   // The joker stands in for the face the straight is missing, and the scorer
   // picks the better straight: 2-3-4-5 + joker reads as 2-6 for 750.
   expect(score([2, 3, 4, 5, 7])).toBe(750);
-  // Two missing straight faces are one joker too many, and leftovers invalidate.
-  expect(analyzeSelection([2, 3, 4, 7, 7]).valid).toBe(false);
+  // Two wilds can fill both gaps of 2-3-4; the best read is 2-6 for 750.
+  expect(score([2, 3, 4, 7, 7])).toBe(750);
+  expect(analyzeSelection([2, 3, 4, 7]).valid).toBe(false);
 });
 
 test('a joker may displace a natural face in a complete straight', () => {

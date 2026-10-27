@@ -2251,3 +2251,7 @@ body { font-size: 15px; }
 .tip-set-head { color: #c9ad7c; font-size: 9px; margin-bottom: 3px; }
 .tip-set p { margin: 2px 0; color: #85765f; font-size: 8px; line-height: 1.5; }
 .tip-set p.is-active { color: #e2c887; }
+
+/* Demon set: face 1 is a horned sigil, not a pip. */
+.die-face .demon-head { position: absolute; inset: 0; margin: auto; width: 64%; height: 64%; color: var(--die-pip, #f0d6ad); filter: drop-shadow(0 1px 1px rgba(0,0,0,.65)); }
+.art-die .mini-demon-head { position: absolute; inset: 0; margin: auto; width: 68%; height: 68%; color: var(--die-pip, #2a1710); }

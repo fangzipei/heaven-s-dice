@@ -213,7 +213,7 @@ function seededRandom(seed: number): () => number {
   };
 }
 
-function paintFace(value: number, skin: DieSkin, family: GrainId, emphasis: FaceEmphasis): HTMLCanvasElement {
+function paintFace(value: number, skin: DieSkin, family: GrainId, emphasis: FaceEmphasis, demon = false): HTMLCanvasElement {
   const canvas = document.createElement('canvas');
   canvas.width = FACE_SIZE;
   canvas.height = FACE_SIZE;
@@ -266,8 +266,45 @@ function paintFace(value: number, skin: DieSkin, family: GrainId, emphasis: Face
     ctx.fillRect(0, 0, s, s);
   }
 
-  // engraved pips
-  if (value >= 1 && value <= 6) {
+  // engraved pips, except the demon set's 1 which becomes a horned sigil
+  if (value === 1 && demon) {
+    const cx = s / 2;
+    const cy = s * 0.5;
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.strokeStyle = skin.pip;
+    ctx.fillStyle = skin.pip;
+    ctx.lineWidth = s * 0.028;
+    ctx.lineCap = 'round';
+    // horns
+    ctx.beginPath();
+    ctx.moveTo(-s * 0.15, -s * 0.05);
+    ctx.quadraticCurveTo(-s * 0.26, -s * 0.22, -s * 0.3, -s * 0.36);
+    ctx.moveTo(s * 0.15, -s * 0.05);
+    ctx.quadraticCurveTo(s * 0.26, -s * 0.22, s * 0.3, -s * 0.36);
+    ctx.stroke();
+    // skull
+    ctx.beginPath();
+    ctx.moveTo(-s * 0.2, -s * 0.08);
+    ctx.quadraticCurveTo(-s * 0.21, s * 0.2, 0, s * 0.3);
+    ctx.quadraticCurveTo(s * 0.21, s * 0.2, s * 0.2, -s * 0.08);
+    ctx.quadraticCurveTo(0, -s * 0.22, -s * 0.2, -s * 0.08);
+    ctx.closePath();
+    ctx.fill();
+    // eye sockets and grin
+    ctx.fillStyle = skin.face.split(' ')[0] || '#1a0d0a';
+    ctx.beginPath();
+    ctx.arc(-s * 0.075, s * 0.015, s * 0.035, 0, Math.PI * 2);
+    ctx.arc(s * 0.075, s * 0.015, s * 0.035, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = skin.face.split(' ')[0] || '#1a0d0a';
+    ctx.lineWidth = s * 0.02;
+    ctx.beginPath();
+    ctx.moveTo(-s * 0.08, s * 0.12);
+    ctx.quadraticCurveTo(0, s * 0.18, s * 0.08, s * 0.12);
+    ctx.stroke();
+    ctx.restore();
+  } else if (value >= 1 && value <= 6) {
     const pad = s * 0.26;
     const cell = (s - pad * 2) / 2;
     const radius = s * 0.085;
@@ -510,8 +547,8 @@ export class DiceTable implements MotionDiceTable {
     };
   }
 
-  faceTexture(value: number, skin: DieSkin, family: GrainId, emphasis: FaceEmphasis): THREE.CanvasTexture {
-    const key = `${skin.motif}|${family}|${value}|${emphasis}`;
+  faceTexture(value: number, skin: DieSkin, family: GrainId, emphasis: FaceEmphasis, demon = false): THREE.CanvasTexture {
+    const key = `${skin.motif}|${family}|${value}|${emphasis}|${demon ? 'demon' : ''}`;
     const hit = this.textures.get(key);
     if (hit) return hit;
     // Long runs would keep every face ever rolled alive; drop the oldest
@@ -523,7 +560,7 @@ export class DiceTable implements MotionDiceTable {
         this.textures.delete(oldKey);
       });
     }
-    const texture = new THREE.CanvasTexture(paintFace(value, skin, family, emphasis));
+    const texture = new THREE.CanvasTexture(paintFace(value, skin, family, emphasis, demon));
     texture.colorSpace = THREE.SRGBColorSpace;
     texture.anisotropy = Math.min(4, this.renderer.capabilities.getMaxAnisotropy());
     this.textures.set(key, texture);
@@ -551,7 +588,7 @@ export class DiceTable implements MotionDiceTable {
         const emphasis: FaceEmphasis = peak && faceValue === peak ? 'peak'
           : favored.includes(faceValue) ? 'favored' : 'none';
         return {
-          map: this.faceTexture(faceValue, skin, family, emphasis),
+          map: this.faceTexture(faceValue, skin, family, emphasis, die.spec.setId === 'demon'),
           surface: FAMILY_SURFACE[family] || FAMILY_SURFACE.bone,
         };
       });

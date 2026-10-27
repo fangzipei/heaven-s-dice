@@ -12,11 +12,10 @@
    Straight 2-6 ............ 750
    Full straight 1-6 ....... 1500
 
-   Demon wilds (WILD_VALUE) are jokers: they may stand in for one face in a
-   straight (at most one wild per straight) — filling a missing face, or
-   displacing a natural face on a complete straight so that natural die can
-   score on its own — or join natural dice of the same face to build triples
-   and larger. A wild never scores on its own: every group it joins must
+   Demon wilds (WILD_VALUE) are jokers: they may stand in for missing faces in
+   a straight (one wild per missing face), or displace a natural face on an
+   already complete straight — or join natural dice of the same face to build
+   triples and larger. A wild never scores on its own: every group it joins must
    contain at least one natural die, and a wild cannot be used to pad single
    1/5 scoring.
    ============================================================ */
@@ -183,13 +182,12 @@ function analyzeCounts(counts: FaceCount, wilds: number): Best | null {
 
   let best: Best | null = null;
 
-  // Straights: a wild may fill a missing face, or stand in for a face that is
-  // already there — the natural die it displaces then stays in the hand and
-  // can score as a single (a complete 1-6 straight plus one spare 1 is worth
-  // 1600 even when the spare came from a joker). At most one wild per straight.
+  // Straights: wilds fill missing faces (one wild per missing face) or
+  // displace a natural face on a complete straight. Two wilds therefore turn
+  // 1-2-3-4 into a full 1-6 straight.
   for (const straight of STRAIGHTS) {
     const missing = straight.faces.filter((face) => counts[face] === 0);
-    if (missing.length > 1 || missing.length > wilds) continue;
+    if (missing.length > wilds) continue;
 
     const record = (remainder: FaceCount, wildUsed: number) => {
       const rest = analyzeCounts(remainder, wilds - wildUsed);

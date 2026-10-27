@@ -33,6 +33,17 @@ export function pipsHtml(value: number): string {
     ? `<span class="pip" style="grid-row:${Math.floor(i / 3) + 1};grid-column:${(i % 3) + 1}"></span>` : '').join('')}</div>`;
 }
 
+/** Demon-set dice replace their 1 face with a horned sigil. */
+export function demonHeadSvg(className = 'demon-head'): string {
+  return `<svg class="${className}" viewBox="0 0 48 48" aria-hidden="true">
+    <path d="M10 19C7 12 5 7 3 3c6 2 10 5 13 10M38 19c3-7 5-12 7-16-6 2-10 5-13 10" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round"/>
+    <path d="M9 18c0 12 6 22 15 25 9-3 15-13 15-25-4-5-9-7-15-7s-11 2-15 7Z" fill="currentColor" opacity=".92"/>
+    <path d="M14 24c2-2 5-2 7 0M27 24c2-2 5-2 7 0" fill="none" stroke="#1a0d0a" stroke-width="2.2" stroke-linecap="round"/>
+    <circle cx="18" cy="26" r="1.7" fill="#ffcf7a"/><circle cx="30" cy="26" r="1.7" fill="#ffcf7a"/>
+    <path d="M20 33c2.5 2 5.5 2 8 0" fill="none" stroke="#1a0d0a" stroke-width="2" stroke-linecap="round"/>
+  </svg>`;
+}
+
 /* Keep the rolled value on the camera-facing face; the other faces use the
    opposite pair and two remaining standard pairs so the visible top/side
    faces still read as a legal die. */
@@ -75,7 +86,7 @@ export function dieFacesHtml(
     return `
     <div class="${classes}" data-face="${face}">
       <span class="die-sheen"></span>
-      ${concealed ? '<span class="die-rune">✦</span>' : blank ? '' : `${dieMotifSvg(spec)}${pipsHtml(faceValue)}`}
+      ${concealed ? '<span class="die-rune">✦</span>' : blank ? '' : `${dieMotifSvg(spec)}${spec.setId === 'demon' && faceValue === 1 ? demonHeadSvg() : pipsHtml(faceValue)}`}
     </div>`;
   }).join('');
 }
@@ -93,7 +104,7 @@ export function artDieHtml(spec: DiceDef): string {
   return `<div class="${classes}" role="img" aria-label="${h(spec.name)}，${bestFace} 点" style="${dieSkinStyle(spec)}">
     <span class="die-sheen"></span>
     ${dieMotifSvg(spec)}
-    <div class="mini-pips">${Array.from({ length: 9 }, (_, i) => positions.includes(i) ? `<span class="mini-pip" style="grid-row:${Math.floor(i / 3) + 1};grid-column:${(i % 3) + 1}"></span>` : '').join('')}</div>
+    <div class="mini-pips">${demon && bestFace === 1 ? demonHeadSvg('mini-demon-head') : Array.from({ length: 9 }, (_, i) => positions.includes(i) ? `<span class="mini-pip" style="grid-row:${Math.floor(i / 3) + 1};grid-column:${(i % 3) + 1}"></span>` : '').join('')}</div>
   </div>`;
 }
 
