@@ -150,3 +150,11 @@ export async function pingApi(): Promise<boolean> {
     return true;
   } catch { return false; }
 }
+export interface GameConfig {
+  difficultyMultiplier: number;
+  levelTargets: Record<string, number>;
+}
+
+export async function fetchGameConfig(): Promise<GameConfig> {
+  return request<GameConfig>('config', { timeoutMs: 5000 });
+}

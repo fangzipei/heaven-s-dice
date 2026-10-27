@@ -75,3 +75,14 @@ CREATE TABLE IF NOT EXISTS hd_shop_choices (
   KEY idx_hd_shop_run (run_id),
   CONSTRAINT fk_hd_shop_run FOREIGN KEY (run_id) REFERENCES hd_runs(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS hd_game_config (
+  id TINYINT UNSIGNED NOT NULL DEFAULT 1,
+  difficulty_multiplier DECIMAL(6,3) NOT NULL DEFAULT 1.000,
+  level_targets JSON NULL,
+  updated_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+  PRIMARY KEY (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+INSERT IGNORE INTO hd_game_config (id, difficulty_multiplier, level_targets)
+VALUES (1, 1.000, NULL);

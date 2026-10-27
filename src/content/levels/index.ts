@@ -9,6 +9,15 @@ import type { ChapterInfo, LevelRow, MinionDef, Opponent, TableDef } from '../..
 
 export const LEVELS: LevelRow[] = buildLevelTable();
 
+let difficultyMultiplier = 1;
+let levelTargets: Record<string, number> = {};
+
+/** Applied once per run from GET /config; per-level targets win over the multiplier. */
+export function setDifficultyConfig(config: { multiplier?: number; targets?: Record<string, number> }): void {
+  difficultyMultiplier = Number(config.multiplier) > 0 ? Number(config.multiplier) : 1;
+  levelTargets = config.targets || {};
+}
+
 export const LEVEL_COUNT = LEVELS.length;
 
 export const CHAPTERS: ChapterInfo[] = TABLE_DEFS.map((table, group) => ({
@@ -27,7 +36,12 @@ export function chapterLevelSpan(chapter: number): [number, number] {
 }
 
 export function getLevelConfig(level: number): LevelRow {
-  return LEVELS[Math.min(level, LEVEL_COUNT) - 1]!;
+  const base = LEVELS[Math.min(level, LEVEL_COUNT) - 1]!;
+  const override = Number(levelTargets[String(level)]);
+  const target = override > 0
+    ? Math.round(override)
+    : Math.max(10, Math.round(base.target * difficultyMultiplier / 10) * 10);
+  return target === base.target ? base : { ...base, target, curve: { ...base.curve, target } };
 }
 
 export function getOpponent(level: number): Opponent | null {

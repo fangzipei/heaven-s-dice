@@ -11,6 +11,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "simulate": "node tools/balance.mjs 500",
+    "auto-play": "node tools/auto-play.mjs",
     "dice:ev": "node tools/dice-ev.mjs",
     "codex": "node tools/build-codex.mjs",
     "export:dice": "node tools/export-dice-models.mjs"

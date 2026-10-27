@@ -90,19 +90,9 @@ function renderScoredPanel(run: RunState): void {
     return;
   }
   const rows: string[] = [];
-  const combos = run.lastScore?.combos || [];
-  if (combos.length) {
-    for (const combo of combos) {
-      const values = combo.type === 'single' ? [combo.face]
-        : combo.type === 'nkind' ? Array.from({ length: combo.count }, () => combo.face)
-          : combo.faces;
-      rows.push(`<div class="scored-row"><span class="scored-dice">${values.map(scoredMini).join('')}</span><b>${h(combo.label)}</b><em>+${num(combo.points)}</em></div>`);
-    }
-  } else {
-    for (const die of scored) {
-      if (die.value == null) continue;
-      rows.push(`<div class="scored-row"><span class="scored-dice">${scoredMini(die.value)}</span><b>${die.wild ? '恶魔赖子' : '已计分'}</b><em>${die.value}</em></div>`);
-    }
+  for (const die of scored) {
+    if (die.value == null) continue;
+    rows.push(`<div class="scored-row"><span class="scored-dice">${scoredMini(die.value)}</span><b>${die.wild ? '恶魔赖子' : '本轮已计分'}</b><em>${die.value} 点</em></div>`);
   }
   panel.innerHTML = rows.join('');
   panel.hidden = rows.length === 0;

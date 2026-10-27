@@ -23,7 +23,7 @@ export { STANDARD_DIE } from './standard_die.ts';
 export { BOSSES } from './bosses/index.ts';
 export {
   MINION_GAPS, LEVELS, LEVEL_COUNT, CHAPTERS, chapterForLevel, chapterLevelSpan,
-  getLevelConfig, getOpponent, getTable, buildLevelTable, LEVEL_CURVE,
+  getLevelConfig, getOpponent, getTable, buildLevelTable, LEVEL_CURVE, setDifficultyConfig,
 } from './levels/index.ts';
 
 /* 商店卡池里永远是有价骰子，所以价格是聚合时盖上去的章，条目文件不写它。

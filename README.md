@@ -570,6 +570,7 @@ python tools/generate_portraits.py   # 10 张角色画像
 - **随机数可注入**：`createRun({ rng })` 支持种子 RNG，便于测试与复现。
 - **无后端**：所有进度在当前页面内存中；声音偏好写入 localStorage。页面刷新会开始新的一局。
 - **难度**：第 2 关起所有目标分翻倍，旧的 500 次自动模拟通关率（约 0.6%）已不再适用，需重新跑平衡模拟标定；风险仍来自本轮分数在掷空时会作废。
+- **动态难度**：开局会请求 `GET /config`，读取 `hd_game_config.difficulty_multiplier`（总系数）与 `level_targets`（分关目标，JSON 对象，键为关卡号）。分关目标优先，其余关卡按总系数缩放并取整到 10。改数据库后下一局生效。
 
 ---
 

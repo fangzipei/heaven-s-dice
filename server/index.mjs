@@ -419,6 +419,20 @@ const server = http.createServer(async (req, res) => {
     }
     const url = new URL(req.url || '/', `http://${req.headers.host || 'localhost'}`);
     const path = url.pathname.replace(/\/+$/, '') || '/';
+    if (req.method === 'GET' && path === '/config') {
+      const [rows] = await pool.query(
+        'SELECT difficulty_multiplier, level_targets FROM hd_game_config WHERE id = 1 LIMIT 1',
+      );
+      const row = rows[0] || {};
+      let targets = row.level_targets;
+      if (typeof targets === 'string') {
+        try { targets = JSON.parse(targets); } catch { targets = null; }
+      }
+      return json(res, 200, {
+        difficultyMultiplier: Number(row.difficulty_multiplier ?? 1) || 1,
+        levelTargets: targets && typeof targets === 'object' ? targets : {},
+      });
+    }
     if (req.method === 'GET' && path === '/health') {
       await pool.query('SELECT 1');
       return json(res, 200, { ok: true });

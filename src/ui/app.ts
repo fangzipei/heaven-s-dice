@@ -48,6 +48,7 @@ import {
 } from './screens/shop.ts';
 import { openRules, openTutorial, scrollTutorial, showStartPrompt } from './screens/tutorial.ts';
 import { startTutorialGuide } from './tutorial-guide.ts';
+import { loadGameConfig } from '../platform/game-config.ts';
 import { app } from './state.ts';
 import { diceTable, ensureDiceTable, renderDiceTray, setTrayRepaint } from './tray.ts';
 
@@ -434,12 +435,13 @@ function updateSoundButtons(): void {
 /* ═══════════════════════════════════════════════════════════════════
    Run lifecycle
    ═══════════════════════════════════════════════════════════════════ */
-export function startRun(): void {
+export async function startRun(): Promise<void> {
   const profile = loadProfile();
   if (!profile) {
-    openIdentity(() => startRun());
+    openIdentity(() => { void startRun(); });
     return;
   }
+  await loadGameConfig();
   closeOverlay();
   closeShopScreen();
   clearGameSave();
