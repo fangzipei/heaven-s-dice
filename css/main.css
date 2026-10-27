@@ -2205,3 +2205,28 @@ body { font-size: 15px; }
 @media (max-width: 760px) {
   .shop-card[data-item-tip] .card-desc { font-size: 14px; line-height: 1.8; }
 }
+
+/* ── Shop readability: readable body copy, responsive cards, peak probability ── */
+.shop-grid.dice { grid-template-columns: repeat(auto-fit, minmax(270px, 1fr)); }
+.shop-grid.items, .shop-grid.item { grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); }
+.shop-card { min-height: 320px; padding: 14px; }
+.shop-card .rarity-tag, .shop-card .set-tag { font-size: 10px; }
+.shop-card h4 { font-size: clamp(18px, 1.25vw, 21px); line-height: 1.3; }
+.shop-card .card-sub { font-size: clamp(11px, .85vw, 13px); line-height: 1.55; color: #9b8b73; }
+.shop-card .card-desc { font-size: clamp(14px, 1.05vw, 16px); line-height: 1.72; min-height: 0; color: #c6b295; }
+.shop-card .card-bonus { font-size: clamp(12px, .9vw, 14px); line-height: 1.6; color: #c3aa7e; }
+.shop-card .price-tag { font-size: 15px; }
+.shop-card .price-tag small { font-size: 10px; }
+.shop-card .buy-button { font-size: 13px; min-height: 36px; }
+.shop-card .prob-bars { height: 56px; gap: 4px; margin-top: 10px; }
+.shop-card .prob-bar span, .shop-card .prob-bar em { font-size: 10px; }
+.shop-card .prob-bar.is-max i { background: linear-gradient(180deg, #ffe08a, #c9922f); box-shadow: 0 0 10px rgba(255,196,80,.65); }
+.shop-card .prob-bar.is-max span, .shop-card .prob-bar.is-max em { color: #ffe2a0; font-weight: 700; }
+@media (max-width: 760px) {
+  .shop-card { min-height: 0; padding: 13px; }
+  .shop-card h4 { font-size: 20px; }
+  .shop-card .card-sub { font-size: 13px; }
+  .shop-card .card-desc, .shop-card[data-item-tip] .card-desc { font-size: 16px; line-height: 1.78; }
+  .shop-card .card-bonus { font-size: 14px; }
+  .shop-card .prob-bar span, .shop-card .prob-bar em { font-size: 11px; }
+}

@@ -100,12 +100,15 @@ describe('图鉴搬到 ui/screens/compendium.ts 之后仍然写同样的文案',
 describe('概率条搬到 ui/components/cards.ts 之后仍然是同样的柱子', () => {
   test('高度按概率取整，保底 3px，颜色跟着稀有度', () => {
     const html = probabilityBars([0.5, 0.02, 0, 0, 0, 0.48], 'epic');
-    expect((html.match(/class="prob-bar"/g) || []).length).toBe(6);
+    expect((html.match(/class="prob-bar(?: is-max)?"/g) || []).length).toBe(6);
+    expect(html).toContain('class="prob-bar is-max" style="--rarity:#');
     expect(html).toContain('<i style="height:17px"></i><span>1</span><em>50%</em>');
     expect(html).toContain('<i style="height:3px"></i><span>2</span><em>2%</em>');
     expect(html).toContain('<i style="height:3px"></i><span>3</span><em>0%</em>');
     expect(html).toContain('--rarity:#');
     expect(html.startsWith('<div class="prob-bars">')).toBe(true);
+    const tied = probabilityBars([0.25, 0.25, 0, 0, 0, 0], 'common');
+    expect((tied.match(/is-max/g) || []).length).toBe(2);
   });
 });
 

@@ -5,8 +5,10 @@
 import { rarityOf } from '../../content/index.ts';
 
 export function probabilityBars(probs: number[], rarity: string): string {
+  const peak = Math.max(...probs);
   return `<div class="prob-bars">${probs.map((p, i) => {
     const height = Math.max(3, Math.round(p * 34));
-    return `<div class="prob-bar" style="--rarity:${rarityOf({ rarity }).color}"><i style="height:${height}px"></i><span>${i + 1}</span><em>${Math.round(p * 100)}%</em></div>`;
+    const top = Math.abs(p - peak) < 1e-9 ? ' is-max' : '';
+    return `<div class="prob-bar${top}" style="--rarity:${rarityOf({ rarity }).color}"><i style="height:${height}px"></i><span>${i + 1}</span><em>${Math.round(p * 100)}%</em></div>`;
   }).join('')}</div>`;
 }
