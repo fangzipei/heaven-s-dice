@@ -17,7 +17,7 @@ await send('Runtime.enable'); await send('Page.enable'); await send('Log.enable'
 const url = process.env.BASE_URL || 'http://127.0.0.1:4179/';
 const js = async (expression) => { const r = await send('Runtime.evaluate', { expression, returnByValue: true, awaitPromise: true, userGesture: true }); if (r.exceptionDetails) throw new Error(r.exceptionDetails.exception?.description || r.exceptionDetails.text); return r.result.value; };
 await send('Page.navigate', { url }); await sleep(3000);
-await js(`localStorage.clear(); location.reload()`); await sleep(3000);
+await js(`localStorage.clear(); localStorage.setItem('heavensDice.profile.v1', JSON.stringify({id:'测试旅人',mode:'local',createdAt:Date.now()})); location.reload()`); await sleep(3000);
 await js(`document.querySelector('[data-action="start-run"]').click(); document.querySelector('[data-action="start-direct"]')?.click()`); await sleep(700);
 await js(`document.querySelector('[data-action="close-intro"]')?.click()`); await sleep(350);
 await js(`window.HeavensDice.roll()`); await sleep(1500);

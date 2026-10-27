@@ -1,6 +1,9 @@
 node_modules/
 tools/edge-profile*/
 tools/*.png
+tools/_probe-*.mjs
+tools/onboarding*.json
+tools/save-*.json
 *.log
 .DS_Store
 Thumbs.db

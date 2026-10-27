@@ -77,6 +77,26 @@ export async function accessAccount(id: string, password: string): Promise<AuthR
   return request<AuthResult>('account', { method: 'POST', body: { id, password } });
 }
 
+export interface UsernameCheck {
+  exists: boolean;
+  hasPassword: boolean;
+}
+
+export async function checkUsername(id: string): Promise<UsernameCheck> {
+  return request<UsernameCheck>('check-username', { method: 'POST', body: { id } });
+}
+
+export async function claimUsername(id: string): Promise<AuthResult> {
+  return request<AuthResult>('claim', { method: 'POST', body: { id } });
+}
+
+export async function setAccountPassword(token: string, password: string): Promise<ApiAccount> {
+  const result = await request<{ user: ApiAccount }>('password', {
+    method: 'POST', body: { password }, token,
+  });
+  return result.user;
+}
+
 export async function fetchMe(token: string): Promise<ApiAccount> {
   const result = await request<{ user: ApiAccount }>('me', { token });
   return result.user;

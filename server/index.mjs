@@ -74,7 +74,7 @@ async function accountFromRequest(req) {
   const token = header.startsWith('Bearer ') ? header.slice(7).trim() : '';
   if (!token) return null;
   const [rows] = await pool.query(
-    `SELECT u.id, u.public_id, u.created_at
+    `SELECT u.id, u.public_id, u.password_hash, u.created_at
        FROM hd_sessions s JOIN hd_users u ON u.id = s.user_id
       WHERE s.token_hash = ? AND s.expires_at > NOW() LIMIT 1`, [sha256(token)],
   );
@@ -120,10 +120,59 @@ async function login(req, res) {
     'SELECT id, public_id, password_hash, created_at FROM hd_users WHERE public_id = ? LIMIT 1', [id],
   );
   const user = rows[0];
-  if (!user || !verifyPassword(password, user.password_hash)) return fail(res, 401, 'ID 或密码不正确。');
+  if (!user) return fail(res, 401, 'ID 或密码不正确。');
+  if (!user.password_hash) return fail(res, 409, '这个 ID 还没有设置密码；请在本机头像中设置密码。');
+  if (!verifyPassword(password, user.password_hash)) return fail(res, 401, 'ID 或密码不正确。');
   const token = await createSession(user.id);
   return json(res, 200, {
     token,
+    user: { id: user.public_id, hasPassword: true, createdAt: user.created_at },
+  });
+}
+
+async function checkUsername(req, res) {
+  const body = await readBody(req);
+  const id = String(body.id || '').trim();
+  if (!validId(id)) return fail(res, 400, '玩家 ID 需要 2–24 位，只能包含文字、数字、下划线或短横线。');
+  const [rows] = await pool.query(
+    'SELECT public_id, password_hash FROM hd_users WHERE public_id = ? LIMIT 1', [id],
+  );
+  return json(res, 200, {
+    exists: rows.length > 0,
+    hasPassword: Boolean(rows[0]?.password_hash),
+  });
+}
+
+async function claim(req, res) {
+  const body = await readBody(req);
+  const id = String(body.id || '').trim();
+  if (!validId(id)) return fail(res, 400, '玩家 ID 需要 2–24 位，只能包含文字、数字、下划线或短横线。');
+  let result;
+  try {
+    [result] = await pool.query(
+      'INSERT INTO hd_users (public_id, password_hash) VALUES (?, NULL)', [id],
+    );
+  } catch (error) {
+    if (error?.code === 'ER_DUP_ENTRY') return fail(res, 409, '这个 ID 已经被占用，请换一个名字。');
+    throw error;
+  }
+  const token = await createSession(result.insertId);
+  return json(res, 201, {
+    token,
+    user: { id, hasPassword: false, createdAt: new Date().toISOString() },
+  });
+}
+
+async function setPassword(req, res) {
+  const user = await accountFromRequest(req);
+  if (!user) return fail(res, 401, '登录已过期，请重新登录。');
+  if (user.password_hash) return fail(res, 409, '这个 ID 已经设置过密码。');
+  const body = await readBody(req);
+  const password = String(body.password || '');
+  if (password.length < 4 || password.length > 128) return fail(res, 400, '密码需要 4–128 位。');
+  await pool.query('UPDATE hd_users SET password_hash = ? WHERE id = ?', [hashPassword(password), user.id]);
+  return json(res, 200, {
+    token: null,
     user: { id: user.public_id, hasPassword: true, createdAt: user.created_at },
   });
 }
@@ -139,6 +188,7 @@ async function access(req, res) {
   );
   if (rows.length) {
     const user = rows[0];
+    if (!user.password_hash) return fail(res, 409, '这个 ID 还没有设置密码；请在本机头像中设置密码。');
     if (!verifyPassword(password, user.password_hash)) return fail(res, 401, 'ID 或密码不正确。');
     const token = await createSession(user.id);
     return json(res, 200, {
@@ -165,7 +215,9 @@ async function access(req, res) {
 async function me(req, res) {
   const user = await accountFromRequest(req);
   if (!user) return fail(res, 401, '登录已过期，请重新登录。');
-  return json(res, 200, { user: { id: user.public_id, hasPassword: true, createdAt: user.created_at } });
+  return json(res, 200, {
+    user: { id: user.public_id, hasPassword: Boolean(user.password_hash), createdAt: user.created_at },
+  });
 }
 
 function asDate(value, fallback) {
@@ -340,6 +392,9 @@ const server = http.createServer(async (req, res) => {
       await pool.query('SELECT 1');
       return json(res, 200, { ok: true });
     }
+    if (req.method === 'POST' && path === '/check-username') return await checkUsername(req, res);
+    if (req.method === 'POST' && path === '/claim') return await claim(req, res);
+    if (req.method === 'POST' && path === '/password') return await setPassword(req, res);
     if (req.method === 'POST' && path === '/account') return await access(req, res);
     if (req.method === 'POST' && path === '/register') return await register(req, res);
     if (req.method === 'POST' && path === '/login') return await login(req, res);

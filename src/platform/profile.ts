@@ -7,6 +7,7 @@ export interface PlayerProfile {
   id: string;
   mode: ProfileMode;
   token?: string;
+  hasPassword?: boolean;
   createdAt: number;
   lastSyncAt?: number;
 }
@@ -28,6 +29,7 @@ export function loadProfile(): PlayerProfile | null {
       id: raw.id,
       mode: raw.mode === 'synced' && raw.token ? 'synced' : 'local',
       token: typeof raw.token === 'string' ? raw.token : undefined,
+      hasPassword: Boolean(raw.hasPassword),
       createdAt: Number(raw.createdAt) || Date.now(),
       lastSyncAt: Number(raw.lastSyncAt) || undefined,
     };

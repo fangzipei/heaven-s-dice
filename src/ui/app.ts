@@ -16,7 +16,7 @@ import {
   loadDiscovery, readSoundPref, saveSoundPref,
 } from '../platform/storage.ts';
 import { installDebugBridge } from '../platform/debug-bridge.ts';
-import { loadProfile, saveProfile } from '../platform/profile.ts';
+import { loadProfile } from '../platform/profile.ts';
 import {
   beginLevelRecord, beginRunRecord, endLevelRecord, getRunRecord, pauseRunRecord,
   recordShop, restoreRunRecord, resumeRunRecord, setRecordUser,
@@ -24,8 +24,8 @@ import {
 import { clearGameSave, loadGame, saveGame } from '../platform/save.ts';
 import { syncEverything } from '../platform/sync.ts';
 import {
-  logoutAccount, openAccount, refreshAccountButton, saveLocalAccount,
-  setPasswordAndSync, switchAccount, syncAccount, syncNow,
+  identityBack, identityLogin, identityNext, logoutAccount, openAccount, openIdentity,
+  refreshAccountButton, setPasswordAndSync, switchAccount, syncNow,
 } from './screens/account.ts';
 import { closeOverlay, openOverlay } from './components/overlay.ts';
 import { clearToasts, showToast } from './components/toast.ts';
@@ -85,15 +85,6 @@ function persistGame(): void {
   if (app.run) saveGame(app.run, getRunRecord());
 }
 
-function ensureProfile() {
-  const existing = loadProfile();
-  if (existing) return existing;
-  const created = { id: '旅人', mode: 'local' as const, createdAt: Date.now() };
-  saveProfile(created);
-  refreshAccountButton();
-  return created;
-}
-
 export function refreshResumeButton(): void {
   const button = $('#resume-run');
   if (!button) return;
@@ -109,14 +100,16 @@ export function refreshResumeButton(): void {
 export function resumeRun(): void {
   const saved = loadGame();
   if (!saved) { showToast('没有可继续的存档。'); refreshResumeButton(); return; }
+  const profile = loadProfile();
+  if (!profile) { openIdentity(resumeRun); return; }
   closeOverlay();
   closeShopScreen();
   app.run = saved.run;
   if (saved.record) {
     restoreRunRecord(saved.record);
     resumeRunRecord();
-  } else beginRunRecord(saved.run, ensureProfile().id);
-  setRecordUser(ensureProfile().id);
+  } else beginRunRecord(saved.run, profile.id);
+  setRecordUser(profile.id);
   app.screen = 'game';
   app.busy = false;
   app.rolling = false;
@@ -254,12 +247,14 @@ async function handleAction(action: string, target: HTMLElement, _event?: MouseE
     case 'open-account':
       openAccount();
       break;
-    case 'account-save-local':
-      saveLocalAccount();
-      setRecordUser(loadProfile()?.id || '旅人');
+    case 'identity-next':
+      void identityNext();
       break;
-    case 'account-sync':
-      void syncAccount();
+    case 'identity-login':
+      void identityLogin();
+      break;
+    case 'identity-back':
+      identityBack();
       break;
     case 'account-set-password':
       void setPasswordAndSync();
@@ -418,9 +413,13 @@ function updateSoundButtons(): void {
    Run lifecycle
    ═══════════════════════════════════════════════════════════════════ */
 export function startRun(): void {
+  const profile = loadProfile();
+  if (!profile) {
+    openIdentity(() => startRun());
+    return;
+  }
   closeOverlay();
   closeShopScreen();
-  const profile = ensureProfile();
   clearGameSave();
   app.run = Engine.createRun();
   beginRunRecord(app.run, profile.id);
@@ -617,7 +616,10 @@ function retryLevel(): void {
   if (!app.run) return;
   const result = Engine.retryLevel(app.run);
   if (!result.ok) { showToast(result.error!, 'error'); return; }
-  beginRunRecord(app.run, ensureProfile().id);
+  const profile = loadProfile();
+  if (!profile) { openIdentity(() => retryLevel()); return; }
+  beginRunRecord(app.run, profile.id);
+  setRecordUser(profile.id);
   closeOverlay();
   closeShopScreen();
   app.busy = false;
