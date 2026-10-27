@@ -342,40 +342,6 @@ function roundedBoxGeometry(size: number, radius: number, segments = 5): THREE.B
   return geometry;
 }
 
-/* ── table & environment ───────────────────────────────────────────────── */
-function tableTexture(): THREE.CanvasTexture {
-  const size = 512;
-  const canvas = document.createElement('canvas');
-  canvas.width = size; canvas.height = size;
-  const ctx = canvas.getContext('2d')!;
-  const rand = seededRandom(20261026);
-  const base = ctx.createLinearGradient(0, 0, size, size);
-  base.addColorStop(0, '#2a1c12');
-  base.addColorStop(0.5, '#1d130c');
-  base.addColorStop(1, '#120c07');
-  ctx.fillStyle = base;
-  ctx.fillRect(0, 0, size, size);
-  for (let i = 0; i < 220; i += 1) {
-    const y = rand() * size;
-    ctx.strokeStyle = `rgba(${90 + rand() * 60 | 0},${60 + rand() * 40 | 0},${34 + rand() * 24 | 0},${0.05 + rand() * 0.1})`;
-    ctx.lineWidth = 0.6 + rand() * 2.4;
-    ctx.beginPath();
-    ctx.moveTo(-6, y);
-    ctx.bezierCurveTo(size * 0.3, y + (rand() - 0.5) * 26, size * 0.7, y + (rand() - 0.5) * 26, size + 6, y + (rand() - 0.5) * 14);
-    ctx.stroke();
-  }
-  const vignette = ctx.createRadialGradient(size / 2, size / 2, size * 0.1, size / 2, size / 2, size * 0.72);
-  vignette.addColorStop(0, 'rgba(255,196,110,.14)');
-  vignette.addColorStop(1, 'rgba(0,0,0,.5)');
-  ctx.fillStyle = vignette;
-  ctx.fillRect(0, 0, size, size);
-  const texture = new THREE.CanvasTexture(canvas);
-  texture.colorSpace = THREE.SRGBColorSpace;
-  texture.wrapS = THREE.RepeatWrapping;
-  texture.wrapT = THREE.RepeatWrapping;
-  return texture;
-}
-
 /* A tiny equirect gradient gives metals something to reflect. Far cheaper
    than shipping an HDR and it removes the flat "plastic" look. */
 function environmentTexture(renderer: THREE.WebGLRenderer): THREE.Texture {
@@ -486,27 +452,16 @@ export class DiceTable implements MotionDiceTable {
     this.scene.add(ember);
     this.emberLight = ember;
 
-    const felt = tableTexture();
-    felt.repeat.set(2, 2);
+    /* The tray canvas is transparent: the CSS tabletop behind it is the real
+       table, so this plane only exists to catch shadows. Painting a second,
+       lighter felt here is what made the tray read as a pasted-on rectangle. */
     this.table = new THREE.Mesh(
       new THREE.PlaneGeometry(46, 46),
-      new THREE.MeshStandardMaterial({ map: felt, roughness: 0.92, metalness: 0.04 }),
+      new THREE.ShadowMaterial({ color: 0x0d0703, opacity: 0.62, transparent: true }),
     );
     this.table.rotation.x = -Math.PI / 2;
     this.table.receiveShadow = !compact;
     this.scene.add(this.table);
-
-    // soft contact pool under the dice row
-    const pool = new THREE.Mesh(
-      new THREE.PlaneGeometry(12, 6),
-      new THREE.MeshBasicMaterial({
-        map: this.poolTexture(), transparent: true, depthWrite: false,
-        blending: THREE.AdditiveBlending, opacity: 0.85,
-      }),
-    );
-    pool.rotation.x = -Math.PI / 2;
-    pool.position.y = 0.004;
-    this.scene.add(pool);
 
     this.group = new THREE.Group();
     this.scene.add(this.group);
@@ -518,21 +473,6 @@ export class DiceTable implements MotionDiceTable {
     this.resize();
   }
 
-  poolTexture(): THREE.CanvasTexture {
-    const size = 256;
-    const canvas = document.createElement('canvas');
-    canvas.width = size; canvas.height = size / 2;
-    const ctx = canvas.getContext('2d')!;
-    const g = ctx.createRadialGradient(size / 2, size / 4, 4, size / 2, size / 4, size / 2);
-    g.addColorStop(0, 'rgba(255,198,110,.34)');
-    g.addColorStop(0.55, 'rgba(255,150,60,.1)');
-    g.addColorStop(1, 'rgba(255,120,30,0)');
-    ctx.fillStyle = g;
-    ctx.fillRect(0, 0, size, size / 2);
-    const texture = new THREE.CanvasTexture(canvas);
-    texture.colorSpace = THREE.SRGBColorSpace;
-    return texture;
-  }
 
   resize(): void {
     const rect = this.canvas.getBoundingClientRect();

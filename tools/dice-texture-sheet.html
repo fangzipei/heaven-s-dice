@@ -1,0 +1,291 @@
+<!doctype html>
+<!--
+  Bakes one texture atlas per die.
+
+  Opened by tools/generate-dice-textures.mjs in headless Edge, which screenshots
+  each `.sheet` into assets/textures/dice/<die-id>.png. Everything drawn here
+  comes out of src/dice-skins.js, so the atlas can never drift from the data.
+
+  Atlas layout: 3 x 2 cells of CELL px, cell i = face value i + 1.
+-->
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>dice texture sheet</title>
+<style>
+  :root { --cell: 256px; }
+  html, body { margin: 0; padding: 0; background: #000; }
+  .sheet {
+    display: grid;
+    grid-template-columns: repeat(3, var(--cell));
+    grid-auto-rows: var(--cell);
+    width: calc(var(--cell) * 3);
+    height: calc(var(--cell) * 2);
+  }
+  .sheet > svg { display: block; width: var(--cell); height: var(--cell); }
+</style>
+</head>
+<body>
+<div id="sheets"></div>
+
+<script type="module">
+import { DIE_SKINS, dieSkin, dieFamily, dieMotifBody, faceEmphasis } from '../src/legacy/dice-skins.js';
+import { DICE_BY_ID, STANDARD_DIE, DICE } from '../src/content/index.ts';
+
+const CELL = 256;
+const PIP_LAYOUT = {
+  1: [[1, 1]],
+  2: [[0, 0], [2, 2]],
+  3: [[0, 0], [1, 1], [2, 2]],
+  4: [[0, 0], [0, 2], [2, 0], [2, 2]],
+  5: [[0, 0], [0, 2], [1, 1], [2, 0], [2, 2]],
+  6: [[0, 0], [0, 1], [0, 2], [2, 0], [2, 1], [2, 2]],
+};
+
+/* ── colour helpers ─────────────────────────────────────────────────── */
+const stopsFromCss = (css) => {
+  const found = String(css || '').match(/#(?:[0-9a-f]{3}|[0-9a-f]{6})\b/gi) || [];
+  return found.length ? found : ['#d8c49a', '#8a6b3f'];
+};
+
+const hexToRgb = (hex) => {
+  const v = hex.replace('#', '');
+  const full = v.length === 3 ? v.split('').map((c) => c + c).join('') : v;
+  const n = parseInt(full, 16);
+  return { r: (n >> 16) & 255, g: (n >> 8) & 255, b: n & 255 };
+};
+
+const shade = (hex, amount) => {
+  const { r, g, b } = hexToRgb(hex);
+  const mix = (c) => Math.round(amount >= 0 ? c + (255 - c) * amount : c * (1 + amount));
+  return `rgb(${mix(r)},${mix(g)},${mix(b)})`;
+};
+
+const rgba = (hex, alpha) => {
+  const { r, g, b } = hexToRgb(hex);
+  return `rgba(${r},${g},${b},${alpha})`;
+};
+
+/* ── surface recipes ──────────────────────────────────────────────────
+   One entry per material family. `defs` returns <defs> content, `layer`
+   returns the rectangles that paint it. Ids are prefixed per face. */
+const SURFACES = {
+  /* dry, porous, faintly yellowed */
+  bone: {
+    defs: (p) => `
+      <filter id="${p}grain" x="0" y="0" width="100%" height="100%">
+        <feTurbulence type="fractalNoise" baseFrequency="0.055 0.075" numOctaves="4" seed="11" result="n"/>
+        <feColorMatrix in="n" type="matrix" values="0 0 0 0 0.36  0 0 0 0 0.24  0 0 0 0 0.10  0.85 0 0 0 -0.28"/>
+      </filter>
+      <filter id="${p}pore" x="0" y="0" width="100%" height="100%">
+        <feTurbulence type="turbulence" baseFrequency="0.5" numOctaves="2" seed="3" result="n"/>
+        <feColorMatrix in="n" type="matrix" values="0 0 0 0 0.20  0 0 0 0 0.13  0 0 0 0 0.05  0.5 0 0 0 -0.22"/>
+      </filter>`,
+    layer: (p) => `
+      <rect width="${CELL}" height="${CELL}" filter="url(#${p}grain)" opacity=".62"/>
+      <rect width="${CELL}" height="${CELL}" filter="url(#${p}pore)" opacity=".4"/>`,
+  },
+  /* matted fur: fine transverse strokes */
+  hair: {
+    defs: (p) => `
+      <filter id="${p}grain" x="0" y="0" width="100%" height="100%">
+        <feTurbulence type="fractalNoise" baseFrequency="0.02 1.6" numOctaves="2" seed="5" result="n"/>
+        <feColorMatrix in="n" type="matrix" values="0 0 0 0 0.10  0 0 0 0 0.11  0 0 0 0 0.07  1.1 0 0 0 -0.5"/>
+      </filter>
+      <filter id="${p}clump" x="0" y="0" width="100%" height="100%">
+        <feTurbulence type="fractalNoise" baseFrequency="0.03" numOctaves="3" seed="9" result="n"/>
+        <feColorMatrix in="n" type="matrix" values="0 0 0 0 1  0 0 0 0 0.97  0 0 0 0 0.88  0.4 0 0 0 -0.2"/>
+      </filter>`,
+    layer: (p) => `
+      <rect width="${CELL}" height="${CELL}" filter="url(#${p}clump)" opacity=".5"/>
+      <rect width="${CELL}" height="${CELL}" filter="url(#${p}grain)" opacity=".55"/>`,
+  },
+  /* overlapping scales, drawn as arcs */
+  scale: {
+    defs: (p) => `
+      <pattern id="${p}scales" width="34" height="20" patternUnits="userSpaceOnUse">
+        <path d="M-1 20a18 18 0 0 1 18-18a18 18 0 0 1 18 18" fill="none" stroke="rgba(255,255,255,.16)" stroke-width="2.2"/>
+        <path d="M16 20a18 18 0 0 1 18-18a18 18 0 0 1 18 18" fill="none" stroke="rgba(255,255,255,.16)" stroke-width="2.2"/>
+        <path d="M0 21a18 18 0 0 1 18-18a18 18 0 0 1 18 18" fill="none" stroke="rgba(0,0,0,.26)" stroke-width="2.6"
+              transform="translate(1,1.6)"/>
+      </pattern>
+      <filter id="${p}grain" x="0" y="0" width="100%" height="100%">
+        <feTurbulence type="fractalNoise" baseFrequency="0.09" numOctaves="3" seed="17" result="n"/>
+        <feColorMatrix in="n" type="matrix" values="0 0 0 0 0.12  0 0 0 0 0.16  0 0 0 0 0.12  0.8 0 0 0 -0.3"/>
+      </filter>`,
+    layer: (p) => `
+      <rect width="${CELL}" height="${CELL}" fill="url(#${p}scales)"/>
+      <rect width="${CELL}" height="${CELL}" filter="url(#${p}grain)" opacity=".45"/>`,
+  },
+  /* brushed metal with a specular sweep */
+  metal: {
+    defs: (p) => `
+      <filter id="${p}brush" x="0" y="0" width="100%" height="100%">
+        <feTurbulence type="fractalNoise" baseFrequency="0.006 1.1" numOctaves="3" seed="23" result="n"/>
+        <feColorMatrix in="n" type="matrix" values="0 0 0 0 1  0 0 0 0 0.94  0 0 0 0 0.78  0.7 0 0 0 -0.32"/>
+      </filter>
+      <radialGradient id="${p}sweep" cx="0.28" cy="0.16" r="0.95">
+        <stop offset="0" stop-color="rgba(255,246,214,.30)"/>
+        <stop offset="0.42" stop-color="rgba(255,238,190,.05)"/>
+        <stop offset="1" stop-color="rgba(255,255,255,0)"/>
+      </radialGradient>
+      <filter id="${p}grain" x="0" y="0" width="100%" height="100%">
+        <feTurbulence type="fractalNoise" baseFrequency="0.18" numOctaves="2" seed="31" result="n"/>
+        <feColorMatrix in="n" type="matrix" values="0 0 0 0 0.16  0 0 0 0 0.12  0 0 0 0 0.05  0.55 0 0 0 -0.25"/>
+      </filter>`,
+    layer: (p) => `
+      <rect width="${CELL}" height="${CELL}" filter="url(#${p}brush)" opacity=".5"/>
+      <rect width="${CELL}" height="${CELL}" filter="url(#${p}grain)" opacity=".4"/>
+      <rect width="${CELL}" height="${CELL}" fill="url(#${p}sweep)"/>`,
+  },
+  /* night sky: sparse cold stars over a nebula wash */
+  night: {
+    defs: (p) => `
+      <radialGradient id="${p}neb" cx="0.74" cy="0.2" r="0.85">
+        <stop offset="0" stop-color="rgba(150,180,255,.22)"/>
+        <stop offset="0.55" stop-color="rgba(120,150,230,.06)"/>
+        <stop offset="1" stop-color="rgba(120,150,230,0)"/>
+      </radialGradient>
+      <filter id="${p}stars" x="0" y="0" width="100%" height="100%">
+        <feTurbulence type="fractalNoise" baseFrequency="0.62" numOctaves="1" seed="41" result="n"/>
+        <feColorMatrix in="n" type="matrix" values="0 0 0 0 0.86  0 0 0 0 0.92  0 0 0 0 1  3.4 0 0 0 -2.55"/>
+      </filter>
+      <filter id="${p}grain" x="0" y="0" width="100%" height="100%">
+        <feTurbulence type="fractalNoise" baseFrequency="0.1" numOctaves="3" seed="47" result="n"/>
+        <feColorMatrix in="n" type="matrix" values="0 0 0 0 0.06  0 0 0 0 0.08  0 0 0 0 0.16  0.7 0 0 0 -0.28"/>
+      </filter>`,
+    layer: (p) => `
+      <rect width="${CELL}" height="${CELL}" fill="url(#${p}neb)"/>
+      <rect width="${CELL}" height="${CELL}" filter="url(#${p}grain)" opacity=".5"/>
+      <rect width="${CELL}" height="${CELL}" filter="url(#${p}stars)" opacity=".9"/>`,
+  },
+  /* charred material with heat glowing from underneath */
+  ember: {
+    defs: (p) => `
+      <radialGradient id="${p}heat" cx="0.5" cy="1.02" r="0.92">
+        <stop offset="0" stop-color="rgba(255,132,56,.42)"/>
+        <stop offset="0.4" stop-color="rgba(255,86,26,.14)"/>
+        <stop offset="1" stop-color="rgba(255,60,20,0)"/>
+      </radialGradient>
+      <radialGradient id="${p}heat2" cx="0.22" cy="0.86" r="0.5">
+        <stop offset="0" stop-color="rgba(255,168,86,.34)"/>
+        <stop offset="1" stop-color="rgba(255,90,30,0)"/>
+      </radialGradient>
+      <filter id="${p}char" x="0" y="0" width="100%" height="100%">
+        <feTurbulence type="fractalNoise" baseFrequency="0.07 0.11" numOctaves="4" seed="59" result="n"/>
+        <feColorMatrix in="n" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  1.0 0 0 0 -0.42"/>
+      </filter>
+      <filter id="${p}spark" x="0" y="0" width="100%" height="100%">
+        <feTurbulence type="turbulence" baseFrequency="0.42" numOctaves="1" seed="61" result="n"/>
+        <feColorMatrix in="n" type="matrix" values="0 0 0 0 1  0 0 0 0 0.62  0 0 0 0 0.28  2.6 0 0 0 -1.85"/>
+      </filter>`,
+    layer: (p) => `
+      <rect width="${CELL}" height="${CELL}" filter="url(#${p}char)" opacity=".72"/>
+      <rect width="${CELL}" height="${CELL}" filter="url(#${p}spark)" opacity=".55"/>
+      <rect width="${CELL}" height="${CELL}" fill="url(#${p}heat)"/>
+      <rect width="${CELL}" height="${CELL}" fill="url(#${p}heat2)"/>`,
+  },
+};
+
+/* ── one face ───────────────────────────────────────────────────────── */
+function faceSvg(skin, family, value, emphasis, prefix) {
+  const p = prefix;
+  const stops = stopsFromCss(skin.face);
+  const surface = SURFACES[family] || SURFACES.bone;
+  const motifAlpha = emphasis === 'peak' ? 0.62 : emphasis === 'favored' ? 0.4 : 0.13;
+  const motif = dieMotifBody(skin.motif).replace(/currentColor/g, skin.accent);
+
+  const pad = 58;
+  const cell = (CELL - pad * 2) / 2;
+  const R = 23;
+  const pips = (PIP_LAYOUT[value] || []).map(([row, col]) => {
+    const cx = pad + col * cell;
+    const cy = pad + row * cell;
+    return `<g>
+      <circle cx="${cx}" cy="${cy + 2.4}" r="${R + 2.6}" fill="rgba(255,244,216,.20)"/>
+      <circle cx="${cx}" cy="${cy}" r="${R}" fill="url(#${p}pit)"/>
+      <circle cx="${cx}" cy="${cy}" r="${R}" fill="none" stroke="${skin.pipRim}" stroke-width="3"/>
+      <path d="M${cx - R} ${cy} a ${R} ${R} 0 0 1 ${R * 2} 0" fill="none" stroke="rgba(0,0,0,.34)" stroke-width="3"/>
+    </g>`;
+  }).join('');
+
+  const glyph = !value
+    ? `<text x="128" y="128" text-anchor="middle" dominant-baseline="central"
+        font-family="'Noto Serif SC','Songti SC',serif" font-size="104" font-weight="600"
+        fill="rgba(228,214,186,.62)">白</text>`
+    : '';
+
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${CELL} ${CELL}">
+  <defs>
+    <linearGradient id="${p}base" x1="0.08" y1="0" x2="0.92" y2="1">
+      ${stops.map((hex, i) => `<stop offset="${stops.length === 1 ? 0 : i / (stops.length - 1)}" stop-color="${hex}"/>`).join('\n      ')}
+    </linearGradient>
+    <radialGradient id="${p}pit" cx="0.38" cy="0.32" r="0.92">
+      <stop offset="0" stop-color="${shade(skin.pip, 0.3)}"/>
+      <stop offset="0.66" stop-color="${skin.pip}"/>
+      <stop offset="1" stop-color="${shade(skin.pip, -0.42)}"/>
+    </radialGradient>
+    <radialGradient id="${p}vig" cx="0.5" cy="0.42" r="0.78">
+      <stop offset="0.45" stop-color="rgba(0,0,0,0)"/>
+      <stop offset="1" stop-color="rgba(12,6,2,.42)"/>
+    </radialGradient>
+    <linearGradient id="${p}wear" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="rgba(255,250,232,.20)"/>
+      <stop offset="0.2" stop-color="rgba(255,250,232,0)"/>
+      <stop offset="0.76" stop-color="rgba(0,0,0,0)"/>
+      <stop offset="1" stop-color="rgba(26,13,3,.40)"/>
+    </linearGradient>
+    ${surface.defs(p)}
+  </defs>
+  <g clip-path="url(#${p}clip)">
+    <rect width="${CELL}" height="${CELL}" fill="url(#${p}base)"/>
+    ${surface.layer(p)}
+    <rect width="${CELL}" height="${CELL}" fill="url(#${p}wear)"/>
+    <rect width="${CELL}" height="${CELL}" fill="url(#${p}vig)"/>
+    <g opacity="${motifAlpha}"><g transform="scale(2.56)">${motif}</g></g>
+    ${emphasis !== 'none'
+      ? `<rect width="${CELL}" height="${CELL}" fill="url(#${p}bloom)"/>`
+      : ''}
+    ${pips}
+    ${glyph}
+  </g>
+  <clipPath id="${p}clip"><rect x="5" y="5" width="${CELL - 10}" height="${CELL - 10}" rx="38"/></clipPath>
+  <radialGradient id="${p}bloom" cx="0.5" cy="0.5" r="0.62">
+    <stop offset="0" stop-color="rgba(255,208,138,${emphasis === 'peak' ? 0.26 : 0.14})"/>
+    <stop offset="1" stop-color="rgba(255,208,138,0)"/>
+  </radialGradient>
+  <rect x="5" y="5" width="${CELL - 10}" height="${CELL - 10}" rx="38"
+        fill="none" stroke="rgba(246,232,198,.30)" stroke-width="8"/>
+</svg>`;
+}
+
+/* ── build every requested sheet ────────────────────────────────────── */
+const params = new URLSearchParams(location.search);
+const wanted = (params.get('skins') || '').split(',').filter(Boolean);
+const ids = wanted.length
+  ? wanted
+  : [STANDARD_DIE.id, ...DICE.map((die) => die.id)];
+
+const host = document.getElementById('sheets');
+const missing = [];
+ids.forEach((id, index) => {
+  const spec = DICE_BY_ID[id] || (id === STANDARD_DIE.id ? STANDARD_DIE : null);
+  if (!spec || !DIE_SKINS[id]) { missing.push(id); return; }
+  const skin = dieSkin(spec);
+  const family = dieFamily(spec);
+  const section = document.createElement('section');
+  section.className = 'sheet';
+  section.dataset.skin = id;
+  let html = '';
+  for (let value = 1; value <= 6; value += 1) {
+    html += faceSvg(skin, family, value, faceEmphasis(spec, value), `s${index}v${value}`);
+  }
+  section.innerHTML = html;
+  host.appendChild(section);
+});
+
+window.__sheetInfo = { ids, missing };
+window.__ready = true;
+</script>
+</body>
+</html>

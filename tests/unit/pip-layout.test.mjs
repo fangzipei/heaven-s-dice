@@ -3,8 +3,7 @@
    dice-3d.js (WebGL texture) before the merge, so the dedup provably could not
    have moved a pip — except on face 6, where the two paths genuinely disagreed
    and the texture drawing was chosen as the winner on 2026-10-26. */
-import { readFileSync } from 'node:fs';
-import { legacyAppSource } from '../helpers/legacy-app.mjs';
+import { existsSync, readFileSync } from 'node:fs';
 import { describe, expect, test } from 'vitest';
 
 import {
@@ -70,17 +69,14 @@ describe('pip layout keeps every pip where it was', () => {
 });
 
 describe('the duplicated tables are really gone', () => {
-  test('app.js and dice-3d.js read the layout from src/render', () => {
-    const app = legacyAppSource();
-    const gl = readFileSync(new URL('../../src/legacy/dice-3d.js', import.meta.url), 'utf8');
-    for (const [name, source] of [['app.js', app], ['dice-3d.js', gl]]) {
-      expect(source, `${name} must not keep its own pip table`).not.toMatch(/\bPIP_(MAP|LAYOUT)\s*=\s*\{/);
-    }
-    /* app.js 原本是 DOM 侧唯一的读取方；3c 之后点字排版在教程屏，骰面在
-       render/dice-dom.ts，两边都必须走共享表。 */
+  test('every renderer reads the layout from src/render', () => {
+    /* The duplicates are gone: legacy JS and the WebGL twin that used to be
+       under src/legacy no longer exist. */
+    expect(existsSync(new URL('../../src/legacy/dice-3d.js', import.meta.url))).toBe(false);
     const tutorial = readFileSync(new URL('../../src/ui/screens/tutorial.ts', import.meta.url), 'utf8');
     const dom = readFileSync(new URL('../../src/render/dice-dom.ts', import.meta.url), 'utf8');
-    for (const [name, source] of [['tutorial.ts', tutorial], ['dice-dom.ts', dom], ['dice-3d.js', gl]]) {
+    const table = readFileSync(new URL('../../src/render/dice-table.ts', import.meta.url), 'utf8');
+    for (const [name, source] of [['tutorial.ts', tutorial], ['dice-dom.ts', dom], ['dice-table.ts', table]]) {
       expect(source, `${name} imports the shared layout`).toMatch(/pip-layout\.ts/);
     }
   });

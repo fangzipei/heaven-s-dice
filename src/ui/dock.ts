@@ -22,7 +22,7 @@ export function renderComboPreview() {
     return;
   }
   if (run.phase === 'reroll-pending') {
-    preview.innerHTML = '<span class="combo-label">准备重投</span><span class="combo-total">选择自己摇桶，或让系统重投 <em>等待操作</em></span>';
+    preview.innerHTML = '<span class="combo-label">准备续投</span><span class="combo-total">拖动骰桶自己摇，或自动投掷 <em>等待操作</em></span>';
     return;
   }
   if (run.phase === 'cleared') {
@@ -106,16 +106,12 @@ export function renderActionDock() {
     const remaining = run.dice.filter((die) => !die.scored).length;
     dock.innerHTML = `
       <div class="action-dock-inner">
-        <div class="action-hint">已计分 · ${all ? '全部骰子已归位' : `剩余 ${remaining} 颗骰子待重投`} · 自己摇桶或系统重投</div>
+        <div class="action-hint">已计分 · ${all ? '全部骰子已归位' : `剩余 ${remaining} 颗骰子待重投`} · 拖动骰桶自己摇，或自动投掷</div>
         <div class="action-buttons">
-          <button class="score-action primary" data-action="cue-cup">
-            <span class="action-icon"><svg><use href="#i-cup"></use></svg></span>
-            <span class="action-copy"><b>自己摇骰桶</b><em>按住拖动 · 2 秒倒计时 · 仪式桶沿轨迹画</em></span>
-          </button>
-          <button class="score-action" data-action="auto-roll">
-            <span class="action-icon"><svg><use href="#i-die"></use></svg></span>
-            <span class="action-copy"><b>${all ? '系统全骰重投' : '系统重投'}</b><em>命令骰桶自己摇 · 消耗 1 次（剩 ${run.rerolls}）</em></span>
-            <span class="action-points">−1<small>重投</small></span>
+          <button class="score-action primary single-action" data-action="auto-roll">
+            <span class="action-icon"><svg><use href="#i-spark"></use></svg></span>
+            <span class="action-copy"><b>自动投掷</b><em>系统摇骰，直接投出${all ? '全部六颗' : '剩余'}骰子</em></span>
+            <span class="action-points">→</span>
           </button>
         </div>
       </div>`;
@@ -124,11 +120,11 @@ export function renderActionDock() {
   if (phase === 'ready') {
     dock.innerHTML = `
       <div class="action-dock-inner">
-        <div class="action-hint">首掷免费 · 按住骰桶摇动，2 秒后落骰</div>
+        <div class="action-hint">首掷免费 · 按住骰桶摇动，或直接自动投掷</div>
         <div class="action-buttons">
           <button class="score-action primary single-action" data-action="manual-roll">
-            <span class="action-icon"><svg><use href="#i-cup"></use></svg></span>
-            <span class="action-copy"><b>摇动骰桶</b><em>六颗骰子已经就位</em></span>
+            <span class="action-icon"><svg><use href="#i-spark"></use></svg></span>
+            <span class="action-copy"><b>自动投掷</b><em>六颗骰子已经就位 · 也可以拖动骰桶自己摇</em></span>
           </button>
         </div>
       </div>`;
@@ -203,28 +199,6 @@ export function renderActionDock() {
         </div>
       </div>`;
   }
-}
-
-export function renderAutoButton() {
-  const run = app.run;
-  const button = $<HTMLButtonElement>('#auto-roll');
-  if (!run || !button) return;
-  const can = !app.busy && (run.phase === 'ready' || run.phase === 'hot' || run.phase === 'reroll-pending'
-    || (run.phase === 'dead' && run.rerolls > 0));
-  button.disabled = !can;
-  let label = '自动摇骰';
-  let sub = '点击或按空格';
-  if (run.phase === 'hot') { label = '全骰重投'; sub = '本次免费'; }
-  else if (run.phase === 'cleared') { label = '目标达成'; sub = '点击下一关'; }
-  else if (run.phase === 'reroll-pending') {
-    label = run.flags.rerollAll ? '系统全骰重投' : '系统重投';
-    sub = `消耗 1 次 · 剩 ${run.rerolls}`;
-  } else if (run.phase === 'dead') { label = '自动重投'; sub = `消耗 1 次 · 剩 ${run.rerolls}`; }
-  else if (run.phase === 'ready') { sub = '首掷免费 · 空格'; }
-  else if (run.phase === 'selecting') { sub = '先选择骰子'; }
-  $('b', button)!.textContent = label;
-  $('em', button)!.textContent = sub;
-  button.classList.toggle('is-pulsing', run.phase === 'ready' && !app.busy);
 }
 
 export function renderDangerStrip() {

@@ -17,7 +17,6 @@ vi.mock('../../src/ui/hud.ts', () => ({
 vi.mock('../../src/ui/dock.ts', () => ({
   renderComboPreview: () => record.calls.push('combo'),
   renderActionDock: () => record.calls.push('dock'),
-  renderAutoButton: () => record.calls.push('auto'),
   renderDangerStrip: () => record.calls.push('danger'),
 }));
 vi.mock('../../src/ui/tray.ts', () => ({
@@ -32,6 +31,7 @@ vi.mock('../../src/render/motion.ts', () => ({
   motion: {
     attach() {}, startClock() {}, markDirty() {}, cupCue() {}, cupRattle() {}, cupDrop() {},
     gsap: null, tumble: async () => {}, gather: async () => {}, rollDice: async () => {},
+    cupLift: async () => {},
   },
 }));
 
@@ -46,6 +46,12 @@ let dom;
 beforeEach(() => {
   dom = installDomStub();
   globalThis.requestAnimationFrame = (fn) => { fn(); return 0; };
+  globalThis.CSS = { escape: (value) => String(value) };
+  globalThis.window = {
+    matchMedia: () => ({ matches: false }),
+    addEventListener() {}, removeEventListener() {},
+    setTimeout, clearTimeout, innerWidth: 1440, innerHeight: 900, scrollTo() {},
+  };
   record.calls.length = 0;
   app.run = createRun({ rng: () => 0.5 });
   app.busy = false;
@@ -61,7 +67,7 @@ describe('renderGame 一次画齐所有面板', () => {
   test('顺序：顶栏 → 计分 → 侧栏 → 骰盘 → 操作坞 → 对手', () => {
     renderGame();
     expect(record.calls).toEqual([
-      'topbar', 'score', 'rail', 'tray', 'combo', 'dock', 'auto', 'danger', 'opponent',
+      'topbar', 'score', 'rail', 'tray', 'combo', 'dock', 'danger', 'opponent',
     ]);
   });
 
@@ -99,6 +105,29 @@ describe('摇骰与计分的前置检查仍然拦得住', () => {
   });
 });
 
+describe('系统摇骰与手动摇桶等价：当场扣重投', () => {
+  test('计分并继续后点系统重投，重投次数在动画开始前就减一', () => {
+    app.run.phase = 'reroll-pending';
+    app.run.rerolls = 3;
+    app.run.maxRerolls = 5;
+    app.run.flags.rerollAll = false;
+    app.run.dice.forEach((die) => { die.value = 1; die.scored = false; });
+    beginRoll();
+    expect(app.run.rerolls).toBe(2);
+    expect(app.run.stats.levelRolls).toBe(1);
+    expect(app.run.phase).toBe('selecting');
+  });
+
+  test('全骰免费重投不扣次数', () => {
+    app.run.phase = 'hot';
+    app.run.rerolls = 2;
+    app.run.flags.hotDice = true;
+    app.run.dice.forEach((die) => { die.value = null; die.scored = false; });
+    beginRoll();
+    expect(app.run.rerolls).toBe(2);
+  });
+});
+
 describe('物品与弃局', () => {
   test('用不了的物品只报错', () => {
     app.run.phase = 'selecting';
@@ -110,7 +139,7 @@ describe('物品与弃局', () => {
 
   test('弃局直接落到失败结算', () => {
     forfeitRun();
-    expect(record.calls).toEqual(['topbar', 'score', 'rail', 'tray', 'combo', 'dock', 'auto', 'danger', 'opponent', 'defeat']);
+    expect(record.calls).toEqual(['topbar', 'score', 'rail', 'tray', 'combo', 'dock', 'danger', 'opponent', 'defeat']);
   });
 
   test('台词写进气泡', async () => {

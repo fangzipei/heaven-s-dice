@@ -70,7 +70,7 @@ describe('图鉴搬到 ui/screens/compendium.ts 之后仍然写同样的文案',
     const active = ITEMS.filter((item) => item.type === 'active').length;
     const passive = ITEMS.filter((item) => item.type === 'passive').length;
     const consumable = ITEMS.filter((item) => item.consumable).length;
-    expect(overlay()).toContain(`${active} 件主动物品、${passive} 件被动物品，其中 ${consumable} 件是一次性消耗品：烈酒、加注契约、幸运粉、盐、静默赦令。`);
+    expect(overlay()).toContain(`${active} 件主动物品、${passive} 件被动物品，其中 ${consumable} 件是一次性消耗品：幸运币、猎人印记、烈酒、加注契约、幸运粉、盐、静默赦令。`);
     expect(overlay()).toContain('data-item-tip="lucky_coin"');
     expect(overlay()).toContain(`已遇见 1 / ${ITEMS.length}`);
   });

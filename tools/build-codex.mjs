@@ -499,7 +499,7 @@ footer code{color:#93836b;font-family:Consolas,monospace;font-size:9.5px}
 
 <section id="items">
   <div class="sec-head"><span class="sec-no">04</span><h2>物品 · ${ITEMS.length} 件</h2><span class="count">主动 ${activeItems.length} + 被动 ${passiveItems.length}</span></div>
-  <p class="sec-intro">主动物品每关恢复 1 次，随身最多携带 4 件，不占骰袋；被动物品买入即永久生效。<b>一次性消耗品</b>用完即消失，但同价位下效果更直接——烈酒、加注契约、幸运粉、盐、静默赦令。<b>三层骰架 / 双孔桶架 / 暗格货架</b>分别给市集某一区 +1 货位。<b>丰饶骰袋</b>与<b>裂痕骰袋</b>改变可用骰子数量，整局各只能获取一次。</p>
+  <p class="sec-intro">主动物品每关恢复 1 次，随身最多携带 4 件，不占骰袋；被动物品买入即永久生效。<b>一次性消耗品</b>用完即消失，但同价位下效果更直接——幸运币、猎人印记、烈酒、加注契约、幸运粉、盐、静默赦令。<b>三层骰架 / 双孔桶架 / 暗格货架</b>分别给市集某一区 +1 货位。<b>丰饶骰袋</b>与<b>裂痕骰袋</b>改变可用骰子数量，整局各只能获取一次。</p>
   <h3 class="sub-head">主动物品 · 每关 1 次</h3>
   <div class="grid item-grid">${activeItems.map(itemCard).join('')}</div>
   <h3 class="sub-head">被动物品 · 永久生效</h3>
@@ -558,7 +558,7 @@ footer code{color:#93836b;font-family:Consolas,monospace;font-size:9.5px}
     <li>三种「货架」被动各自只影响对应分区的上架数量，可叠加使用。</li>
     <li><b>镀金袖扣</b>让刷新费用 −20%，并让每关胜利 +15 银币。</li>
     <li>失败后「卷土重来」保留骰袋、骰桶与物品，失去一半银币。</li>
-    <li>庄家徽记：每击败一位庄家，后续关卡重投上限永久 +1。</li>
+    <li>每关基础 <b>3 次重投</b>，击败庄家不再累积上限；烈酒 / 时间沙漏 / 加注契约 / 旋涡桶仪式可以临时 +1。</li>
     <li><b>悬秤人</b>（第 ${BOSSES.find((b) => b.effectKey === 'floatingScore')?.level} 关）把整桌分数变成漂浮分：计分与重投都不会真正入账，掷出无法计分的骰型就整桌清零；只有落秤（过关）时分数与赏金才一起兑现。</li>
     <li>骰子期望分数可用 <b>npm run dice:ev</b> 重新评估。</li>
   </ul>

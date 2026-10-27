@@ -7,11 +7,11 @@ import {
   openShop, refreshSection, getBarrel, BASE_REROLLS, advanceLevel,
   buildScore, syncBag, getScorePreview, hasItemEverBeenTaken,
   activeBoss, isBossDieBlocked, handTypeOf, sellItem, canSellItem, itemSellPrice,
-  bossEffectKey, shopSlots, isFloatingScore,
-} from '../../src/legacy/engine.js';
-import { makeRng, cashOutValue } from '../../src/legacy/engine.js';
+  bossEffectKey, shopSlots, isFloatingScore, resolveSaltOffer,
+} from '../../src/core/engine.ts';
+import { makeRng, cashOutValue } from '../../src/core/engine.ts';
 import {
-  REROLL_REFUND, overshootTier, OVERSHOOT_TIERS, LEVELS, getLevelConfig,
+  REROLL_REFUND, overshootTier, OVERSHOOT_TIERS, LEVELS, getLevelConfig, ITEM_BY_ID,
 } from '../../src/content/index.ts';
 
 function fresh(seed = 42) {
@@ -27,15 +27,15 @@ function forceRoll(state, values) {
   state.phase = 'selecting';
 }
 
-test('opening throw is free, later throws spend rerolls', () => {
+test('opening throw is free, later throws spend the three fixed rerolls', () => {
   const state = fresh();
-  expect(state.rerolls).toBe(5);
+  expect(state.rerolls).toBe(3);
   const first = rollDice(state);
   expect(first.ok).toBe(true);
-  expect(state.rerolls).toBe(5);
+  expect(state.rerolls).toBe(3);
   state.phase = 'dead';
   rollDice(state);
-  expect(state.rerolls).toBe(4);
+  expect(state.rerolls).toBe(2);
 });
 
 test('run-best single hit survives level resets', () => {
@@ -88,7 +88,7 @@ test('a dead reroll burns the whole unbanked round', () => {
   expect(state.lastBust.lost).toBe(150);
 });
 
-test('a scoring throw confirms the previous round before a later bust', () => {
+test('a scoring throw keeps the whole round at risk until a later bust', () => {
   const state = fresh();
   state.target = 9999;
   forceRoll(state, [1, 5, 2, 3, 4, 6]);
@@ -101,18 +101,38 @@ test('a scoring throw confirms the previous round before a later bust', () => {
   expect(roll.ok).toBe(true);
   expect(state.phase).toBe('selecting');
   expect(state.score).toBe(150);
-  expect(state.roundScore).toBe(0);
+  expect(state.roundScore).toBe(150);
   const newOne = state.dice.find((d) => d.value === 1 && !d.scored);
   state.selected = [newOne.uid];
   const second = applyScore(state, 'continue');
   expect(second.total).toBe(100);
   expect(state.score).toBe(250);
-  expect(state.roundScore).toBe(100);
+  expect(state.roundScore).toBe(250);
   const deadSeq = [0.2, 0.4, 0.6]; // remaining 2/3/4
   const bust = rollDice(state, { rng: () => deadSeq.shift() ?? 0.6 });
-  expect(bust.bust).toBe(100);
-  expect(state.score).toBe(150);
+  expect(bust.bust).toBe(250);
+  expect(state.score).toBe(0);
   expect(state.roundScore).toBe(0);
+});
+
+test('score and reroll banks the whole round and starts a fresh one', () => {
+  const state = fresh();
+  state.target = 9999;
+  forceRoll(state, [1, 5, 2, 3, 4, 6]);
+  state.selected = state.dice.filter((d) => d.value === 1 || d.value === 5).map((d) => d.uid);
+  applyScore(state, 'continue');
+  const scoringSeq = [0.01, 0.2, 0.4, 0.6];
+  rollDice(state, { rng: () => scoringSeq.shift() ?? 0.2 });
+  const newOne = state.dice.find((d) => d.value === 1 && !d.scored);
+  state.selected = [newOne.uid];
+  const banked = applyScore(state, 'reroll');
+  expect(banked.total).toBe(100);
+  expect(state.roundScore).toBe(0);
+  expect(state.score).toBe(250);
+  const deadSeq = [0.2, 0.4, 0.6, 0.95, 0.2, 0.4];
+  const bust = rollDice(state, { rng: () => deadSeq.shift() ?? 0.4 });
+  expect(bust.bust).toBe(0);
+  expect(state.score).toBe(250);
 });
 
 test('hot dice resets all six dice for a free reroll', () => {
@@ -165,14 +185,15 @@ test('no reroll tokens means scoring settles the level', () => {
   expect(applyScore(state, 'continue').ok).toBe(false);
 });
 
-test('lucky coin adds 150 points and consumes its charge', () => {
+test('lucky coin adds 150 points and is consumed for good', () => {
   const state = fresh();
   const itemId = 'lucky_coin';
   expect(canUseItem(state, itemId).ok).toBe(true);
   const result = useItem(state, itemId);
   expect(result.ok).toBe(true);
   expect(state.score).toBe(150);
-  expect(state.itemCharges[itemId]).toBe(0);
+  expect(state.activeItems.includes(itemId)).toBe(false);
+  expect(state.itemCharges[itemId]).toBe(undefined);
   expect(canUseItem(state, itemId).ok).toBe(false);
 });
 
@@ -259,7 +280,7 @@ test('advanceLevel refuses a score below target', () => {
   expect(state.phase).toBe('ready');
 });
 
-test('defeating a boss grants a permanent reroll boon', () => {
+test('defeating a boss never raises the reroll budget', () => {
   const state = fresh(7);
   state.level = 3;
   initLevel(state);
@@ -276,17 +297,15 @@ test('defeating a boss grants a permanent reroll boon', () => {
   expect(advance.ok).toBe(true);
   expect(state.phase).toBe('won');
   expect(state.roundScore).toBe(0);
-  expect(state.bossBoons).toBe(1);
-  // Base reward from the level table + every unspent reroll × 8 (the boss table
-  // may grant an extra token) + the 3× overshoot bounty, which 100 points
-  // against a 10 target hits.
+  // Base reward from the level table + every unspent reroll × 8 + the 3×
+  // overshoot bounty, which 100 points against a 10 target hits.
   expect(state.levelReward.total).toBe(getLevelConfig(3).reward + state.rerolls * REROLL_REFUND + 140);
   expect(state.levelReward.bonuses.some((b) => b.label.includes('剩余重投'))).toBeTruthy();
   expect(state.levelReward.bonuses.some((b) => b.label.includes('天胡'))).toBeTruthy();
   openShop(state);
   leaveShop(state);
   expect(state.level).toBe(4);
-  expect(state.rerolls).toBe(BASE_REROLLS + 1);
+  expect(state.rerolls).toBe(BASE_REROLLS);
 });
 
 test('pentagram gesture arms one 20% bonus per level', () => {
@@ -314,6 +333,7 @@ test('vortex gesture grants one extra reroll per level', () => {
   const result = applyGesture(state, 'circle');
   expect(result.ok).toBe(true);
   expect(state.rerolls).toBe(before + 1);
+  expect(state.maxRerolls).toBe(before + 1);
   expect(state.flags.vortexUsed).toBe(true);
   const second = applyGesture(state, 'circle');
   expect(second.ok).toBe(false);
@@ -696,17 +716,22 @@ test('a bare pass earns no overshoot bounty and no refund when rerolls are spent
 
 /* ── one-shot consumables ─────────────────────────────────────────────── */
 
-test('courage is a one-shot that buys exactly one reroll', () => {
+test('reroll items add tokens on top of the base three', () => {
   const state = fresh();
   initLevel(state);
-  state.activeItems = ['courage'];
+  state.activeItems = ['courage', 'hourglass', 'wager'];
   state.itemCharges.courage = 1;
+  state.itemCharges.hourglass = 1;
+  state.itemCharges.wager = 1;
   const before = state.rerolls;
   expect(useItem(state, 'courage').ok).toBe(true);
-  expect(state.rerolls).toBe(before + 1);
-  expect(state.maxRerolls).toBe(before + 1);
+  expect(useItem(state, 'hourglass').ok).toBe(true);
+  expect(useItem(state, 'wager').ok).toBe(true);
+  expect(state.rerolls).toBe(before + 3);
+  expect(state.maxRerolls).toBe(BASE_REROLLS + 3);
   expect(state.activeItems.includes('courage')).toBe(false);
   expect(state.itemCharges.courage).toBe(undefined);
+  expect(ITEM_BY_ID.courage.name).toBe('烈酒');
 });
 
 test('wager buys a reroll and marks the next score for ×1.6', () => {
@@ -729,6 +754,17 @@ test('wager buys a reroll and marks the next score for ×1.6', () => {
   forceRoll(state, [1, 2, 3, 4, 6, 6]);
   state.selected = [state.dice[0].uid];
   expect(getScorePreview(state).reroll.total).toBe(100);
+});
+
+test('gambler charm lowers the target by 15%', () => {
+  const state = fresh();
+  initLevel(state);
+  state.activeItems = ['charm'];
+  state.itemCharges.charm = 1;
+  const target = state.target;
+  expect(useItem(state, 'charm').ok).toBe(true);
+  expect(state.target).toBe(Math.ceil(target * 0.85));
+  expect(state.itemCharges.charm).toBe(0);
 });
 
 test('lucky powder pays 80, frees the reroll and vanishes', () => {
@@ -756,14 +792,12 @@ test('powder can only be used after a throw', () => {
   expect(canUseItem(state, 'powder').ok).toBe(true);
 });
 
-test('salt absorbs exactly one bust and keeps the round alive', () => {
+test('a bust with salt waits for the player, then saves the round', () => {
   const state = fresh();
   initLevel(state);
   state.activeItems = ['salt'];
   state.itemCharges.salt = 1;
-  expect(useItem(state, 'salt').ok).toBe(true);
-  expect(state.flags.saltGuard).toBe(true);
-  expect(state.activeItems.includes('salt')).toBe(false);
+  expect(canUseItem(state, 'salt').ok).toBe(false);
 
   state.score = 300;
   state.roundScore = 100;
@@ -773,10 +807,55 @@ test('salt absorbs exactly one bust and keeps the round alive', () => {
   const result = rollDice(state, { rng: () => seq[i++ % seq.length] });
   expect(result.ok).toBe(true);
   expect(result.bust).toBe(0);
+  expect(result.saltOffer).toBe(true);
+  expect(state.flags.saltOffer).toBe(true);
+  expect(state.score).toBe(300);
+  expect(state.roundScore).toBe(100);
+  expect(state.activeItems.includes('salt')).toBe(true);
+
+  const saved = resolveSaltOffer(state, true);
+  expect(saved.ok).toBe(true);
+  expect(saved.saved).toBe(100);
   expect(state.score).toBe(300);
   expect(state.roundScore).toBe(0);
-  expect(state.flags.saltGuard).toBe(false);
+  expect(state.flags.saltOffer).toBe(false);
+  expect(state.activeItems.includes('salt')).toBe(false);
   expect(state.lastBust.saved).toBe(100);
+});
+
+test('declining salt burns the round like any other bust', () => {
+  const state = fresh();
+  initLevel(state);
+  state.activeItems = ['salt'];
+  state.itemCharges.salt = 1;
+  state.score = 300;
+  state.roundScore = 100;
+  const seq = [0.2, 0.35, 0.55, 0.9, 0.25, 0.4];
+  let i = 0;
+  rollDice(state, { rng: () => seq[i++ % seq.length] });
+  const lost = resolveSaltOffer(state, false);
+  expect(lost.ok).toBe(true);
+  expect(lost.lost).toBe(100);
+  expect(state.score).toBe(200);
+  expect(state.flags.saltOffer).toBe(false);
+  // The salt was not spent, so it stays in the bag for a later bust.
+  expect(state.activeItems.includes('salt')).toBe(true);
+});
+
+test('a salt offer still holds the level open when no rerolls are left', () => {
+  const state = fresh();
+  initLevel(state);
+  state.activeItems = ['salt'];
+  state.itemCharges = { salt: 1 };
+  state.rerolls = 0;
+  state.score = 100;
+  state.target = 500;
+  const seq = [0.2, 0.35, 0.55, 0.9, 0.25, 0.4];
+  let i = 0;
+  rollDice(state, { rng: () => seq[i++ % seq.length] });
+  expect(state.phase).not.toBe('lost');
+  resolveSaltOffer(state, false);
+  expect(state.phase).toBe('lost');
 });
 
 test('a bust without salt still burns the provisional round', () => {

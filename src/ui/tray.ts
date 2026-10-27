@@ -123,7 +123,7 @@ function renderDiceA11y(run: RunState) {
           : state.blocked ? '六点被庄家禁用'
             : `${state.spec.name}，${die.value} 点`;
       return `<button type="button" class="die-a11y-button" data-die-uid="${h(die.uid)}" data-die-tip="${h(state.spec.id)}"
-        ${disabled ? 'disabled' : ''} aria-pressed="${state.selected}" aria-label="${h(label)}"></button>`;
+        aria-disabled="${disabled ? 'true' : 'false'}" aria-pressed="${state.selected}" aria-label="${h(label)}"></button>`;
     }).join('');
   }
 }

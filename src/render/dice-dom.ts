@@ -158,7 +158,7 @@ export function renderDiceTrayDom(run: RunState, tray: HTMLElement, view: DiceTr
       const disabled = state.scored || state.blank || state.blocked || view.busy || run.phase !== 'selecting';
       return `
       <button class="${dieClasses(state, view.rolling)}" data-die-uid="${h(die.uid)}" data-die-tip="${h(state.spec.id)}"
-        ${disabled ? 'disabled' : ''} aria-pressed="${state.selected}" aria-label="${h(dieLabel(state, die))}"
+        aria-disabled="${disabled ? 'true' : 'false'}" aria-pressed="${state.selected}" aria-label="${h(dieLabel(state, die))}"
         style="animation-delay:${view.rolling ? index * 45 : 0}ms;${dieSkinStyle(state.spec)}">
         <span class="die-roller"><span class="die-cube">${dieFacesHtml(die.value, state.spec, state.hidden, state.blank)}</span></span>
         ${state.hidden ? '<span class="die-mark" style="left:50%;top:50%;transform:translate(-50%,-50%);font-size:12px;color:rgba(231,190,104,.7)">✦</span>' : state.blank ? `
@@ -180,7 +180,8 @@ export function renderDiceTrayDom(run: RunState, tray: HTMLElement, view: DiceTr
     const disabled = state.scored || state.blank || state.blocked || view.busy || run.phase !== 'selecting';
     const classes = dieClasses(state, view.rolling);
     if (element.className !== classes) element.className = classes;
-    if (element.disabled !== disabled) element.disabled = disabled;
+    const ariaDisabled = disabled ? 'true' : 'false';
+    if (element.getAttribute('aria-disabled') !== ariaDisabled) element.setAttribute('aria-disabled', ariaDisabled);
     if (element.getAttribute('aria-pressed') !== String(state.selected)) element.setAttribute('aria-pressed', String(state.selected));
   }
 }

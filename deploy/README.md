@@ -7,7 +7,19 @@
 - **服务器**：`221.228.10.210`（Rocky Linux 8.10）
 - **Web 服务器**：Nginx，监听 `9999`
 - **静态目录**：`/var/www/heavens-dice/current`
-- **当前 release**：`/var/www/heavens-dice/releases/20261026-1715`
+- **当前 release**：`/var/www/heavens-dice/releases/20261027-1010`
+
+## 发布模型（Vite 构建）
+
+架构重构后，线上不再直接部署仓库根目录。发布的是 **Vite 构建产物 `dist/`**：
+
+- `npm run build` 输出 `dist/index.html` 和 `dist/assets/*`。
+- `vite.config.js` 设置 `base: './'`，所有资源使用相对 URL，可挂在 `/heavens-dice/` 子路径。
+- 根目录的 `assets/` 由 `copyRootAssets()` 复制进 `dist/assets/`，运行时 SVG 路径（`assets/...`）保持可用。
+- `vendor/` 从 `public/vendor/` 注入 `dist/vendor/`，用于离线 GSAP。
+- `dist/` 是构建产物，不提交到 Git。
+
+**不要**再把根目录的 `index.html`、`src/`、`css/` 打进 release；它们只是开发源码。
 
 ## 为什么不是 80 端口
 
@@ -34,6 +46,8 @@
 include /etc/nginx/heavens-dice-location.conf;
 ```
 
+当前规则对 `/heavens-dice/index.html` 使用 `no-store`，其余 `/heavens-dice/` 静态资源使用 1 小时缓存；Vite 生成的文件带 content hash，更新 `index.html` 即可切换新 bundle。
+
 修改后验证并重载：
 
 ```bash
@@ -43,25 +57,53 @@ systemctl reload nginx
 
 ## 更新发布
 
-本地打包：
+### 1. 本地构建
 
 ```powershell
-tar -czf .deploy/heavens-dice.tar.gz index.html assets css src
-scp .deploy/heavens-dice.tar.gz root@221.228.10.210:/tmp/heavens-dice.tar.gz
+npm ci
+npm test
+npm run build
 ```
 
-服务器解包并切换 `current` 软链接：
+构建后检查：
+
+```powershell
+Get-Content dist/index.html | Select-Object -First 20
+```
+
+`index.html` 里的脚本、样式和 favicon 必须是 `./assets/...` 相对路径，不能是 `/assets/...`。
+
+### 2. 只打包 dist 内容
+
+```powershell
+New-Item -ItemType Directory -Force .deploy | Out-Null
+tar -czf .deploy/heavens-dice-web.tar.gz -C dist .
+scp .deploy/heavens-dice-web.tar.gz root@221.228.10.210:/tmp/heavens-dice-web.tar.gz
+```
+
+### 3. 服务器解包并切换 current
 
 ```bash
 release=/var/www/heavens-dice/releases/$(date +%Y%m%d-%H%M)
 install -d -m 755 "$release"
-tar -xzf /tmp/heavens-dice.tar.gz -C "$release"
+tar -xzf /tmp/heavens-dice-web.tar.gz -C "$release"
 chown -R root:root "$release"
 find "$release" -type d -exec chmod 755 {} +
 find "$release" -type f -exec chmod 644 {} +
 ln -sfn "$release" /var/www/heavens-dice/current
-rm -f /tmp/heavens-dice.tar.gz
+rm -f /tmp/heavens-dice-web.tar.gz
 nginx -t && systemctl reload nginx
 ```
 
-> `index.html` 使用相对路径引用 `assets/`、`css/`、`src/`，因此可以安全地放在 `/heavens-dice/` 子路径下。
+### 4. 验活
+
+```bash
+curl -fsS http://127.0.0.1:9999/heavens-dice/healthz
+readlink -f /var/www/heavens-dice/current
+```
+
+浏览器打开 `/heavens-dice/`，确认：
+
+- 页面能加载 `assets/index-*.js` 与 `assets/index-*.css`；
+- 刷新后不出现旧 bundle；
+- `index.html` 响应头为 `Cache-Control: no-store`。

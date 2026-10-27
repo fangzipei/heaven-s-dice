@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
 
-import { analyzeSelection, bestSelection } from '../../src/legacy/scoring.js';
+import { analyzeSelection, bestSelection } from '../../src/core/scoring.ts';
 
 const score = (values) => analyzeSelection(values).base;
 

@@ -649,7 +649,16 @@ svg { width: 1em; height: 1em; display: block; }
 .next-level-button:hover { background: linear-gradient(100deg, rgba(221,167,72,.4), rgba(255,236,190,.24)); border-color: rgba(255,226,157,.9); box-shadow: 0 0 22px rgba(255,190,80,.2); }
 .next-level-button[hidden] { display: none; }
 .score-panel.is-cleared { border-left-color: #ffd489; box-shadow: 0 0 28px rgba(217,180,106,.16); }
-.score-panel-bottom { display: flex; justify-content: space-between; gap: 8px; margin-top: 8px; color: #887a64; font-size: 9px; letter-spacing: .04em; }
+.score-panel-bottom { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 8px; color: #887a64; font-size: 9px; letter-spacing: .04em; }
+#reroll-inline { display: inline-flex; align-items: center; gap: 5px; min-height: 35px; padding: 4px 10px; border: 1px solid rgba(240,200,122,.62); background: linear-gradient(160deg, rgba(104,69,27,.94), rgba(28,18,8,.97)); box-shadow: 0 0 22px rgba(217,180,106,.22), inset 0 1px 0 rgba(255,240,195,.18); color: #f5dfb4; white-space: nowrap; }
+#reroll-inline .reroll-hud-label { color: #d2b274; font-size: 8px; letter-spacing: .14em; }
+#reroll-inline b { color: #ffe3a1; font-family: var(--serif); font-size: 25px; line-height: 1; font-weight: 400; text-shadow: 0 0 16px rgba(255,207,111,.5); }
+#reroll-inline em { color: #9b8157; font-size: 8px; font-style: normal; }
+#reroll-inline.is-low { border-color: rgba(255,159,86,.7); animation: reroll-low 1.4s ease-in-out infinite; }
+#reroll-inline.is-low b { color: #ffbd78; }
+#reroll-inline.is-empty { border-color: rgba(190,74,58,.65); background: rgba(38,12,10,.9); opacity: .9; }
+#reroll-inline.is-empty b { color: #e58d7d; }
+@keyframes reroll-low { 50% { box-shadow: 0 0 22px rgba(255,151,73,.28), inset 0 1px 0 rgba(255,240,195,.14); } }
 .score-panel.is-danger { border-left-color: var(--blood); }
 .score-panel.is-danger .score-number strong { color: #f0a298; }
 .score-panel.is-bust { animation: score-bust-pulse .55s ease-out; }
@@ -1005,7 +1014,8 @@ svg { width: 1em; height: 1em; display: block; }
   color: #2a1a07; opacity: 0; background: linear-gradient(180deg, #ffe6a8, #c99b4b);
   box-shadow: 0 2px 7px rgba(0,0,0,.35); transition: opacity .25s, transform .25s; transform: scale(.6);
 }
-.die:hover:not(:disabled) { transform: translateY(-5px) scale(1.02); }
+.die:hover:not([aria-disabled="true"]) { transform: translateY(-5px) scale(1.02); }
+.die[aria-disabled="true"] { cursor: help; }
 .die.is-selected {
   transform: translateY(-13px) scale(1.06);
   z-index: 5;
@@ -1176,8 +1186,7 @@ svg { width: 1em; height: 1em; display: block; }
 .die.is-new { animation: die-land .4s var(--ease) both; }
 @keyframes die-land { 0% { transform: translateY(-12px) scale(.94); } 60% { transform: translateY(2px) scale(1.02); } 100% { transform: translateY(0) scale(1); } }
 .die.is-bonus { z-index: 4; }
-.die:disabled { cursor: default; }
-.die:disabled:hover { transform: none; }
+.die[aria-disabled="true"]:hover { transform: none; }
 
 /* Premium pips are carved deeper and rimmed in the tier's metal. */
 .die.rarity-legendary .die-face .pip {
@@ -1310,9 +1319,9 @@ svg { width: 1em; height: 1em; display: block; }
 .active-items { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
 .item-slot { position: relative; aspect-ratio: 1; border: 1px solid rgba(255,255,255,.08); background: rgba(0,0,0,.18); border-radius: 3px; display: grid; place-items: center; transition: .2s; overflow: hidden; }
 .item-slot img { width: 76%; transition: .2s; }
-.item-slot:hover:not([disabled]) { border-color: rgba(217,180,106,.38); background: rgba(217,180,106,.06); transform: translateY(-2px); }
-.item-slot:hover:not([disabled]) img { transform: scale(1.08); }
-.item-slot[disabled] { opacity: .3; cursor: not-allowed; filter: grayscale(.6); }
+.item-slot:hover:not([aria-disabled="true"]) { border-color: rgba(217,180,106,.38); background: rgba(217,180,106,.06); transform: translateY(-2px); }
+.item-slot:hover:not([aria-disabled="true"]) img { transform: scale(1.08); }
+.item-slot[aria-disabled="true"] { opacity: .3; cursor: help; filter: grayscale(.6); }
 .item-slot .charge { position: absolute; right: 2px; bottom: 1px; font-family: var(--serif); font-size: 10px; color: var(--gold-bright); text-shadow: 0 1px 3px #000; }
 .item-slot .item-name { position: absolute; left: 0; right: 0; bottom: 0; padding: 2px 3px; background: linear-gradient(transparent, rgba(0,0,0,.8)); color: #bbaa8e; font-size: 6px; text-align: center; letter-spacing: .02em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .item-slot.is-empty { border-style: dashed; opacity: .5; }
@@ -1807,6 +1816,7 @@ svg { width: 1em; height: 1em; display: block; }
 @keyframes toast-out { to { opacity: 0; transform: translateX(12px); } }
 
 /* tooltip */
+.shop-card, .sell-card, .compendium-card, .mini-die, .loadout-items img, .barrel-thumb, .passive-chip { cursor: help; }
 .floating-tooltip { position: fixed; z-index: 300; width: 280px; padding: 13px 14px; pointer-events: none; border: 1px solid rgba(217,180,106,.28); background: rgba(12,9,6,.97); box-shadow: 0 20px 50px rgba(0,0,0,.65); color: #b2a188; font-size: 9px; line-height: 1.65; backdrop-filter: blur(10px); }
 .floating-tooltip h5 { margin: 0 0 3px; font-family: var(--serif); font-size: 14px; font-weight: 400; color: #efdfc1; letter-spacing: .04em; }
 .floating-tooltip .tip-sub { color: var(--gold-soft); font-size: 7px; letter-spacing: .1em; margin-bottom: 5px; }
@@ -1951,7 +1961,6 @@ svg { width: 1em; height: 1em; display: block; }
      (reroll count already lives on the dock button) */
   .dice-tray-head { padding-left: 72px; }
   .dice-tray-head #throw-label { display: none; }
-  .auto-roll { right: 8px; bottom: 244px; width: 44px; padding: 5px; }
   /* placeholder combo text duplicates the dock hint on mobile */
   .combo-preview:has(.combo-placeholder) { visibility: hidden; }
   .action-dock {
@@ -1975,9 +1984,13 @@ svg { width: 1em; height: 1em; display: block; }
   .score-action .action-points { font-size: 16px; min-width: 42px; }
   .score-action em { font-size: 7px; }
   .rail { top: 70px; max-height: calc(100vh - 84px); max-height: calc(100dvh - 84px); width: 280px; }
-  .intro-modal { grid-template-columns: 1fr; }
-  .intro-portrait { min-height: 260px; }
-  .intro-body { padding: 24px; }
+  .intro-modal { grid-template-columns: 1fr; overflow-y: auto; align-content: start; }
+  .intro-portrait { min-height: 170px; }
+  .intro-body { padding: 18px 20px 22px; justify-content: flex-start; }
+  .intro-quote { margin: 12px 0; padding: 10px 0 10px 14px; font-size: 12px; line-height: 1.75; }
+  .intro-effect { margin-bottom: 14px; padding: 9px 11px; }
+  .intro-stats { gap: 10px 18px; margin: 4px 0 14px; }
+  .intro-actions { flex-wrap: wrap; gap: 10px; }
   .overlay { padding: 12px; }
   .modal { max-height: calc(100vh - 24px); }
   .rules-modal, .result-modal { padding: 30px 22px 24px; }

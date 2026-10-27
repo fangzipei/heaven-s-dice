@@ -10,8 +10,10 @@ const root = new URL('../../', import.meta.url);
 const read = (path) => readFileSync(new URL(path, root), 'utf8');
 
 describe('legacy 入口已退休', () => {
-  test('src/legacy/app.js 不存在了', () => {
-    expect(existsSync(new URL('src/legacy/app.js', root))).toBe(false);
+  test('src/legacy 整个目录与本机静态服务器都不存在了', () => {
+    expect(existsSync(new URL('src/legacy', root))).toBe(false);
+    expect(existsSync(new URL('src/compat', root))).toBe(false);
+    expect(existsSync(new URL('server.js', root))).toBe(false);
   });
 
   test('index.html 指向 ui/app.ts', () => {

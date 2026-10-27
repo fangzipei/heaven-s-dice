@@ -217,7 +217,7 @@ footer code{color:#93836b;font-family:Consolas,monospace;font-size:9.5px}
 <header class="hero">
   <p class="kicker">HEAVEN'S DICE · THE GAMBLER'S ARCHIVE</p>
   <h1>天国骰局 · 内容总览</h1>
-  <p class="lede">骰子 21 枚（狼裔 5 / 恶魔 5 / 无套组 11 / 标准 1）、骰桶 8 只、物品 18 件（含一次性 5 件）。骰面立绘取自游戏真实皮肤（材质渐变 + 刻纹 + 点数），骰桶与物品为仓库 <code>assets/</code> 内的原始矢量图；所有数值由 <code>src/data.js</code> 直接生成，不会与游戏脱节。</p>
+  <p class="lede">骰子 21 枚（狼裔 5 / 恶魔 5 / 无套组 11 / 标准 1）、骰桶 8 只、物品 18 件（含一次性 7 件）。骰面立绘取自游戏真实皮肤（材质渐变 + 刻纹 + 点数），骰桶与物品为仓库 <code>assets/</code> 内的原始矢量图；所有数值由 <code>src/data.js</code> 直接生成，不会与游戏脱节。</p>
   <div class="legend">
     <span style="--c:#b9b2a4"><i></i>普通</span><span style="--c:#61a9d8"><i></i>稀有</span><span style="--c:#b57bea"><i></i>史诗</span><span style="--c:#f0b95f"><i></i>传说</span>
     <span style="--c:#8a6d3d"><i></i>普通 3 · 稀有 7 · 史诗 6 · 传说 4</span>
@@ -1961,7 +1961,7 @@ footer code{color:#93836b;font-family:Consolas,monospace;font-size:9.5px}
 
 <section id="items">
   <div class="sec-head"><span class="sec-no">04</span><h2>物品 · 18 件</h2><span class="count">主动 12 + 被动 6</span></div>
-  <p class="sec-intro">主动物品每关恢复 1 次，随身最多携带 4 件，不占骰袋；被动物品买入即永久生效。<b>一次性消耗品</b>用完即消失，但同价位下效果更直接——烈酒、加注契约、幸运粉、盐、静默赦令。<b>三层骰架 / 双孔桶架 / 暗格货架</b>分别给市集某一区 +1 货位。<b>丰饶骰袋</b>与<b>裂痕骰袋</b>改变可用骰子数量，整局各只能获取一次。</p>
+  <p class="sec-intro">主动物品每关恢复 1 次，随身最多携带 4 件，不占骰袋；被动物品买入即永久生效。<b>一次性消耗品</b>用完即消失，但同价位下效果更直接——幸运币、猎人印记、烈酒、加注契约、幸运粉、盐、静默赦令。<b>三层骰架 / 双孔桶架 / 暗格货架</b>分别给市集某一区 +1 货位。<b>丰饶骰袋</b>与<b>裂痕骰袋</b>改变可用骰子数量，整局各只能获取一次。</p>
   <h3 class="sub-head">主动物品 · 每关 1 次</h3>
   <div class="grid item-grid"><article class="card item-card" style="--rarity:#b9b2a4;--glow:rgba(185,178,164,.35)">
     <div class="top"><span class="rarity">普通</span><span class="price">35 银币</span></div>
@@ -1980,9 +1980,9 @@ footer code{color:#93836b;font-family:Consolas,monospace;font-size:9.5px}
   <path d="M22 88 Q60 108 98 88" fill="none" stroke="#f2c76a" stroke-opacity=".22" stroke-width="1"/>
 </svg></div>
     <h4>幸运币</h4>
-    <p class="desc">立即获得 150 分。</p>
+    <p class="desc">立即获得 150 分。一次性消耗。</p>
     <p class="flavor">“正面是国王，反面也是国王。这枚硬币从来不做选择。”</p>
-    <span class="effect"><b>主动 · 每关恢复 1 次</b></span>
+    <span class="effect"><b>主动 · 每关恢复 1 次</b> · 一次性消耗</span>
   </article><article class="card item-card" style="--rarity:#61a9d8;--glow:rgba(97,169,216,.4)">
     <div class="top"><span class="rarity">稀有</span><span class="price">75 银币</span></div>
     <div class="art icon"><svg xmlns="http://www.w3.org/2000/svg" width="120" height="120" viewBox="0 0 120 120">
@@ -2000,9 +2000,9 @@ footer code{color:#93836b;font-family:Consolas,monospace;font-size:9.5px}
   <path d="M22 88 Q60 108 98 88" fill="none" stroke="#e5a06c" stroke-opacity=".22" stroke-width="1"/>
 </svg></div>
     <h4>猎人印记</h4>
-    <p class="desc">本关下一次计分翻倍。</p>
+    <p class="desc">本关下一次计分翻倍。一次性消耗。</p>
     <p class="flavor">“狼群不追错猎物。你只需要让下一次落下足够重。”</p>
-    <span class="effect"><b>主动 · 每关恢复 1 次</b></span>
+    <span class="effect"><b>主动 · 每关恢复 1 次</b> · 一次性消耗</span>
   </article><article class="card item-card" style="--rarity:#61a9d8;--glow:rgba(97,169,216,.4)">
     <div class="top"><span class="rarity">稀有</span><span class="price">65 银币</span></div>
     <div class="art icon"><svg xmlns="http://www.w3.org/2000/svg" width="120" height="120" viewBox="0 0 120 120">
@@ -2060,7 +2060,7 @@ footer code{color:#93836b;font-family:Consolas,monospace;font-size:9.5px}
   <path d="M22 88 Q60 108 98 88" fill="none" stroke="#e5bd62" stroke-opacity=".22" stroke-width="1"/>
 </svg></div>
     <h4>赌徒护符</h4>
-    <p class="desc">本关目标分数降低 20%。</p>
+    <p class="desc">本关目标分数降低 15%。</p>
     <p class="flavor">“据说它能让庄家忘掉一条规则。副作用是庄家会记住你的脸。”</p>
     <span class="effect"><b>主动 · 每关恢复 1 次</b></span>
   </article><article class="card item-card" style="--rarity:#b57bea;--glow:rgba(181,123,234,.45)">
@@ -2080,7 +2080,7 @@ footer code{color:#93836b;font-family:Consolas,monospace;font-size:9.5px}
   <path d="M22 88 Q60 108 98 88" fill="none" stroke="#e2bb72" stroke-opacity=".22" stroke-width="1"/>
 </svg></div>
     <h4>时间沙漏</h4>
-    <p class="desc">恢复 1 次重投，并立即获得 125 分。</p>
+    <p class="desc">恢复 1 次重投，并立即获得 200 分。</p>
     <p class="flavor">“沙子倒着流。你多了一次机会，也少了一点耐心。”</p>
     <span class="effect"><b>主动 · 每关恢复 1 次</b></span>
   </article><article class="card item-card" style="--rarity:#f0b95f;--glow:rgba(240,185,95,.5)">
@@ -2180,7 +2180,7 @@ footer code{color:#93836b;font-family:Consolas,monospace;font-size:9.5px}
   <path d="M22 88 Q60 108 98 88" fill="none" stroke="#d7dde1" stroke-opacity=".22" stroke-width="1"/>
 </svg></div>
     <h4>盐</h4>
-    <p class="desc">本关下一次掷空不计：本轮未计入的分数照常转为已得。一次性消耗。</p>
+    <p class="desc">掷空时会询问是否使用：用掉后本轮未计入的分数转为已得。一次性消耗。</p>
     <p class="flavor">“洒在桌角，据说能挡住那些不该落下的骰子。”</p>
     <span class="effect"><b>主动 · 每关恢复 1 次</b> · 一次性消耗</span>
   </article><article class="card item-card" style="--rarity:#f0b95f;--glow:rgba(240,185,95,.5)">
@@ -2363,7 +2363,7 @@ footer code{color:#93836b;font-family:Consolas,monospace;font-size:9.5px}
       <div class="m-line"><span>骰桶价格</span><b>35 – 80 银币</b></div>
       <div class="m-line"><span>物品货位</span><b>3 件 · 暗格货架 +1 · 刷新 12</b></div>
       <div class="m-line"><span>物品价格</span><b>35 – 260 银币</b></div>
-      <div class="m-line"><span>一次性消耗品</span><b>5 件</b></div>
+      <div class="m-line"><span>一次性消耗品</span><b>7 件</b></div>
       <table style="margin-top:10px">
         <tbody>
           <tr><td>单颗 1 / 5</td><td>100 / 50 分</td></tr>
@@ -2398,14 +2398,14 @@ footer code{color:#93836b;font-family:Consolas,monospace;font-size:9.5px}
     <li>三种「货架」被动各自只影响对应分区的上架数量，可叠加使用。</li>
     <li><b>镀金袖扣</b>让刷新费用 −20%，并让每关胜利 +15 银币。</li>
     <li>失败后「卷土重来」保留骰袋、骰桶与物品，失去一半银币。</li>
-    <li>庄家徽记：每击败一位庄家，后续关卡重投上限永久 +1。</li>
+    <li>每关基础 <b>3 次重投</b>，击败庄家不再累积上限；烈酒 / 时间沙漏 / 加注契约 / 旋涡桶仪式可以临时 +1。</li>
     <li><b>悬秤人</b>（第 28 关）把整桌分数变成漂浮分：计分与重投都不会真正入账，掷出无法计分的骰型就整桌清零；只有落秤（过关）时分数与赏金才一起兑现。</li>
     <li>骰子期望分数可用 <b>npm run dice:ev</b> 重新评估。</li>
   </ul>
 </section>
 
 <footer>
-  <span>数据：src/content/ · 皮肤：src/render/dice-skins.ts · 插画：assets/cups、assets/items · 本页由 tools/build-codex.mjs 生成 · 2026-10-26 20:43</span>
+  <span>数据：src/content/ · 皮肤：src/render/dice-skins.ts · 插画：assets/cups、assets/items · 本页由 tools/build-codex.mjs 生成 · 2026-10-27 09:36</span>
   <span>天国骰局 · 骰子落下之前，命运只是一句空话。</span>
 </footer>
 

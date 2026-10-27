@@ -94,7 +94,7 @@ function compendiumBody(tab: string): string {
       }).join('')}</div>`;
   }
   if (tab === 'items') {
-    return `<p class="compendium-intro">${ITEMS.filter((i) => i.type === 'active').length} 件主动物品、${ITEMS.filter((i) => i.type === 'passive').length} 件被动物品，其中 ${ITEMS.filter((i) => i.consumable).length} 件是一次性消耗品：烈酒、加注契约、幸运粉、盐、静默赦令。主动物品每关恢复一次，被动物品永久生效；三种货架被动分别让市集某一区多摆 1 件。丰饶骰袋与裂痕骰袋整局各只能获取一次。${compendiumProgress('items', ITEMS.length)}</p>
+    return `<p class="compendium-intro">${ITEMS.filter((i) => i.type === 'active').length} 件主动物品、${ITEMS.filter((i) => i.type === 'passive').length} 件被动物品，其中 ${ITEMS.filter((i) => i.consumable).length} 件是一次性消耗品：幸运币、猎人印记、烈酒、加注契约、幸运粉、盐、静默赦令。主动物品每关恢复一次，被动物品永久生效；三种货架被动分别让市集某一区多摆 1 件。丰饶骰袋与裂痕骰袋整局各只能获取一次。${compendiumProgress('items', ITEMS.length)}</p>
       <div class="compendium-grid">${ITEMS.map((item) => {
         if (!isDiscovered('items', item.id)) return compendiumLockedCard('这件物品');
         const rarity = rarityOf(item);

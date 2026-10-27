@@ -56,7 +56,10 @@ export function renderScorePanel() {
   const totalProgress = clamp((run.score / target) * 100, 0, 100);
   $('#score-progress')!.style.width = `${securedProgress}%`;
   $('#score-progress-pending')!.style.width = `${totalProgress}%`;
-  $('#reroll-inline')!.textContent = `重投 ×${run.rerolls}`;
+  const rerollInline = $('#reroll-inline')!;
+  rerollInline.innerHTML = `<span class="reroll-hud-label">本关重投</span><b>${run.rerolls}</b><em>/ ${run.maxRerolls}</em>`;
+  rerollInline.classList.toggle('is-low', run.rerolls > 0 && run.rerolls <= 2);
+  rerollInline.classList.toggle('is-empty', run.rerolls <= 0);
   $('#score-panel')!.classList.toggle('is-floating', floating);
   $('#score-panel')!.classList.toggle('is-danger', run.rerolls <= 0 && run.score < run.target);
   const canAdvance = run.score >= run.target && !['won', 'run-won', 'lost', 'shop'].includes(run.phase);
@@ -126,9 +129,7 @@ export function renderRail() {
   } else {
     taunt.textContent = `“${opponent.taunts[0]}”`;
   }
-  $('#reroll-note')!.textContent = run.bossBoons
-    ? `剩余 ${run.rerolls} 次 · 徽记 +${run.bossBoons}`
-    : `剩余 ${run.rerolls} 次`;
+  $('#reroll-note')!.textContent = `剩余 ${run.rerolls} 次`;
   const maxTokens = Math.max(run.maxRerolls, run.rerolls, 1);
   $('#reroll-row')!.innerHTML = Array.from({ length: Math.min(12, maxTokens) }, (_, index) => {
     const active = index < run.rerolls;
@@ -140,6 +141,8 @@ export function renderRail() {
   $('#barrel-name')!.textContent = barrel.name;
   $('#barrel-short')!.textContent = barrel.short;
   $<HTMLImageElement>('#barrel-thumb')!.src = `assets/cups/${barrel.art}.svg`;
+  $('#barrel-thumb')!.dataset.barrelTip = barrel.id;
+  $('#cup')!.dataset.barrelTip = barrel.id;
   const gestureButton = $<HTMLButtonElement>('#gesture-button')!;
   if ('gesture' in barrel && barrel.gesture) {
     gestureButton.hidden = false;
@@ -197,7 +200,7 @@ export function renderItems() {
     const check = canUseItem(run, id);
     slots.push(`
       <button class="item-slot" data-action="use-item" data-item-id="${h(id)}" data-item-tip="${h(id)}"
-        ${check.ok ? '' : 'disabled'} title="${h(item.name)}" aria-label="使用${h(item.name)}">
+        aria-disabled="${check.ok ? 'false' : 'true'}" title="${h(item.name)}" aria-label="使用${h(item.name)}">
         <img src="assets/items/${item.icon}.svg" alt="">
         <span class="charge">${charges > 0 ? charges : '×'}</span>
         <span class="item-name">${h(item.name)}</span>

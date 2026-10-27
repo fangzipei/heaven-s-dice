@@ -21,7 +21,7 @@ import { clearToasts, showToast } from './components/toast.ts';
 import { bindTooltip, hideTooltip } from './components/tooltip.ts';
 import { $, $$, setCss } from './dom.ts';
 import {
-  advanceCurrentLevel, beginRoll, bindCupDrag, forfeitRun, handleScore,
+  advanceCurrentLevel, answerSaltOffer, beginRoll, bindCupDrag, forfeitRun, handleScore,
   pulseCup, renderGame, setSpeech, useItem,
 } from './game.ts';
 import { renderTopbar } from './hud.ts';
@@ -47,6 +47,7 @@ document.addEventListener('DOMContentLoaded', () => {
   sound.setEnabled(app.soundEnabled);
   updateSoundButtons();
   bindViewportHeight();
+  mountCupZone();
   bindGlobalEvents();
   bindCupDrag();
   bindTooltip();
@@ -55,6 +56,13 @@ document.addEventListener('DOMContentLoaded', () => {
   bindSceneParallax();
   renderStartDecor();
 });
+
+function mountCupZone(): void {
+  const cupZone = $('#cup-zone');
+  const game = $('#game-screen');
+  if (!cupZone || !game) return;
+  if (cupZone.parentElement !== game) game.append(cupZone);
+}
 
 function bindViewportHeight(): void {
   const root = document.documentElement;
@@ -111,7 +119,7 @@ function bindGlobalEvents(): void {
   document.addEventListener('click', (event: MouseEvent) => {
     hideTooltip();
     const die = (event.target as Element).closest<HTMLButtonElement>('[data-die-uid]');
-    if (die && !die.disabled && app.run?.phase === 'selecting' && !app.busy && !app.introOpen) {
+    if (die && die.getAttribute('aria-disabled') !== 'true' && app.run?.phase === 'selecting' && !app.busy && !app.introOpen) {
       sound.unlock();
       if (Engine.toggleDie(app.run, die.dataset.dieUid!)) {
         sound.click();
@@ -215,6 +223,12 @@ async function handleAction(action: string, target: HTMLElement, _event?: MouseE
       break;
     case 'advance-level':
       advanceCurrentLevel();
+      break;
+    case 'salt-use':
+      answerSaltOffer(true);
+      break;
+    case 'salt-decline':
+      answerSaltOffer(false);
       break;
     case 'use-item':
       useItem(target.dataset.itemId!);
@@ -384,7 +398,9 @@ export function setupLevelScene(force = false): void {
   const cup = Engine.getBarrel(app.run);
   $<HTMLImageElement>('#cup-image')!.src = `assets/cups/${cup.art}.svg`;
   $('#cup-badge')!.textContent = cup.name;
+  $('#cup')!.dataset.barrelTip = cup.id;
   $<HTMLImageElement>('#barrel-thumb')!.src = `assets/cups/${cup.art}.svg`;
+  $('#barrel-thumb')!.dataset.barrelTip = cup.id;
   setSpeech(introLine(opponent, app.run.level, isBoss));
   renderTopbar();
   if (force) {
@@ -428,13 +444,12 @@ export function showLevelIntro(): void {
           <div class="intro-stat ${isBoss ? 'boss' : ''}"><span>重投次数</span><b>${run.rerolls}</b></div>
           <div class="intro-stat"><span>章节</span><b>${roman}</b></div>
         </div>
-        ${run.bossBoons ? `<p class="intro-role" style="margin-top:-12px;margin-bottom:18px;font-size:10px;color:#c5a96e">已夺取 ${run.bossBoons} 枚庄家徽记 · 每关额外 ${run.bossBoons} 次重投。</p>` : ''}
         <p class="intro-role" style="margin-top:-12px;margin-bottom:18px;font-size:10px;color:#a08c6c">收手奖金：每剩 1 次重投 +${REROLL_REFUND} 银币；得分达到目标 1.5 / 2 / 3 倍再 +${OVERSHOOT_TIERS.slice().reverse().map((t) => t.value).join(' / ')}。</p>
         <div class="intro-actions">
           <button class="primary-button" data-action="close-intro">入座应战 <svg><use href="#i-arrow"></use></svg></button>
           <button class="text-button" data-action="open-rules">查看计分规则 <span>↗</span></button>
         </div>
-        ${run.level === 1 ? '<p class="intro-role" style="margin-top:15px;font-size:10px;color:#8f7d63">门房赠礼：一枚「幸运币」，每关可使用一次，立即 +150 分。</p>' : ''}
+        ${run.level === 1 ? '<p class="intro-role" style="margin-top:15px;font-size:10px;color:#8f7d63">门房赠礼：一枚「幸运币」，立即 +150 分，用完即消失。</p>' : ''}
         <div class="intro-tableline"></div>
       </div>
     </div>

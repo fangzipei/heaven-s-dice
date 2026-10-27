@@ -6,7 +6,8 @@
 import { ITEM_BY_ID, LEVEL_COUNT, getOpponent } from '../content/index.ts';
 import {
   advanceLevel, applyGesture, applyScore, canUseItem, forfeit, getBarrel,
-  getScorePreview, rollDice, selectedDice, useItem as engineUseItem,
+  getScorePreview, resolveSaltOffer as engineResolveSaltOffer, rollDice, selectedDice,
+  useItem as engineUseItem,
 } from '../core/engine.ts';
 import type { ScoreAction } from '../core/engine.ts';
 import type { RunState } from '../core/types.ts';
@@ -14,9 +15,9 @@ import { clamp, h, num, sleep } from '../core/util.ts';
 import { motion } from '../render/motion.ts';
 import { sound } from '../platform/sound.ts';
 import { discoverLoadout } from '../platform/storage.ts';
-import { closeOverlay } from './components/overlay.ts';
+import { closeOverlay, openOverlay } from './components/overlay.ts';
 import { showToast } from './components/toast.ts';
-import { renderActionDock, renderAutoButton, renderComboPreview, renderDangerStrip } from './dock.ts';
+import { renderActionDock, renderComboPreview, renderDangerStrip } from './dock.ts';
 import { $, setCss } from './dom.ts';
 import { renderOpponentPlate, renderRail, renderScorePanel, renderTopbar, showBustNotice } from './hud.ts';
 import type { CupTrace } from './state.ts';
@@ -39,9 +40,12 @@ export function renderGame(): void {
   renderDiceTray();
   renderComboPreview();
   renderActionDock();
-  renderAutoButton();
   renderDangerStrip();
   renderOpponentPlate();
+  const canManuallyThrow = !app.busy && !app.introOpen
+    && (run.phase === 'ready' || run.phase === 'hot' || run.phase === 'reroll-pending'
+      || (run.phase === 'dead' && run.rerolls > 0));
+  $('#cup')?.classList.toggle('is-breathing', canManuallyThrow);
 }
 
 /* ═══════════════════════════════════════════════════════════════════
@@ -99,9 +103,8 @@ async function slowSpinTableDice(run: RunState) {
   });
 }
 
-async function gatherDiceToCup(run: RunState) {
+async function gatherDiceToCup(uids: string[]) {
   if (prefersReducedMotion()) return;
-  const uids = cupDiceToGather(run).map((die) => die.uid);
   if (!uids.length) return;
   if (diceTable) {
     await motion.gather(diceTable, uids, cupWorldPoint());
@@ -379,29 +382,28 @@ function beginCupCountdown(onDone: () => void) {
   }, 2000);
 }
 
+/* Motion is cosmetic. A stalled tween (throttled tab, slow GPU, cancelled
+   animation) must never leave the table stuck in `busy` with the reroll
+   unspent, so every visual step gets a ceiling. */
+function capped<T>(promise: Promise<T>, ms: number): Promise<T | void> {
+  return Promise.race([
+    promise,
+    new Promise<void>((resolve) => { setTimeout(resolve, ms); }),
+  ]);
+}
+
 async function performCupRoll({ free = false, prepared = false }: { free?: boolean; prepared?: boolean } = {}) {
   const run = app.run;
   if (!run) return;
   const previousPhase = run.phase;
+  const isFreeThrow = free || run.phase === 'hot';
   // Which dice the cup actually swallows — captured before the engine
   // rewrites the values, so the pour animation targets the right meshes.
   const pouring = cupDiceToGather(run).map((die) => die.uid);
   try {
-    if (!prepared) {
-      await slowSpinTableDice(run);
-      await gatherDiceToCup(run);
-      const cup = $('#cup');
-      cup?.classList.add('is-ritual');
-      motion.cupRattle($('#cup-vessel'), { cycles: 2 });
-      sound.rattle();
-      await sleep(prefersReducedMotion() ? 0 : 300);
-      await invertCup();
-    } else if (!app.cupInverted) {
-      await invertCup();
-    } else {
-      stopCupShake();
-    }
-    const result = rollDice(run, { free: free || run.phase === 'hot' });
+    /* Commit the throw first. The token has to be spent the instant the
+       player commits; the ceremony below is only theatre. */
+    const result = rollDice(run, { free: isFreeThrow });
     if (!result.ok) {
       resetCupVisuals();
       app.busy = false;
@@ -411,13 +413,34 @@ async function performCupRoll({ free = false, prepared = false }: { free?: boole
       return;
     }
     app.rolling = true;
+    // Counters and dock repaint now; the tray keeps the old faces until the
+    // pour so the throw still reads as a throw.
+    renderTopbar();
+    renderScorePanel();
+    renderRail();
+    renderActionDock();
+    renderDangerStrip();
+    if (!prepared) {
+      await capped(slowSpinTableDice(run), 1500);
+      await capped(gatherDiceToCup(pouring), 1500);
+      const cup = $('#cup');
+      cup?.classList.add('is-ritual');
+      motion.cupRattle($('#cup-vessel'), { cycles: 2 });
+      sound.rattle();
+      await sleep(prefersReducedMotion() ? 0 : 300);
+      await capped(invertCup(), 900);
+    } else if (!app.cupInverted) {
+      await capped(invertCup(), 900);
+    } else {
+      stopCupShake();
+    }
     sound.dice();
     rightCup();
     renderGame();
     if (result.bust) showBustNotice(result.bust);
     // The dice pour out of the cup and settle; wait for the real motion
     // instead of a guessed timeout.
-    if (diceTable) await pourDiceIntoTable(pouring.length ? pouring : run.dice.map((die) => die.uid));
+    if (diceTable) await capped(pourDiceIntoTable(pouring.length ? pouring : run.dice.map((die) => die.uid)), 2500);
     else await sleep(680);
     app.busy = false;
     app.rolling = false;
@@ -426,7 +449,8 @@ async function performCupRoll({ free = false, prepared = false }: { free?: boole
     app.cupHoldPromise = null;
     $('#cup')?.classList.remove('is-ritual');
     renderGame();
-    if (run.phase === 'lost') showDefeat();
+    if (run.flags.saltOffer) showSaltOffer();
+    else if (run.phase === 'lost') showDefeat();
     else if (run.phase === 'dead') speakRandomTaunt(0.35);
     else if (previousPhase !== 'hot' && Math.random() < .24) speakRandomTaunt(0.24);
   } catch (error) {
@@ -437,6 +461,44 @@ async function performCupRoll({ free = false, prepared = false }: { free?: boole
     renderGame();
     showToast('骰桶卡住了，再试一次。', 'error');
   }
+}
+
+/* A bust with salt in the bag is put on hold: the table asks before burning
+   the round. Both buttons route back into the engine, which owns the outcome. */
+export function showSaltOffer(): void {
+  const run = app.run;
+  if (!run || !run.flags.saltOffer) return;
+  const saved = Math.max(0, run.roundScore || 0);
+  openOverlay(`
+    <div class="modal result-modal" style="width:min(440px,100%);padding:34px">
+      <p class="modal-kicker">A BUST ON THE TABLE</p>
+      <h2 style="font-size:26px;margin-top:6px">掷空了，要撒盐吗？</h2>
+      <p class="result-sub">${saved > 0 ? `本轮 ${num(saved)} 分还摆在桌上。` : '本轮还没有分数可保。'}撒盐会把它们收进本关得分，盐会被消耗掉。</p>
+      <div class="modal-actions" style="margin-top:22px">
+        <button class="secondary-button" data-action="salt-decline">不用，认栽</button>
+        <button class="primary-button" data-action="salt-use">撒盐 · 保住本轮</button>
+      </div>
+    </div>`, { dismissible: false });
+}
+
+export function answerSaltOffer(use: boolean): void {
+  const run = app.run;
+  if (!run) return;
+  const result = engineResolveSaltOffer(run, use);
+  if (!result.ok) {
+    showToast(result.error!, 'error');
+    return;
+  }
+  closeOverlay();
+  renderGame();
+  if (use) {
+    showToast(result.saved
+      ? `盐保住了本轮 ${num(result.saved)} 分。`
+      : '盐撒下去了，但本轮本来没有分数可保。', 'good');
+  } else if (result.lost) {
+    showBustNotice(result.lost);
+  }
+  if (run.phase === 'lost') showDefeat();
 }
 
 export function beginRoll({ free = false }: { free?: boolean } = {}): void {
@@ -483,18 +545,19 @@ export function startCupHold(): boolean {
   renderGame();
   cup?.classList.add('is-ritual');
   const ritualHold = Boolean(cupGestureInfo(run));
+  const gatherUids = cupDiceToGather(run).map((die) => die.uid);
   app.cupHoldPromise = (async () => {
     if (prefersReducedMotion()) return;
-    await slowSpinTableDice(run);
+    await capped(slowSpinTableDice(run), 1500);
     if (!app.cupHoldStarted) return;
-    await gatherDiceToCup(run);
+    await capped(gatherDiceToCup(gatherUids), 1500);
     if (!app.cupHoldStarted) return;
     motion.cupRattle($('#cup-vessel'), { cycles: 1 });
     sound.rattle();
     await sleep(320);
     if (!app.cupHoldStarted) return;
     if (!ritualHold) {
-      await invertCup();
+      await capped(invertCup(), 900);
       if (!app.cupHoldStarted) {
         resetCupVisuals();
         return;
@@ -668,12 +731,13 @@ export function bindCupDrag(): void {
   let startY = 0;
   let dx = 0;
   let dy = 0;
-  let allowVertical = false;
   let traceRadius = 86;
   let traceCenter = { x: 0, y: 0 };
   let cupCenter = { x: 0, y: 0 };
   let dragMin = -138;
   let dragMax = 138;
+  let dragMinY = -138;
+  let dragMaxY = 138;
 
   const canDrag = () => app.run && !app.busy && !app.introOpen
     && (app.run.phase === 'ready' || app.run.phase === 'hot' || app.run.phase === 'reroll-pending'
@@ -690,27 +754,30 @@ export function bindCupDrag(): void {
     startY = event.clientY;
     dx = 0;
     dy = 0;
-    const scene = $('#scene');
     const cupRect = cup.getBoundingClientRect();
-    const sceneRect = scene?.getBoundingClientRect();
-    const gestureInfo = cupGestureInfo(app.run!);
-    allowVertical = Boolean(gestureInfo);
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+    const margin = 8;
     cupCenter = { x: cupRect.left + cupRect.width / 2, y: cupRect.top + cupRect.height / 2 };
     traceCenter = { ...cupCenter };
-    traceRadius = sceneRect ? clamp(sceneRect.width * .1, 64, 108) : 86;
-    if (sceneRect) {
-      const margin = Math.max(12, sceneRect.width * .018);
-      dragMin = sceneRect.left + margin - cupRect.left;
-      dragMax = sceneRect.right - margin - cupRect.right;
-      if (dragMax < dragMin) { dragMin = 0; dragMax = 0; }
-    }
-    // Keep the whole ritual path inside the cup's reachable strip. The cup
-    // starts near the left edge; centering a star on it would make the left
-    // point unreachable, so shift the target toward the table center.
-    const minCenter = traceCenter.x + dragMin;
-    const maxCenter = traceCenter.x + dragMax;
-    traceRadius = Math.min(traceRadius, Math.max(36, (maxCenter - minCenter) / 2));
-    traceCenter.x = clamp(traceCenter.x, minCenter + traceRadius, maxCenter - traceRadius);
+    traceRadius = clamp(viewportWidth * .1, 64, 108);
+    dragMin = margin - cupRect.left;
+    dragMax = viewportWidth - margin - cupRect.right;
+    dragMinY = margin - cupRect.top;
+    dragMaxY = viewportHeight - margin - cupRect.bottom;
+    if (dragMax < dragMin) { dragMin = 0; dragMax = 0; }
+    if (dragMaxY < dragMinY) { dragMinY = 0; dragMaxY = 0; }
+    const minCenterX = cupCenter.x + dragMin;
+    const maxCenterX = cupCenter.x + dragMax;
+    const minCenterY = cupCenter.y + dragMinY;
+    const maxCenterY = cupCenter.y + dragMaxY;
+    traceRadius = Math.min(
+      traceRadius,
+      Math.max(36, (maxCenterX - minCenterX) / 2),
+      Math.max(36, (maxCenterY - minCenterY) / 2),
+    );
+    traceCenter.x = clamp(traceCenter.x, minCenterX + traceRadius, maxCenterX - traceRadius);
+    traceCenter.y = clamp(traceCenter.y, minCenterY + traceRadius, maxCenterY - traceRadius);
     try { cup.setPointerCapture(pointerId); } catch { /* pointerup fallback below */ }
     cup.classList.add('is-dragging');
   });
@@ -718,7 +785,7 @@ export function bindCupDrag(): void {
   const onCupMove = (event: PointerEvent) => {
     if (!dragging || event.pointerId !== pointerId) return;
     dx = clamp(event.clientX - startX, dragMin, dragMax);
-    dy = allowVertical ? clamp(event.clientY - startY, -traceRadius * 1.65, traceRadius * 1.65) : 0;
+    dy = clamp(event.clientY - startY, dragMinY, dragMaxY);
     const tilt = clamp(dx * .02, -9, 9);
     cup.style.transform = `translate(${dx}px, ${dy}px) rotate(${tilt}deg)`;
     if (Math.abs(dx) > 8 || Math.abs(dy) > 8) {

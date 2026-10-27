@@ -26,7 +26,7 @@ export interface RunScoreBreakdown {
   total: number;
 }
 
-export const BASE_REROLLS = 5;
+export const BASE_REROLLS = 3;
 export const STARTING_COINS = 40;
 export const ACTIVE_ITEM_SLOTS = 4;
 export const DEBUG = false;
@@ -139,12 +139,11 @@ function resetLevelFlags(state: RunState) {
     hunterMark: false,
     bloodContract: false,
     wagerMark: false,
-    saltGuard: false,
+    saltOffer: false,
     starBonus: false,
     starArmed: false,
     vortexScore: false,
     charm: false,
-    eyeUsed: false,
     vortexUsed: false,
     starUsed: false,
     gestureUsedThisThrow: false,
@@ -284,7 +283,9 @@ export function initLevel(state: RunState): RunState {
     pushLog(state, `静默赦令生效：${opponent.name} 的「${opponent.effectName}」被消除。`, 'good');
   }
   const effectKey = state.flags.bossDisabled ? null : opponent && 'effectKey' in opponent ? opponent.effectKey : null;
-  let rerolls = BASE_REROLLS + (state.bossBoons || 0);
+  // The base budget never grows between levels (no boss-boon carry-over), but
+  // the two boss effects and a handful of items may still shift this level.
+  let rerolls = BASE_REROLLS;
   if (config.boss && effectKey === 'rerollMinus') rerolls -= 1;
   if (config.boss && effectKey === 'scoreTaxReroll') rerolls += 1;
   state.rerolls = Math.max(1, rerolls);
@@ -325,7 +326,6 @@ export function createRun({ rng = Math.random }: { rng?: () => number } = {}): R
     rerolls: BASE_REROLLS,
     maxRerolls: BASE_REROLLS,
     phase: 'ready',
-    bossBoons: 0,
     bossWardArmed: false,
     flags: {},
     itemCharges: {},
@@ -621,12 +621,11 @@ function bossScoreAmount(state: RunState, amount: number): number {
 function addScore(state: RunState, amount: number, { round = false }: { round?: boolean } = {}) {
   state.score += amount;
   state.stats.levelScore += amount;
-  // The newest scoring action is at risk until the next throw proves it has a
-  // scoring combination. Earlier confirmed rounds stay in the secured total.
-  // Under a floating-score dealer nothing ever gets confirmed: every point on
-  // the table rides on the next throw.
+  // Every "计分并继续" adds to the same unbanked round. Only
+  // "计分并重投" banks it. Under a floating-score dealer nothing is ever
+  // secured: every point on the table rides on the next throw.
   if (isFloatingScore(state)) state.roundScore = state.score;
-  else if (round) state.roundScore = amount;
+  else if (round) state.roundScore = (state.roundScore || 0) + amount;
   if (amount > state.stats.bestHit) state.stats.bestHit = amount;
 }
 
@@ -641,6 +640,7 @@ function bustRound(state: RunState): number {
   state.score = Math.max(0, state.score - lost);
   state.stats.levelScore = Math.max(0, state.stats.levelScore - lost);
   state.roundScore = 0;
+  state.targetReached = state.score >= state.target;
   state.lastBust = { lost, floating };
   pushLog(state, floating
     ? `秤翻了：整桌 ${lost} 分漂浮分全部消散。`
@@ -724,12 +724,6 @@ function completeLevel(state: RunState) {
   if (state.phase === 'won' || state.phase === 'run-won') return;
   state.roundScore = 0;
   awardLevel(state);
-  // Taking a dealer's chair grants a permanent reroll ceiling increase for the
-  // rest of the run. The baseline five rerolls are untouched.
-  if (getLevelConfig(state.level).boss && state.level < LEVEL_COUNT) {
-    state.bossBoons = (state.bossBoons || 0) + 1;
-    pushLog(state, `夺下庄家徽记：后续关卡重投上限 +1（当前 +${state.bossBoons}）。`, 'good');
-  }
   if (state.level >= LEVEL_COUNT) {
     state.phase = 'run-won';
     state.runWon = true;
@@ -795,7 +789,11 @@ export function advanceLevel(state: RunState | null): { ok: boolean; error?: str
 }
 
 export function activeCharges(state: RunState): number {
-  return Object.values(state.itemCharges || {}).reduce((sum, n) => sum + (n > 0 ? n : 0), 0);
+  /* Salt is reactive: it can only answer a bust, so it must not keep a dead
+     table alive forever once the reroll tokens are gone. */
+  return Object.entries(state.itemCharges || {}).reduce(
+    (sum, [id, n]) => sum + (n > 0 && id !== 'salt' ? n : 0), 0,
+  );
 }
 
 export function finalizeStuck(state: RunState): RunState {
@@ -817,6 +815,39 @@ export interface RollResult {
   values?: (number | string)[];
   hot?: boolean;
   bust?: number;
+  /** A bust is on hold because the player owns salt and has to answer. */
+  saltOffer?: boolean;
+}
+
+function ownsSalt(state: RunState): boolean {
+  return state.activeItems.includes('salt') && (state.itemCharges.salt || 0) > 0;
+}
+
+/** Answer the salt prompt a bust raised. */
+export function resolveSaltOffer(state: RunState, use: boolean): { ok: boolean; error?: string; saved?: number; lost?: number } {
+  if (!state.flags.saltOffer) return { ok: false, error: '现在没有需要盐的掷空。' };
+  state.flags.saltOffer = false;
+  if (!use) {
+    const lost = bustRound(state);
+    finalizeStuck(state);
+    return { ok: true, lost };
+  }
+  const salt = ITEM_BY_ID.salt;
+  if (salt?.consumable) {
+    state.activeItems = state.activeItems.filter((id) => id !== 'salt');
+    delete state.itemCharges.salt;
+  } else {
+    state.itemCharges.salt = 0;
+  }
+  const saved = Math.max(0, state.roundScore || 0);
+  // Floating points go straight back on the table after salt saves them.
+  state.roundScore = isFloatingScore(state) ? state.score : 0;
+  state.lastBust = { saved };
+  pushLog(state, saved > 0
+    ? `盐挡住了这一掷：本轮 ${saved} 分保住。`
+    : '盐挡住了这一掷，但本轮本来没有分数可保。', 'good');
+  finalizeStuck(state);
+  return { ok: true, saved };
 }
 
 export function rollDice(state: RunState, { free = false, rng = getRng(state) }: { free?: boolean; rng?: () => number } = {}): RollResult {
@@ -891,28 +922,22 @@ export function rollDice(state: RunState, { free = false, rng = getRng(state) }:
   if (!scoring) {
     state.phase = 'dead';
     pushLog(state, `掷出 ${state.lastRoll!.map((v) => v === 0 ? '白' : v).join(' · ')}，没有可计分的组合。`, 'bad');
-    if (state.flags.saltGuard) {
-      // Salt eats the bust once: the provisional round is confirmed instead.
-      const saved = Math.max(0, state.roundScore || 0);
-      state.flags.saltGuard = false;
-      // Floating points go straight back on the table after salt saves them.
-      state.roundScore = isFloatingScore(state) ? state.score : 0;
-      state.lastBust = { saved };
-      pushLog(state, saved > 0
-        ? `盐挡住了这一掷：本轮 ${saved} 分保住。`
-        : '盐挡住了这一掷，但本轮本来没有分数可保。', 'good');
+    /* Salt is no longer armed in advance: the table holds the bust and asks.
+       The round stays on the table until resolveSaltOffer() answers. */
+    if (ownsSalt(state)) {
+      state.flags.saltOffer = true;
+      state.lastBust = { saved: Math.max(0, state.roundScore || 0) };
     } else {
       bust = bustRound(state);
     }
   } else {
-    // A scoring throw confirms the previous round's provisional points — unless
-    // the dealer keeps everything floating, in which case it stays at risk.
-    if (!isFloatingScore(state)) state.roundScore = 0;
+    // A scoring throw does not end the round. The accumulated round stays at
+    // risk until "计分并重投" or a bust.
     state.lastBust = null;
     pushLog(state, `掷出 ${state.lastRoll!.map((v) => v === 0 ? '白' : v).join(' · ')}。`, 'roll');
   }
-  finalizeStuck(state);
-  return { ok: true, values: state.lastRoll!, hot: Boolean(wasHot), bust };
+  if (!state.flags.saltOffer) finalizeStuck(state);
+  return { ok: true, values: state.lastRoll!, hot: Boolean(wasHot), bust, saltOffer: Boolean(state.flags.saltOffer) };
 }
 
 export type ScoreAction = 'continue' | 'reroll' | 'bank';
@@ -982,13 +1007,6 @@ export function applyScore(state: RunState, action: ScoreAction): ApplyScoreResu
 
   // Die-specific trigger effects.
   const specs = scoringDice.map((d) => getDieSpec(d.dieId));
-  const rerollDie = specs.find((spec) => spec.bonus?.type === 'bonusReroll');
-  if (rerollDie && !state.flags.eyeUsed) {
-    state.flags.eyeUsed = true;
-    state.rerolls += 1;
-    state.maxRerolls += 1;
-    pushLog(state, `${rerollDie.name} 睁眼：本关获得 1 次额外重投。`, 'good');
-  }
   if (specs.some((s) => s.bonus?.type === 'demon')) {
     pushLog(state, '无冠女王满意地收下了这份供奉。', 'demon');
   }
@@ -1035,8 +1053,9 @@ export function applyScore(state: RunState, action: ScoreAction): ApplyScoreResu
     return { ok: true, total, action, won: false, hot: false, settled: true, breakdown: chosen.breakdown };
   }
 
-  // Both reroll choices are played by the cup animation before rollDice().
-  // "continue" leaves already-scored dice aside; "reroll" returns all six.
+  // "计分并重投" ends the round: bank every accumulated point, then bring all
+  // six dice back. "计分并继续" keeps the same round alive.
+  if (action === 'reroll' && !isFloatingScore(state)) state.roundScore = 0;
   state.phase = 'reroll-pending';
   state.flags.rerollAll = action === 'reroll';
   return {
@@ -1128,6 +1147,9 @@ export function canUseItem(state: RunState, itemId: string): ItemResult {
   if (state.phase === 'won' || state.phase === 'run-won' || state.phase === 'lost' || state.phase === 'shop') {
     return { ok: false, error: '当前阶段不能使用物品。' };
   }
+  if (itemId === 'salt') {
+    return { ok: false, error: '盐会在掷空时自动询问是否使用。' };
+  }
   if (itemId === 'boss_ward') {
     if (state.bossWardArmed) return { ok: false, error: '下一场庄家已经被静默赦令保护。' };
     const isBoss = getLevelConfig(state.level).boss;
@@ -1184,13 +1206,13 @@ export function useItem(state: RunState, itemId: string): ItemResult {
     return { ok: true, rerollFree: true, item };
   } else if (itemId === 'charm') {
     state.flags.charm = true;
-    state.target = Math.ceil(state.target * 0.8);
+    state.target = Math.ceil(state.target * 0.85);
     pushLog(state, `赌徒护符生效：目标降至 ${state.target} 分。`, 'item');
     checkWin(state);
   } else if (itemId === 'hourglass') {
     state.rerolls += 1;
     state.maxRerolls += 1;
-    const gain = bossScoreAmount(state, 125);
+    const gain = bossScoreAmount(state, 200);
     addScore(state, gain);
     pushLog(state, `沙漏逆转：+1 次重投，+${gain} 分。`, 'item');
     checkWin(state);
@@ -1202,9 +1224,6 @@ export function useItem(state: RunState, itemId: string): ItemResult {
     state.maxRerolls += 1;
     state.flags.wagerMark = true;
     pushLog(state, '加注契约生效：+1 次重投，下一次计分 ×1.6。', 'item');
-  } else if (itemId === 'salt') {
-    state.flags.saltGuard = true;
-    pushLog(state, '盐已洒在桌角：下一次掷空不会抹掉本轮分数。', 'item');
   } else if (itemId === 'powder') {
     const gain = bossScoreAmount(state, 80);
     addScore(state, gain);

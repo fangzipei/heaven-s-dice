@@ -57,11 +57,9 @@ function dieRank(dieId) {
 function maybeUseItems(run) {
   // Use defensive / setup items early.
   if (run.itemCharges.charm && run.score === 0) useItem(run, 'charm');
-  if (run.itemCharges.wager && run.score === 0 && run.rerolls <= 5) useItem(run, 'wager');
-  if (run.itemCharges.courage && run.rerolls <= 5) useItem(run, 'courage');
+  if (run.itemCharges.wager && run.score === 0 && run.rerolls <= 3) useItem(run, 'wager');
+  if (run.itemCharges.courage && run.rerolls <= 2) useItem(run, 'courage');
   if (run.itemCharges.blood_contract && run.score === 0 && run.level >= 10) useItem(run, 'blood_contract');
-  // Salt only pays off once there is something worth protecting.
-  if (run.itemCharges.salt && run.score > 0 && run.rerolls <= 1) useItem(run, 'salt');
   // Rescue / finishing items.
   if (run.itemCharges.lucky_coin && run.score + 150 >= run.target) useItem(run, 'lucky_coin');
   if (run.itemCharges.hourglass && run.score + 125 >= run.target) useItem(run, 'hourglass');

@@ -41,8 +41,7 @@ export type DieBonus =
   | { type: 'fiveAndSix'; value: number; label: string }
   | { type: 'dieMultiplier'; value: number; label: string }
   | { type: 'tripleFace'; face: number; value: number; label: string }
-  | { type: 'straightFlat'; value: number; label: string }
-  | { type: 'bonusReroll'; label?: string };
+  | { type: 'straightFlat'; value: number; label: string };
 
 export interface DiceDef {
   id: string;
@@ -207,13 +206,12 @@ export interface RunFlags {
   hunterMark?: boolean;
   bloodContract?: boolean;
   wagerMark?: boolean;
-  saltGuard?: boolean;
+  saltOffer?: boolean;
   starBonus?: boolean;
   starArmed?: boolean;
   vortexArmed?: boolean;
   vortexScore?: boolean;
   charm?: boolean;
-  eyeUsed?: boolean;
   vortexUsed?: boolean;
   starUsed?: boolean;
   gestureUsedThisThrow?: boolean;
@@ -303,7 +301,6 @@ export interface RunState {
   maxRerolls: number;
   levelStartRerolls?: number;
   phase: RunPhase;
-  bossBoons?: number;
   bossWardArmed: boolean;
   flags: RunFlags;
   itemCharges: Record<string, number>;

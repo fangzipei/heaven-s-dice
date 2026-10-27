@@ -76,7 +76,7 @@ function tutorialHtml(): string {
         <p class="tut-lede">你坐在长桌这一侧，用六颗骰子去够每关的目标分。达到目标后不会自动结束，可以继续加注；准备好了，再亲自点击「下一关」。</p>
         <div class="tut-cards three">
           <div class="tut-card"><b>${LEVEL_COUNT} 关 · ${BOSSES.length} 位庄家</b><p>第 ${BOSSES.map((boss) => boss.level).join('、')} 关各有一位庄家，两场庄家之间的空档越拖越长：${MINION_GAPS.join('、')} 关。庄家有自己的桌规，击败他会拿到永久重投上限。</p></div>
-          <div class="tut-card"><b>6 颗骰子 · 5 次重投</b><p>每关第一掷免费；之后每掷一次消耗 1 次重投。骰子、骰桶、物品会改变你能走多远。</p></div>
+          <div class="tut-card"><b>6 颗骰子 · 3 次重投</b><p>每关第一掷免费；之后每掷一次消耗 1 次重投。骰子、骰桶、物品会改变你能走多远。</p></div>
           <div class="tut-card"><b>目标分是算出来的</b><p>第 1 关 ${LEVEL_CURVE.targetBase} 分，之后每关 ×${LEVEL_CURVE.targetGrowth}；庄家的桌子再乘上自己的系数（赏金最高 ×${Math.max(...BOSSES.map((boss) => boss.curve.reward!)).toFixed(2)}），所以庄家关总是比隔壁贵一档。分数在左上角：大字是“已得”，本轮挂账单独显示。</p></div>
         </div>
         <div class="tut-flow">
@@ -142,7 +142,7 @@ function tutorialHtml(): string {
 
       <section class="tut-section" id="tut-risk">
         <div class="tut-section-head"><span>03</span><div><p>THE RISK OF THE NEXT THROW</p><h3>已得、本轮未计入、掷空与下一关</h3></div></div>
-        <p class="tut-lede">左上角的计分面板会拆成两笔：已经安全的分数，和本轮还没确认的分数。</p>
+        <p class="tut-lede">一轮可以连续多次「计分并继续」累积；只有「计分并重投」结束本轮并落袋，或者掷空让本轮全部清零。</p>
         <div class="tut-score-demo">
           <div class="tut-score-demo-top"><span>本关已得</span><span>目标 450</span></div>
           <div class="tut-score-demo-number"><strong>220</strong><em>+80 本轮</em><span>/450</span></div>
@@ -150,9 +150,9 @@ function tutorialHtml(): string {
           <div class="tut-score-demo-bar"><i style="width:49%"></i><b style="width:18%"></b></div>
         </div>
         <div class="tut-cards">
-          <div class="tut-card"><b>下一次投掷仍能计分</b><p>上一笔“本轮未计入”会转为“已得”，然后你可以继续选骰计分。</p></div>
-          <div class="tut-card"><b>下一次投掷掷空</b><p>本次投掷没有任何可计分组合时，这一笔“本轮未计入”全部作废；已得分数保留。</p></div>
-          <div class="tut-card"><b>目标达成后</b><p>不会自动过关。可以继续得分，直到你亲自点击左上角「下一关」。终局按钮是「查看结局」。</p></div>
+          <div class="tut-card"><b>计分并继续</b><p>本轮挂账继续累积，仍处于风险中。继续多少次都可以，直到你决定结束本轮。</p></div>
+          <div class="tut-card"><b>计分并重投</b><p>结束本轮：本轮累计分全部落袋，再重新投六颗骰子，开始新的一轮。</p></div>
+          <div class="tut-card"><b>掷空</b><p>投掷后没有任何可计分组合时，本轮累计分全部作废；已经落袋的分数保留。</p></div>
           <div class="tut-card is-gold"><b>收手换钱</b><p>过关结算时，每剩 1 次未使用的重投可以折 <b style="display:inline;font-size:10px;color:#e5c278">${REROLL_REFUND} 银币</b>带走。带着 3 次重投收手 = +${REROLL_REFUND * 3} 银币；想刷分就得把它花掉，这是明码标价的取舍。</p></div>
         </div>
         <h4 class="tut-subtitle">超额赏金 · 把目标甩得越远，拿得越多</h4>
@@ -163,7 +163,7 @@ function tutorialHtml(): string {
         <div class="tut-callout is-key"><b>收手还是加注？</b><p>达标那一刻，左上角「胜利奖励」会实时变成你现在收手能拿到的数目（含剩余重投折价与已达成的超额档位），鼠标悬停可以看到明细。再赌一把可能跨到 2 倍、3 倍，也可能一次掷空把本轮挂账全丢掉——已得分数不会丢，但也不会再多给你一枚银币。</p></div>
         <div class="tut-callout">
           <b>全骰（Hot Dice）</b>
-          <p>如果六颗骰子全部被计分，它们会全部归位，下一次投掷免费，不消耗重投次数。但本轮未计入的分数仍然要等下一次投掷确认。</p>
+          <p>六颗骰子全部计分会免费重投全部骰子，但不会结束本轮；本轮累计分仍然处于风险中，直到点击「计分并重投」。</p>
         </div>
         <div class="tut-callout">
           <b>重投耗尽</b>
@@ -176,7 +176,7 @@ function tutorialHtml(): string {
         <div class="tut-cards">
           <div class="tut-card"><b>骰桶 · 8 只</b><p>初始橡木桶之外，3 只概率桶偏向某些点数，2 只骰型桶（狼图腾桶奖励 3、恶魔契桶奖励赖子），2 只仪式桶需要画阵。按住骰桶后桌面会显示五芒星或顺时针圆轨迹，2 秒内沿着画；偏差过大会失败。五芒星每关只能生效一次，也可点右下角「画阵」。</p></div>
           <div class="tut-card"><b>骰子 · ${DICE.length} 枚 · 两套 + 无套</b><p>${RARITIES.common.name} ${DICE.filter((d) => d.rarity === 'common').length}、${RARITIES.rare.name} ${DICE.filter((d) => d.rarity === 'rare').length}、${RARITIES.epic.name} ${DICE.filter((d) => d.rarity === 'epic').length}、${RARITIES.legendary.name} ${DICE.filter((d) => d.rarity === 'legendary').length}。每枚骰子有自己的六面概率，悬停可看真实概率；<b>额外加分只出现在史诗与传说</b>上。<b>狼裔 5 枚</b>把 3 的概率抬高，2 / 4 件分别让每颗计分的 3 加分、三连 3 大幅加分。<b>恶魔 5 枚</b>把掷出的 1 变成「恶魔赖子」——能补三连或顺子（顺子最多替 1 颗），但不能单独计分。剩下的 <b>10 枚无套组</b>走极端骰型：只有单数、只有双数、非 1 即 6、阶梯、照面……它们不参与套装，但随时能买能卖。</p></div>
-          <div class="tut-card"><b>物品 · ${ITEMS.length} 件</b><p>${ITEMS.filter((i) => i.type === 'active').length} 主动、${ITEMS.filter((i) => i.type === 'passive').length} 被动，其中 <b>${ITEMS.filter((i) => i.consumable).length} 件一次性</b>（烈酒、加注契约、幸运粉、盐、静默赦令）——用完即消失，但效果比同价位常驻物品更直接。主动物品每关恢复一次；被动物品永久生效。<b>三层骰架 / 双孔桶架 / 暗格货架</b>分别让市集的骰子、骰桶、物品各 +1 个货位。丰饶骰袋 +1 骰、裂痕骰袋 -1 骰但计分 +25%，这两件整局各只能获取一次。</p></div>
+          <div class="tut-card"><b>物品 · ${ITEMS.length} 件</b><p>${ITEMS.filter((i) => i.type === 'active').length} 主动、${ITEMS.filter((i) => i.type === 'passive').length} 被动，其中 <b>${ITEMS.filter((i) => i.consumable).length} 件一次性</b>（幸运币、猎人印记、烈酒、加注契约、幸运粉、盐、静默赦令）——用完即消失，但效果比同价位常驻物品更直接。主动物品每关恢复一次；被动物品永久生效。<b>三层骰架 / 双孔桶架 / 暗格货架</b>分别让市集的骰子、骰桶、物品各 +1 个货位。丰饶骰袋 +1 骰、裂痕骰袋 -1 骰但计分 +25%，这两件整局各只能获取一次。</p></div>
           <div class="tut-card"><b>市集</b><p>每关之后进入：骰子 2 枚、骰桶 1 只、物品 3 件；带上货架类被动会各 +1。骰子按等级加权：前 6 关以普通 / 稀有为主，过了 24 关才真正放出传说。每次刷新都消耗银币；随身物品可以半价卖回，出售后不会再次上架。</p></div>
           <div class="tut-card"><b>赌桌 · ${TABLES.length} 张</b><p>木头、青石、黑铁、黄金、钻石。五张桌子平分 ${LEVEL_COUNT} 关（${LEVEL_CURVE.targetBase} 分起步），庄家按难度穿插落座：越晚的桌子越贵，也越不像人坐的地方。</p></div>
         </div>
@@ -184,7 +184,7 @@ function tutorialHtml(): string {
         <div class="tut-bosses">${bosses}</div>
         <div class="tut-callout">
           <b>操作速记</b>
-          <p>按住骰桶拖动会开始 2 秒倒计时，倒计时结束自动落骰；仪式桶会显示桌面轨迹，需要沿着轨迹描画，偏差过大会失败。也可以点击右侧自动摇骰；空格自动摇；数字键 1 / 2 是「计分并继续」「计分并重投」。</p>
+          <p>按住骰桶拖动会开始 2 秒倒计时，倒计时结束自动落骰；PC 与手机都能拖遍整个界面。仪式桶会显示桌面轨迹，需要沿着轨迹描画，偏差过大会失败。也可以点下方「自动投掷」；空格自动摇；数字键 1 / 2 是「计分并继续」「计分并重投」。</p>
         </div>
       </section>
 
@@ -250,7 +250,7 @@ export function openRules(): void {
         <div>
           <p class="modal-kicker">THE RULES OF THE TABLE</p>
           <h2>赌桌规矩</h2>
-          <p>采用《天国：拯救 2》的骰子计分。每关有目标分数，用六颗骰子和五次重投去够到它。没被计分的骰子才能重投；当六颗骰子全部计分，会触发“全骰”，六颗一起免费重投。</p>
+          <p>采用《天国：拯救 2》的骰子计分。每关有目标分数，用六颗骰子和三次重投去够到它。没被计分的骰子才能重投；当六颗骰子全部计分，会触发“全骰”，六颗一起免费重投。</p>
         </div>
       </div>
       <div class="rules-columns">
@@ -260,9 +260,10 @@ export function openRules(): void {
           <div class="rules-note">一次计分必须把所选骰子全部纳入合法组合。1 和 5 可以单颗计分；其他点数至少三颗才能计分。所有组合取最高合法分值。</div>
           <h3 style="margin-top:18px">一掷的流程</h3>
           <p>1. 按住骰桶摇动，2 秒倒计时后落骰；或点击自动摇骰。<br>2. 点击选择要计分的骰子。<br>3. 选择「计分并继续」，计分后把选中骰放一边、重投剩余骰子；或「计分并重投」，计分后把全部六颗骰子重新投。两者各消耗 1 次重投。<br>4. 六颗骰子全部计分会触发「全骰」，免费重投全部骰子。<br>5. 没有重投次数时，按钮变为「计分并结算」，得分后本关结束。</p>
-          <div class="rules-note">开局有 5 次重投。每击败一位庄家，你会夺下他的徽记：后续关卡重投上限 +1。门房还会送你一枚每关都能使用的幸运币。</div>
+          <div class="rules-note">轮次：可以连续「计分并继续」累积本轮挂账；「计分并重投」结束本轮并把累计分全部落袋，再开始新一轮。若某次投掷没有任何可计分组合，本轮累计分全部清零，已落袋分保留。计分面板右下角的大号「本关重投」显示剩余 / 上限，低于 2 次变橙，耗尽变红。</div>
+          <div class="rules-note">每关基础 3 次重投；击败庄家不会累积上限。烈酒、时间沙漏、加注契约和旋涡桶仪式可以临时增加重投次数。门房还会送你一枚开局就能用的幸运币（一次性）。</div>
           <h3 style="margin-top:18px">收手换钱与超额赏金</h3>
-          <p>过关结算时，每剩 1 次<b style="color:#e5c278">未使用的重投折 ${REROLL_REFUND} 银币</b>带走——带着 5 次重投收手就是 +${REROLL_REFUND * 5}。此外，本关得分达到目标分的 <b style="color:#e5c278">1.5 倍 +25、2 倍 +60、3 倍 +140</b> 银币，只取达到的最高一档。</p>
+          <p>过关结算时，每剩 1 次<b style="color:#e5c278">未使用的重投折 ${REROLL_REFUND} 银币</b>带走——带着 3 次重投收手就是 +${REROLL_REFUND * 3}。此外，本关得分达到目标分的 <b style="color:#e5c278">1.5 倍 +25、2 倍 +60、3 倍 +140</b> 银币，只取达到的最高一档。</p>
           <div class="rules-note">达标后左上角「胜利奖励」会实时变成你现在收手能拿到的数目，悬停可看明细：继续加注可以追更高的倍数，也可能一次掷空把本轮挂账全部丢掉。</div>
         </div>
         <div class="rules-section">
@@ -274,7 +275,7 @@ export function openRules(): void {
             </div>`).join('')}
           <h3 style="margin-top:16px">装备与市集</h3>
           <p>骰子有各自的点数概率与套组效果，${DICE.length} 枚秘骰分为普通、稀有、史诗、传说：狼裔 5 枚、恶魔 5 枚，其余 10 枚无套组。鼠标移到骰子上查看六面概率；额外加分只出现在史诗与传说骰上。骰桶分为概率偏向与仪式加成两类，点「画阵」完成星阵或旋涡，能为本次投掷争取优势。</p>
-          <p>每关之后进入市集：骰子区默认 2 枚、骰桶区 1 只、物品区 3 件，刷新均需银币。三层骰架 / 双孔桶架 / 暗格货架会各让对应区域多摆 1 件。主动物品每关恢复一次，被动物品永久生效；烈酒、加注契约、幸运粉、盐、静默赦令是一次性消耗品，用完即消失。市集下方可以把随身物品按半价卖回。</p>
+          <p>每关之后进入市集：骰子区默认 2 枚、骰桶区 1 只、物品区 3 件，刷新均需银币。三层骰架 / 双孔桶架 / 暗格货架会各让对应区域多摆 1 件。主动物品每关恢复一次，被动物品永久生效；幸运币、猎人印记、烈酒、加注契约、幸运粉、盐、静默赦令是一次性消耗品，用完即消失。市集下方可以把随身物品按半价卖回。</p>
           <div class="rules-note">提示：空格投掷，数字键 1 / 2 分别使用「计分并继续」「计分并重投」。“计分并继续”会触发金冠赌王的抽成。</div>
         </div>
       </div>

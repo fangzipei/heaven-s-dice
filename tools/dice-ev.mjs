@@ -112,7 +112,6 @@ function makeState(bagIds, level, barrelId, rng) {
   state.activeItems = [];
   state.passiveItems = [];
   state.acquiredItemIds = [];
-  state.bossBoons = 0;
   initLevel(state);
   return state;
 }

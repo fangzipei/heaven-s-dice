@@ -10,7 +10,6 @@
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "test:node": "node --test tests/scoring.test.mjs tests/engine.test.mjs tests/content.test.mjs",
     "simulate": "node tools/balance.mjs 500",
     "dice:ev": "node tools/dice-ev.mjs",
     "codex": "node tools/build-codex.mjs",

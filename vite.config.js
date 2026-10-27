@@ -19,6 +19,9 @@ function copyRootAssets() {
 }
 
 export default defineConfig({
+  // The build is served from /heavens-dice/, not the domain root. Relative
+  // URLs keep the hashed bundle and favicon under that prefix.
+  base: './',
   plugins: [copyRootAssets()],
   // Legacy JS keeps working untouched during Phase 0; three resolves to the
   // vendored ESM copy under src/vendor so behaviour is byte-identical to the

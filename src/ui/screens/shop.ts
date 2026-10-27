@@ -95,11 +95,11 @@ export function renderShopScreen(): void {
         <div class="loadout-dice">${run.bag.map((entry) => {
           const spec = getDieSpec(entry.dieId);
           const weighted = favoredFaces(spec).length > 0;
-          return `<span class="mini-die rarity-${spec.rarity} ${spec.setId === 'demon' ? 'is-demon' : ''} ${weighted ? 'is-weighted' : ''}" style="${dieSkinStyle(spec)}" data-pips="${spec.setId === 'demon' ? '魔' : (spec.setId ? spec.name[0]! : '骰')}" title="${h(spec.name)}"></span>`;
+          return `<span class="mini-die rarity-${spec.rarity} ${spec.setId === 'demon' ? 'is-demon' : ''} ${weighted ? 'is-weighted' : ''}" style="${dieSkinStyle(spec)}" data-pips="${spec.setId === 'demon' ? '魔' : (spec.setId ? spec.name[0]! : '骰')}" data-die-tip="${h(spec.id)}" title="${h(spec.name)}"></span>`;
         }).join('')}</div>
         <span class="loadout-label" style="margin-left:8px">骰桶</span>
-        <div class="barrel-thumb" style="width:25px;height:32px"><img src="assets/cups/${getBarrel(run).art}.svg" alt=""></div>
-        <div class="loadout-items">${run.activeItems.concat(run.passiveItems).map((id) => `<img src="assets/items/${ITEM_BY_ID[id]!.icon}.svg" alt="${h(ITEM_BY_ID[id]!.name)}" title="${h(ITEM_BY_ID[id]!.name)}">`).join('')}</div>
+        <div class="barrel-thumb" style="width:25px;height:32px" data-barrel-tip="${h(getBarrel(run).id)}"><img src="assets/cups/${getBarrel(run).art}.svg" alt=""></div>
+        <div class="loadout-items">${run.activeItems.concat(run.passiveItems).map((id) => `<img src="assets/items/${ITEM_BY_ID[id]!.icon}.svg" alt="${h(ITEM_BY_ID[id]!.name)}" data-item-tip="${h(id)}" title="${h(ITEM_BY_ID[id]!.name)}">`).join('')}</div>
       </div>
       <div class="shop-continue">
         <button class="primary-button" data-action="leave-shop">前往第 ${nextLevel} 关 · ${h(nextTable.name)} <svg><use href="#i-arrow"></use></svg></button>
@@ -118,7 +118,7 @@ function renderSellShelf(run: RunState): string {
     const check = canSellItem(run, id);
     const rarity = rarityOf(item);
     const price = itemSellPrice(item);
-    return `<article class="sell-card" style="--rarity:${rarity.color}">
+    return `<article class="sell-card" style="--rarity:${rarity.color}" data-item-tip="${h(item.id)}">
       <img src="assets/items/${item.icon}.svg" alt="${h(item.name)}">
       <div class="sell-copy">
         <div class="sell-tags"><span>${item.consumable ? '一次性' : item.type === 'active' ? '主动' : '被动'}</span><b>${rarity.name}</b></div>
@@ -171,9 +171,9 @@ function renderDiceShopCard(entry: ShopOffer, index: number): string {
   const probs = effectiveProbs(spec.id, getBarrel(app.run!).id);
   const bars = probabilityBars(probs, spec.rarity);
   return `
-    <article class="shop-card ${entry.sold ? 'is-sold' : ''}" style="--rarity:${rarity.color};--glow:${rarity.glow}">
+    <article class="shop-card ${entry.sold ? 'is-sold' : ''}" style="--rarity:${rarity.color};--glow:${rarity.glow}" data-die-tip="${h(spec.id)}">
       <div class="card-topline"><span class="rarity-tag">${rarity.name}</span><span class="set-tag">${set ? h(set.name) + '套组' : '无套组'}</span></div>
-      <div class="card-art" data-die-tip="${h(spec.id)}">${artDieHtml(spec)}</div>
+      <div class="card-art">${artDieHtml(spec)}</div>
       <h4>${h(spec.name)}</h4>
       <div class="card-sub">${h(spec.desc)}</div>
       ${bars}

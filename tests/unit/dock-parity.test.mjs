@@ -8,7 +8,7 @@ import { beforeAll, describe, expect, test } from 'vitest';
 import { createRun } from '../../src/core/engine.ts';
 import { app } from '../../src/ui/state.ts';
 import {
-  renderActionDock, renderAutoButton, renderComboPreview, renderDangerStrip,
+  renderActionDock, renderComboPreview, renderDangerStrip,
 } from '../../src/ui/dock.ts';
 import { installDomStub } from '../helpers/stub-dom.mjs';
 import { assemblySource, legacyAppSource } from '../helpers/legacy-app.mjs';
@@ -29,16 +29,11 @@ describe('操作坞搬到 ui/dock.ts 之后仍然写同样的文案', () => {
     app.run.phase = 'ready';
     renderComboPreview();
     renderActionDock();
-    renderAutoButton();
     expect(html('#combo-preview')).toBe(
       '<span class="combo-placeholder">1 与 5 总能计分 · 三连、四连与顺子会带来大分</span>',
     );
     expect(html('#action-dock')).toContain('data-action="manual-roll"');
-    expect(html('#action-dock')).toContain('<b>摇动骰桶</b><em>六颗骰子已经就位</em>');
-    expect(dom.subText('#auto-roll', 'b')).toBe('自动摇骰');
-    expect(dom.subText('#auto-roll', 'em')).toBe('首掷免费 · 空格');
-    expect(dom.node('#auto-roll').disabled).toBe(false);
-    expect(dom.node('#auto-roll').classList.toggles).toContain('is-pulsing=true');
+    expect(html('#action-dock')).toContain('<b>自动投掷</b>');
   });
 
   test('忙碌：按钮锁死并显示落桌中', () => {
@@ -54,10 +49,8 @@ describe('操作坞搬到 ui/dock.ts 之后仍然写同样的文案', () => {
     app.run.phase = 'hot';
     renderComboPreview();
     renderActionDock();
-    renderAutoButton();
     expect(html('#combo-preview')).toContain('<em>HOT DICE</em>');
     expect(html('#action-dock')).toContain('全骰 · 免费重投全部骰子，不消耗重投次数');
-    expect(dom.subText('#auto-roll', 'b')).toBe('全骰重投');
   });
 
   test('掷空：有票时给重投，无票时按钮禁用', () => {
@@ -83,22 +76,19 @@ describe('操作坞搬到 ui/dock.ts 之后仍然写同样的文案', () => {
     app.run.phase = 'reroll-pending';
     renderComboPreview();
     renderActionDock();
-    renderAutoButton();
-    expect(html('#combo-preview')).toContain('选择自己摇桶，或让系统重投');
-    expect(html('#action-dock')).toContain('data-action="cue-cup"');
+    expect(html('#combo-preview')).toContain('拖动骰桶自己摇，或自动投掷');
     expect(html('#action-dock')).toContain('data-action="auto-roll"');
-    expect(dom.subText('#auto-roll', 'b')).toBe('系统重投');
+    expect(html('#action-dock')).toContain('<b>自动投掷</b>');
+    expect(html('#action-dock')).not.toContain('data-action="cue-cup"');
   });
 
   test('目标达成：只剩下一关按钮', () => {
     app.run.phase = 'cleared';
     renderComboPreview();
     renderActionDock();
-    renderAutoButton();
     expect(html('#combo-preview')).toContain('可继续得分 · 点击左上角「下一关」收手');
     expect(html('#action-dock')).toContain('data-action="advance-level"');
     expect(html('#action-dock')).toContain('进入下一关');
-    expect(dom.subText('#auto-roll', 'b')).toBe('目标达成');
   });
 
   test('结算与结束：坞里不再给动作', () => {
@@ -143,7 +133,7 @@ describe('操作坞只有一份实现', () => {
   const legacy = legacyAppSource();
   const dock = readFileSync(new URL('../../src/ui/dock.ts', import.meta.url), 'utf8');
 
-  for (const name of ['renderComboPreview', 'renderActionDock', 'renderAutoButton', 'renderDangerStrip']) {
+  for (const name of ['renderComboPreview', 'renderActionDock', 'renderDangerStrip']) {
     test(`app.js 不再自己声明 ${name}`, () => {
       expect(legacy, `app.js 重新声明了 ${name}`).not.toMatch(new RegExp(`function ${name}\\s*\\(`));
       expect(dock).toMatch(new RegExp(`export function ${name}\\s*\\(`));

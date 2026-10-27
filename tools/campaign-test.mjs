@@ -6,12 +6,11 @@ import { LEVELS, BOSSES } from '../src/content/index.ts';
 
 const TOTAL = LEVELS.length;
 const bossAt = new Map(BOSSES.map((boss) => [boss.level, boss]));
-const BASE_REROLLS = 5;
-/** 进入第 L 关时的重投数：基础 + 已夺徽记 + 本关庄家的修正。 */
+const BASE_REROLLS = 3;
+/** 进入第 L 关时的重投数：基础 3 次 + 本关庄家的修正（徽记不再累积）。 */
 function expectedRerolls(level) {
-  const boons = BOSSES.filter((boss) => boss.level < level).length;
   const boss = bossAt.get(level);
-  let rerolls = BASE_REROLLS + boons;
+  let rerolls = BASE_REROLLS;
   if (boss?.effectKey === 'rerollMinus') rerolls -= 1;
   if (boss?.effectKey === 'scoreTaxReroll') rerolls += 1;
   return Math.max(1, rerolls);
@@ -36,7 +35,7 @@ await send('Runtime.enable'); await send('Page.enable'); await send('Log.enable'
 await send('Page.navigate', { url: 'http://127.0.0.1:4173/' }); await sleep(1200);
 const js = async (expression) => { const r = await send('Runtime.evaluate', { expression, returnByValue: true, awaitPromise: true, userGesture: true }); if (r.exceptionDetails) throw new Error(r.exceptionDetails.exception?.description || r.exceptionDetails.text); return r.result.value; };
 const shot = async (name) => { const r = await send('Page.captureScreenshot', { format: 'png' }); await writeFile(`${OUT}\\${name}.png`, Buffer.from(r.data, 'base64')); };
-async function state() { return js(`(() => {const r=window.HeavensDice.run;return r?{level:r.level,phase:r.phase,score:r.score,target:r.target,coins:r.coins,boons:r.bossBoons,rerolls:r.rerolls,overlay:!!document.querySelector('.overlay'),shop:!!document.querySelector('.shop-screen'),result:document.querySelector('.result-modal h2')?.textContent||''}:{}})()`); }
+async function state() { return js(`(() => {const r=window.HeavensDice.run;return r?{level:r.level,phase:r.phase,score:r.score,target:r.target,coins:r.coins,rerolls:r.rerolls,overlay:!!document.querySelector('.overlay'),shop:!!document.querySelector('.shop-screen'),result:document.querySelector('.result-modal h2')?.textContent||''}:{}})()`); }
 
 const report = { levels: [], errors: [] };
 await js(`window.__errors=[];window.addEventListener('error',e=>window.__errors.push(String(e.message)));window.addEventListener('unhandledrejection',e=>window.__errors.push(String(e.reason)));`);
@@ -63,11 +62,7 @@ for (let level = 1; level <= TOTAL; level += 1) {
   const won = await state();
   const expectPhase = level === TOTAL ? 'run-won' : 'won';
   if (won.phase !== expectPhase) throw new Error(`Level ${level} expected ${expectPhase}, got ${won.phase}`);
-  const expectedBoons = level < TOTAL ? BOSSES.filter((boss) => boss.level <= level).length : undefined;
-  if (expectedBoons !== undefined && won.boons !== expectedBoons) {
-    throw new Error(`Boss boon missing at level ${level}: ${won.boons} vs ${expectedBoons}`);
-  }
-  report.levels.push({ level, phase: won.phase, boons: won.boons, coins: won.coins, result: won.result });
+  report.levels.push({ level, phase: won.phase, coins: won.coins, result: won.result });
   if (level === TOTAL) {
     await shot('33-campaign-final');
     break;
