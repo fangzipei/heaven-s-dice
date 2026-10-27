@@ -32,8 +32,9 @@ import { clearToasts, showToast } from './components/toast.ts';
 import { bindTooltip, hideTooltip } from './components/tooltip.ts';
 import { $, $$, setCss } from './dom.ts';
 import {
-  advanceCurrentLevel, answerSaltOffer, beginRoll, bindCupDrag, cancelGrant, chooseGrantDie,
-  confirmUseItem, forfeitRun, handleScore, pulseCup, renderGame, requestUseItem, setSpeech,
+  advanceCurrentLevel, answerSaltOffer, beginRoll, bindCupDrag, cancelGrant, cancelGrantReplace,
+  chooseGrantDie, confirmGrantReplace, confirmUseItem, forfeitRun, handleScore, pulseCup, renderGame,
+  requestUseItem, setSpeech,
 } from './game.ts';
 import { renderTopbar } from './hud.ts';
 import { baseReward } from './reward.ts';
@@ -70,7 +71,7 @@ document.addEventListener('DOMContentLoaded', () => {
   refreshAccountButton();
   refreshResumeButton();
   const profile = loadProfile();
-  if (profile?.mode === 'synced') void syncEverything();
+  if (profile?.token) void syncEverything();
   window.addEventListener('beforeunload', () => { pauseRunRecord(); persistGame(); });
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'hidden') {
@@ -382,6 +383,12 @@ async function handleAction(action: string, target: HTMLElement, _event?: MouseE
       break;
     case 'cancel-grant':
       cancelGrant();
+      break;
+    case 'confirm-grant-replace':
+      confirmGrantReplace(target.dataset.bagUid!);
+      break;
+    case 'cancel-grant-replace':
+      cancelGrantReplace();
       break;
     case 'cancel-replace':
       app.pendingReplace = null;

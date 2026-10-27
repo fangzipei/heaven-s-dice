@@ -104,7 +104,7 @@ function accountHtml(profile: PlayerProfile): string {
       <button class="modal-close" data-action="close-overlay" aria-label="关闭"><svg><use href="#i-close"></use></svg></button>
       <p class="modal-kicker">YOUR NAME AT THE TABLE</p>
       <h2>${h(profile.id)}</h2>
-      <p class="result-sub"><span class="account-badge ${synced ? 'is-synced' : ''}">${profileLabel(profile)}</span> ${synced ? '历程会在通关/死亡后上传。' : '历程目前只保存在本机；设置密码后同步。'}</p>
+      <p class="result-sub"><span class="account-badge ${synced ? 'is-synced' : ''}">${profileLabel(profile)}</span> ${synced ? '每局结束后会自动上传并同步。' : profile.token ? '每局结束后会自动上传；设置密码后可跨设备登录。' : '历程目前只保存在本机。'}</p>
       ${synced ? `
         <div class="account-actions">
           <button class="primary-button" data-action="account-sync-now">立即同步</button>

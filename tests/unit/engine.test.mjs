@@ -32,7 +32,7 @@ test('a new run starts with zero coins and a 500-point first target', () => {
   expect(state.coins).toBe(0);
   expect(state.level).toBe(1);
   expect(state.target).toBe(500);
-  expect(getLevelConfig(2).target).toBe(530);
+  expect(getLevelConfig(2).target).toBe(1060);
 });
 
 test('opening throw is free, later throws spend the three fixed rerolls', () => {

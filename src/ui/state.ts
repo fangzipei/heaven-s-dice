@@ -59,6 +59,8 @@ export interface UiState {
   pendingReplace: { index: number; die: PricedDie; price: number } | null;
   /** 一次性骰子礼包开出的候选，等待玩家挑一枚。 */
   pendingGrant: { itemId: string; candidates: PricedDie[] } | null;
+  /** 骰子礼包已选中骰子，但骰袋已满，等待选择被替换的骰子。 */
+  pendingGrantReplace: { itemId: string; die: PricedDie } | null;
   speechTimer: ReturnType<typeof setTimeout> | null;
   rollTimer: ReturnType<typeof setTimeout> | null;
   overlayTimer: ReturnType<typeof setTimeout> | null;
@@ -96,6 +98,7 @@ export const app: UiState = {
   compendiumTab: 'dice',
   pendingReplace: null,
   pendingGrant: null,
+  pendingGrantReplace: null,
   speechTimer: null,
   rollTimer: null,
   overlayTimer: null,

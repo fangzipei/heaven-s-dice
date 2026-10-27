@@ -6,7 +6,7 @@
 import { ITEM_BY_ID, LEVEL_COUNT, getOpponent, rarityOf, DICE_SETS } from '../content/index.ts';
 import {
   advanceLevel, applyGesture, applyItemGrant, applyScore, canUseItem, forfeit, getBarrel,
-  getScorePreview, resolveSaltOffer as engineResolveSaltOffer, rollDice, selectedDice,
+  getDieSpec, getScorePreview, resolveSaltOffer as engineResolveSaltOffer, rollDice, selectedDice,
   useItem as engineUseItem,
 } from '../core/engine.ts';
 import type { ScoreAction } from '../core/engine.ts';
@@ -801,7 +801,7 @@ function showGrantModal(): void {
     <div class="modal" style="width:min(660px,100%);padding:34px 36px">
       <p class="modal-kicker">OPEN THE DICE CASE</p>
       <h2 class="modal-title" style="font-size:28px;margin-top:5px">选择一枚骰子</h2>
-      <p class="modal-text" style="margin-top:8px">「${h(item.name)}」开出 ${candidates.length} 枚稀有骰子；选择其中 1 枚收入骰袋。骰袋已满时会替换一枚标准骰（没有标准骰则替换最便宜的骰）。</p>
+      <p class="modal-text" style="margin-top:8px">「${h(item.name)}」开出 ${candidates.length} 枚稀有骰子；选择其中 1 枚收入骰袋。骰袋已满时，下一步再选择要替换的骰子。</p>
       <div class="replace-grid">${cards}</div>
       <div class="modal-actions"><button class="secondary-button" data-action="cancel-grant">放弃</button></div>
     </div>
@@ -816,8 +816,53 @@ export function chooseGrantDie(dieId: string): void {
 function grantItemDie(itemId: string, dieId: string): void {
   if (!app.run) return;
   const result = applyItemGrant(app.run, itemId, dieId);
+  if (!result.ok) {
+    if (result.needReplace && result.die) {
+      app.pendingGrant = null;
+      app.pendingGrantReplace = { itemId, die: result.die };
+      showGrantReplaceModal();
+      return;
+    }
+    showToast(result.error!, 'error');
+    return;
+  }
+  finishGrant(result);
+}
+
+function showGrantReplaceModal(): void {
+  if (!app.run || !app.pendingGrantReplace) return;
+  const { die } = app.pendingGrantReplace;
+  const item = ITEM_BY_ID[app.pendingGrantReplace.itemId]!;
+  const options = app.run.bag.map((entry) => {
+    const spec = getDieSpec(entry.dieId);
+    const rarity = rarityOf(spec);
+    return `<button class="replace-option" data-action="confirm-grant-replace" data-bag-uid="${h(entry.uid)}">
+      ${artDieHtml(spec)}
+      <b>${h(spec.name)}</b><span>${rarity.name}${spec.setId ? ` · ${h(DICE_SETS[spec.setId].name)}` : ''}</span>
+    </button>`;
+  }).join('');
+  openOverlay(`
+    <div class="modal" style="width:min(620px,100%);padding:36px 38px">
+      <p class="modal-kicker">DICE BAG FULL</p>
+      <h2 class="modal-title" style="font-size:28px;margin-top:5px">骰袋已满</h2>
+      <p class="modal-text" style="margin-top:8px">「${h(item.name)}」开出了「${h(die.name)}」。请选择一枚被替换的骰子；被替换的骰子将离开本局。</p>
+      <div class="replace-grid">${options}</div>
+      <div class="modal-actions"><button class="secondary-button" data-action="cancel-grant-replace">取消</button></div>
+    </div>
+  `, { dismissible: true });
+}
+
+export function confirmGrantReplace(bagUid: string): void {
+  if (!app.run || !app.pendingGrantReplace) return;
+  const { itemId, die } = app.pendingGrantReplace;
+  const result = applyItemGrant(app.run, itemId, die.id, bagUid);
   if (!result.ok) { showToast(result.error!, 'error'); return; }
+  finishGrant(result);
+}
+
+function finishGrant(result: ReturnType<typeof applyItemGrant>): void {
   app.pendingGrant = null;
+  app.pendingGrantReplace = null;
   closeOverlay();
   sound.item();
   renderGame();
@@ -827,6 +872,12 @@ function grantItemDie(itemId: string, dieId: string): void {
 
 export function cancelGrant(): void {
   app.pendingGrant = null;
+  app.pendingGrantReplace = null;
+  closeOverlay();
+}
+
+export function cancelGrantReplace(): void {
+  app.pendingGrantReplace = null;
   closeOverlay();
 }
 

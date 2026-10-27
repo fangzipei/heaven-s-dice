@@ -43,5 +43,6 @@ export function closeOverlay(): void {
     if (shop) shop.style.pointerEvents = '';
     app.pendingReplace = null;
     app.pendingGrant = null;
+    app.pendingGrantReplace = null;
   }, 220);
 }

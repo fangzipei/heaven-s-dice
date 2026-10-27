@@ -216,7 +216,7 @@ test('the level table is computed, not typed: curve × boss coefficient', () => 
   expect(buildLevelTable()).toEqual(LEVELS);
   // 第 1 关就是曲线起点，下一关就是起点 × 增长率（取整到 10）。
   expect(LEVELS[0].target).toBe(LEVEL_CURVE.targetBase);
-  expect(LEVELS[1].target).toBe(Math.round(LEVEL_CURVE.targetBase * LEVEL_CURVE.targetGrowth / 10) * 10);
+  expect(LEVELS[1].target).toBe(Math.round(LEVEL_CURVE.targetBase * LEVEL_CURVE.targetGrowth / 10) * 10 * 2);
   expect(LEVELS[0].reward).toBe(LEVEL_CURVE.rewardBase);
   for (const level of LEVELS) {
     const boss = BOSSES.find((entry) => entry.level === level.level);

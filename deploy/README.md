@@ -39,7 +39,7 @@ curl -fsS http://127.0.0.1:9999/heavens-dice/api/health
 ```
 
 API 的密码使用 scrypt，session 只保存 token 的 SHA-256；完整说明见
-`server/README.md`。本地存档与历史仍先写 localStorage，设置密码后才上传。
+`server/README.md`。本地存档与历史仍先写 localStorage；每局结束后会自动上传，失败时进入待同步队列。
 
 ## 为什么不是 80 端口
 

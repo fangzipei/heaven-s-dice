@@ -7,7 +7,9 @@ import type { RunRecord } from './run-record.ts';
 export function storeFinishedRun(record: RunRecord): void {
   saveHistory(record);
   const profile = loadProfile();
-  if (profile?.mode === 'synced' && profile.token) {
+  // Claimed local accounts already hold a server token; upload as soon as a
+  // run ends instead of waiting for the player to set a password.
+  if (profile?.token) {
     void syncRecords([record]);
   }
 }

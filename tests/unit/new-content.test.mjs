@@ -194,10 +194,15 @@ describe('新骰桶与新骰子礼包', () => {
     expect(used.ok).toBe(true);
     expect(used.grant.candidates.length).toBe(1);
     expect(used.grant.candidates[0].rarity).toBe('epic');
-    const applied = applyItemGrant(state, 'epic_chest', used.grant.candidates[0].id);
+    const chosen = used.grant.candidates[0];
+    const needsSlot = applyItemGrant(state, 'epic_chest', chosen.id);
+    expect(needsSlot.needReplace).toBe(true);
+    expect(state.activeItems).toContain('epic_chest');
+    const applied = applyItemGrant(state, 'epic_chest', chosen.id, state.bag[0].uid);
     expect(applied.ok).toBe(true);
+    expect(applied.replaced).toBeTruthy();
     expect(state.activeItems).not.toContain('epic_chest');
-    expect(state.bag.some((entry) => entry.dieId === used.grant.candidates[0].id)).toBe(true);
+    expect(state.bag.some((entry) => entry.dieId === chosen.id)).toBe(true);
   });
 
   test('每次摇骰都会打乱整桌骰子的顺序', () => {
@@ -258,8 +263,13 @@ describe('新骰桶与新骰子礼包', () => {
     expect(state.activeItems).toContain('rare_pair');
 
     const chosen = used.grant.candidates[0];
-    const applied = applyItemGrant(state, 'rare_pair', chosen.id);
+    const needsSlot = applyItemGrant(state, 'rare_pair', chosen.id);
+    expect(needsSlot.needReplace).toBe(true);
+    expect(state.activeItems).toContain('rare_pair');
+    const targetUid = state.bag[0].uid;
+    const applied = applyItemGrant(state, 'rare_pair', chosen.id, targetUid);
     expect(applied.ok).toBe(true);
+    expect(applied.replaced).toBeTruthy();
     expect(state.activeItems).not.toContain('rare_pair');
     expect(state.bag.some((entry) => entry.dieId === chosen.id)).toBe(true);
     expect(state.bag.length).toBe(getDiceCapacity(state));

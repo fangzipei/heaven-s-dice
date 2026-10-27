@@ -1520,7 +1520,8 @@ export function applyItemGrant(
   state: RunState,
   itemId: string,
   dieId: string,
-): { ok: boolean; error?: string; die?: PricedDie; replaced?: PricedDie } {
+  replaceBagUid: string | null = null,
+): { ok: boolean; error?: string; die?: PricedDie; replaced?: PricedDie; needReplace?: boolean } {
   const item = ITEM_BY_ID[itemId];
   const die = DICE_BY_ID[dieId];
   if (!item || item.type !== 'active' || !item.grant) return { ok: false, error: '这不是骰子礼包。' };
@@ -1532,9 +1533,9 @@ export function applyItemGrant(
   const capacity = getDiceCapacity(state);
   let replaced: PricedDie | undefined;
   if (state.bag.length >= capacity) {
-    const target = state.bag.find((entry) => entry.dieId === 'standard')
-      || [...state.bag].sort((a, b) => (DICE_BY_ID[a.dieId]?.price || 0) - (DICE_BY_ID[b.dieId]?.price || 0))[0];
-    if (!target) return { ok: false, error: '骰袋已满，无法放入新骰子。' };
+    if (!replaceBagUid) return { ok: false, needReplace: true, die };
+    const target = state.bag.find((entry) => entry.uid === replaceBagUid);
+    if (!target) return { ok: false, error: '请选择要替换的骰子。' };
     const oldId = target.dieId;
     target.dieId = die.id;
     delete target.probs;

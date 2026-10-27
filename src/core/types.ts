@@ -200,6 +200,8 @@ export type Opponent = MinionDef | BossDef;
 export interface LevelCurveDef {
   targetBase: number;
   targetGrowth: number;
+  /** Multiplier applied to every level after the first (1 = old curve). */
+  targetAfterFirst?: number;
   rewardBase: number;
   rewardGrowth: number;
   targetStep: number;

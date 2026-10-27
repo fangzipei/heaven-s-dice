@@ -9,6 +9,7 @@ import type { BossDef, LevelCurveDef, LevelRow } from '../../core/types.ts';
 export const LEVEL_CURVE: LevelCurveDef = {
   targetBase: 500,      // 第 1 关目标分
   targetGrowth: 1.05,   // 每关目标 ×1.05
+  targetAfterFirst: 2,  // 第 2 关起再 ×2
   rewardBase: 55,       // 第 1 关基础赏金
   rewardGrowth: 1.055,  // 每关赏金 ×1.055
   targetStep: 10,       // 目标取整到 10
@@ -31,12 +32,17 @@ export function buildLevelTable(bosses: BossDef[] = BOSSES, curve: LevelCurveDef
     const baseReward = curve.rewardBase * curve.rewardGrowth ** (level - 1);
     const boss = at.get(level) || null;
     const scale = boss?.curve || { target: 1, reward: 1 };
+    const curveTarget = roundTo(baseTarget, curve.targetStep);
+    const scaledTarget = roundTo(baseTarget * (scale.target ?? 1), curve.targetStep);
+    // Levels 2+ are exactly twice the old curve target (after boss scaling and
+    // rounding), so no level can accidentally fall just under 2×.
+    const afterFirst = level === 1 ? 1 : (curve.targetAfterFirst ?? 1);
     const row: LevelRow = {
       level,
-      target: roundTo(baseTarget * (scale.target ?? 1), curve.targetStep),
+      target: scaledTarget * afterFirst,
       reward: roundTo(baseReward * (scale.reward ?? 1), curve.rewardStep),
       curve: {
-        target: roundTo(baseTarget, curve.targetStep),
+        target: curveTarget * afterFirst,
         reward: roundTo(baseReward, curve.rewardStep),
       },
     };
