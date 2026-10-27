@@ -7,7 +7,7 @@
 - **服务器**：`221.228.10.210`（Rocky Linux 8.10）
 - **Web 服务器**：Nginx，监听 `9999`
 - **静态目录**：`/var/www/heavens-dice/current`
-- **当前 release**：`/var/www/heavens-dice/releases/20261027-1710`
+- **当前 release**：`/var/www/heavens-dice/releases/20261027-1814`
 
 ## 发布模型（Vite 构建）
 
