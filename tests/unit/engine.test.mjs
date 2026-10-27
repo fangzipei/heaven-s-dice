@@ -112,6 +112,27 @@ test('a dead reroll burns the whole unbanked round', () => {
   expect(state.lastBust.lost).toBe(150);
 });
 
+test('a dead reroll puts every die back on the table', () => {
+  const state = fresh();
+  state.target = 9999;
+  forceRoll(state, [1, 5, 2, 3, 4, 6]);
+  state.selected = state.dice.filter((d) => d.value === 1 || d.value === 5).map((d) => d.uid);
+  applyScore(state, 'continue');
+  // Two dice are set aside, then the four remaining dice bust.
+  const deadSeq = [0.2, 0.4, 0.6, 0.95];
+  const bust = rollDice(state, { rng: () => deadSeq.shift() ?? 0.95 });
+  expect(bust.bust).toBe(150);
+  expect(state.phase).toBe('dead');
+  // The next throw must reset the two scored dice as well, not only the four
+  // dice that were just rolled.
+  const seq = [0.2, 0.4, 0.6, 0.8, 0.3, 0.9];
+  const next = rollDice(state, { rng: () => seq.shift() ?? 0.5 });
+  expect(next.ok).toBe(true);
+  expect(state.dice.length).toBe(6);
+  expect(state.dice.every((die) => !die.scored)).toBe(true);
+  expect(state.dice.every((die) => die.value != null)).toBe(true);
+});
+
 test('a scoring throw keeps the whole round at risk until a later bust', () => {
   const state = fresh();
   state.target = 9999;

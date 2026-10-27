@@ -1039,16 +1039,29 @@ function applyOrderedDieEffects(state: RunState, rng: () => number): void {
   }
 }
 
-function shuffleUnscored(state: RunState, rng: () => number): void {
-  const slots = state.dice.map((die, index) => (die.scored ? -1 : index)).filter((index) => index >= 0);
-  const shuffled = shuffleInPlace(slots.map((index) => state.dice[index]!), rng);
-  slots.forEach((slot, index) => { state.dice[slot] = shuffled[index]!; });
+function shuffleTable(state: RunState, rng: () => number): void {
+  shuffleInPlace(state.dice, rng);
 }
 
 export function rollDice(state: RunState, { free = false, rng = getRng(state) }: { free?: boolean; rng?: () => number } = {}): RollResult {  if (state.phase === 'won' || state.phase === 'run-won' || state.phase === 'lost') {
     return { ok: false, error: '本关已结束。' };
   }
   if (state.phase === 'shop') return { ok: false, error: '商店阶段不能投掷。' };
+  // A no-score throw ends the round outright. The next reroll starts from a
+  // clean table: every die — including the ones set aside earlier in this
+  // round — goes back into the cup.
+  if (state.phase === 'dead') {
+    for (const die of state.dice) {
+      die.value = null;
+      die.scored = false;
+      die.blank = false;
+      die.wild = false;
+      die.gilded = false;
+    }
+    state.flags.hotDice = false;
+    state.flags.rerollAll = false;
+    state.flags.roundSinglesOnly = true;
+  }
   // The opening throw is free, and "计分并继续" rerolls the remaining dice for
   // free. Only "计分并重投" (rerollAll) spends a token on its next throw.
   const openingThrow = state.phase === 'ready' && state.stats.levelRolls === 0;
@@ -1132,7 +1145,7 @@ export function rollDice(state: RunState, { free = false, rng = getRng(state) }:
   }
 
   applyBarrelRollEffects(state, rolledNow, barrel, rng);
-  shuffleUnscored(state, rng);
+  shuffleTable(state, rng);
   applyOrderedDieEffects(state, rng);
 
   state.selected = [];
@@ -1140,7 +1153,7 @@ export function rollDice(state: RunState, { free = false, rng = getRng(state) }:
   state.throwNumber = (state.throwNumber || 0) + 1;
   state.stats.rolls += 1;
   state.stats.levelRolls += 1;
-  state.lastRoll = rolledNow.map((d) => (d.blank ? 0 : d.wild ? '魔' : d.value ?? 0));
+  state.lastRoll = state.dice.map((d) => (d.blank ? 0 : d.wild ? '魔' : d.value ?? 0));
 
   const scoring = bestSelection(scorableDice(state));
   let bust = 0;

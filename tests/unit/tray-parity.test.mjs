@@ -194,7 +194,7 @@ describe('WebGL 骰桌：建桌、签名缓存与无障碍行', () => {
     expect(recorder.tableCalls).toContain('resize');
     expect(recorder.tableCalls).toContain('attach:true');
     const canvas = nodes.get('#dice-canvas');
-    expect(Object.keys(canvas.listeners).sort()).toEqual(['pointerdown', 'pointerleave', 'pointermove', 'pointerup']);
+    expect(Object.keys(canvas.listeners).sort()).toEqual(['contextmenu', 'pointercancel', 'pointerdown', 'pointerleave', 'pointermove', 'pointerup']);
     // 再叫一次不会重建第二张桌。
     expect(await ensureDiceTable()).toBe(table);
     expect(recorder.tableCalls.filter((call) => call === 'construct').length).toBe(1);

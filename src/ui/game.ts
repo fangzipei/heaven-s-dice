@@ -62,6 +62,7 @@ function prefersReducedMotion(): boolean {
 }
 
 function cupDiceToGather(run: RunState) {
+  if (run.phase === 'dead') return run.dice.slice();
   if (run.flags.rerollAll || run.flags.hotDice) return run.dice.slice();
   return run.dice.filter((die) => !die.scored);
 }

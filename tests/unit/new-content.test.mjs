@@ -200,7 +200,7 @@ describe('新骰桶与新骰子礼包', () => {
     expect(state.bag.some((entry) => entry.dieId === used.grant.candidates[0].id)).toBe(true);
   });
 
-  test('每次摇骰都会打乱未计分骰子的桌面顺序', () => {
+  test('每次摇骰都会打乱整桌骰子的顺序', () => {
     const state = blankState();
     const ids = ['balance', 'cliff', 'refrain', 'shifting', 'merchant', 'gilded_trace'];
     state.bag = ids.map((dieId, index) => ({ uid: `b${index}`, dieId }));

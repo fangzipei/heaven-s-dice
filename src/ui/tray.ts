@@ -12,7 +12,7 @@ import { h } from '../core/util.ts';
 import { renderDiceTrayDom } from '../render/dice-dom.ts';
 import type { DiceTable as DiceTableRow } from '../render/dice-table.ts';
 import { motion } from '../render/motion.ts';
-import { hideTooltip } from './components/tooltip.ts';
+import { hideTooltip, dieTooltip, positionTooltipAt, showTooltipHtml } from './components/tooltip.ts';
 import { $ } from './dom.ts';
 import { app } from './state.ts';
 
@@ -81,26 +81,81 @@ function bindDiceCanvas(canvas: HTMLCanvasElement) {
   let downAt = 0;
   let downX = 0;
   let downY = 0;
+  let longPressTimer: ReturnType<typeof setTimeout> | null = null;
+  let longPressAt: { x: number; y: number } | null = null;
+  let longPressFired = false;
+  let hoverUid: string | null = null;
+
+  const dieOf = (uid: string | null) => (uid && app.run
+    ? app.run.dice.find((die) => die.uid === uid) || null
+    : null);
+  const showDieTip = (uid: string, x: number, y: number) => {
+    const die = dieOf(uid);
+    if (!die) return;
+    showTooltipHtml(dieTooltip(die.dieId), x, y);
+  };
+  const clearLongPress = () => {
+    if (longPressTimer) clearTimeout(longPressTimer);
+    longPressTimer = null;
+    longPressAt = null;
+  };
+
   canvas.addEventListener('pointerdown', (event) => {
     downAt = performance.now();
     downX = event.clientX;
     downY = event.clientY;
+    longPressFired = false;
+    clearLongPress();
+    if (event.pointerType !== 'touch') return;
+    hideTooltip();
+    const uid = diceTable?.pickAt(event.clientX, event.clientY) || null;
+    if (!uid) return;
+    longPressAt = { x: event.clientX, y: event.clientY };
+    longPressTimer = setTimeout(() => {
+      longPressFired = true;
+      showDieTip(uid, longPressAt!.x, longPressAt!.y);
+    }, 420);
   });
   canvas.addEventListener('pointerup', (event) => {
+    const wasLongPress = longPressFired;
+    clearLongPress();
     // Treat a small, quick press as a tap so the cup drag never picks dice.
+    if (wasLongPress) return;
     const moved = Math.hypot(event.clientX - downX, event.clientY - downY);
     if (performance.now() - downAt > 900 || moved > 14) return;
     const uid = diceTable?.pickAt(event.clientX, event.clientY);
     if (uid) handleDiePick(uid);
   });
   canvas.addEventListener('pointermove', (event) => {
+    if (longPressAt && Math.hypot(event.clientX - longPressAt.x, event.clientY - longPressAt.y) > 12) {
+      clearLongPress();
+    }
     const uid = diceTable?.pickAt(event.clientX, event.clientY) || null;
     if (diceTable) motion.hoverDie(diceTable, uid);
     canvas.style.cursor = uid ? 'pointer' : 'default';
+    if (event.pointerType === 'touch') return;
+    if (uid) {
+      if (uid !== hoverUid) {
+        hoverUid = uid;
+        showDieTip(uid, event.clientX, event.clientY);
+      } else {
+        positionTooltipAt(event.clientX, event.clientY);
+      }
+    } else if (hoverUid) {
+      hoverUid = null;
+      hideTooltip();
+    }
   });
-  canvas.addEventListener('pointerleave', () => {
+  canvas.addEventListener('pointerleave', (event) => {
+    clearLongPress();
+    hoverUid = null;
     if (diceTable) motion.hoverDie(diceTable, null);
+    // A touch long-press keeps the card open until the next tap; the browser
+    // fires pointerleave as the finger lifts, which would otherwise blink it.
+    if (event.pointerType !== 'touch' || !longPressFired) hideTooltip();
   });
+  canvas.addEventListener('pointercancel', clearLongPress);
+  canvas.addEventListener('contextmenu', (event) => event.preventDefault());
 }
 
 /* Screen-reader + keyboard row. Invisible on purpose: it carries the labels

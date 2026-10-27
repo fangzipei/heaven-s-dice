@@ -15,33 +15,81 @@ const TIP_SELECTOR = '[data-die-tip],[data-item-tip],[data-set-tip],[data-barrel
 
 let tooltipCurrent: HTMLElement | null = null;
 
-function positionTooltip(tip: HTMLElement, event: MouseEvent): void {
+function positionTooltip(tip: HTMLElement, x: number, y: number): void {
   const pad = 16;
   const rect = tip.getBoundingClientRect();
-  let left = event.clientX + 18;
-  let top = event.clientY + 18;
-  if (left + rect.width + pad > window.innerWidth) left = event.clientX - rect.width - 18;
+  let left = x + 18;
+  let top = y + 18;
+  if (left + rect.width + pad > window.innerWidth) left = x - rect.width - 18;
   if (top + rect.height + pad > window.innerHeight) top = window.innerHeight - rect.height - pad;
   tip.style.left = `${Math.max(pad, left)}px`;
   tip.style.top = `${Math.max(pad, top)}px`;
 }
 
+/** Show arbitrary tooltip HTML at a viewport point (used by the WebGL dice table). */
+export function showTooltipHtml(html: string, x: number, y: number): void {
+  const tip = $('#tooltip');
+  if (!tip || !html) return;
+  tip.innerHTML = html;
+  tip.hidden = false;
+  positionTooltip(tip, x, y);
+}
+
+/** Reposition the visible tooltip without rebuilding its content. */
+export function positionTooltipAt(x: number, y: number): void {
+  const tip = $('#tooltip');
+  if (!tip || tip.hidden) return;
+  positionTooltip(tip, x, y);
+}
+
 export function bindTooltip(): void {
   const tip = $('#tooltip');
   if (!tip) return;
+  let pressTimer: ReturnType<typeof setTimeout> | null = null;
+  let pressStart: { x: number; y: number } | null = null;
+  const clearPress = () => {
+    if (pressTimer) clearTimeout(pressTimer);
+    pressTimer = null;
+    pressStart = null;
+  };
+  document.addEventListener('pointerdown', (event) => {
+    clearPress();
+    if (tooltipCurrent) {
+      tooltipCurrent = null;
+      tip.hidden = true;
+    }
+    const el = (event.target as Element | null)?.closest<HTMLElement>(TIP_SELECTOR) ?? null;
+    if (!el || event.pointerType !== 'touch') return;
+    pressStart = { x: event.clientX, y: event.clientY };
+    pressTimer = setTimeout(() => {
+      const html = tooltipFor(el);
+      if (!html) return;
+      tooltipCurrent = el;
+      showTooltipHtml(html, pressStart!.x, pressStart!.y);
+    }, 420);
+  });
+  document.addEventListener('pointermove', (event) => {
+    if (pressStart && Math.hypot(event.clientX - pressStart.x, event.clientY - pressStart.y) > 12) {
+      clearPress();
+    }
+  });
+  document.addEventListener('pointerup', clearPress);
+  document.addEventListener('pointercancel', clearPress);
+  document.addEventListener('contextmenu', (event) => {
+    if ((event.target as Element | null)?.closest(TIP_SELECTOR)) event.preventDefault();
+  });
   document.addEventListener('pointerover', (event) => {
+    if (event.pointerType === 'touch') return;
     const el = (event.target as Element | null)?.closest<HTMLElement>(TIP_SELECTOR) ?? null;
     if (!el) return;
     if (tooltipCurrent === el) return;
     tooltipCurrent = el;
     const html = tooltipFor(el);
     if (!html) return;
-    tip.innerHTML = html;
-    tip.hidden = false;
-    positionTooltip(tip, event);
+    showTooltipHtml(html, event.clientX, event.clientY);
   });
   document.addEventListener('pointerout', (event) => {
-    if (!tooltipCurrent) return;
+    if (!tooltipCurrent || event.pointerType === 'touch') return;
     const related = event.relatedTarget as Node | null;
     if (related && tooltipCurrent.contains(related)) return;
     const next = (related as Element | null)?.closest<HTMLElement>(TIP_SELECTOR);
@@ -51,7 +99,7 @@ export function bindTooltip(): void {
   });
   document.addEventListener('pointermove', (event) => {
     if (!tooltipCurrent || tip.hidden) return;
-    positionTooltip(tip, event);
+    positionTooltip(tip, event.clientX, event.clientY);
   });
   document.addEventListener('scroll', () => { tooltipCurrent = null; tip.hidden = true; }, true);
 }
@@ -86,7 +134,7 @@ export function dieTooltip(dieId: string): string {
   }).join('');
   return `
     <h5>${h(spec.name)}</h5>
-    <div class="tip-sub">${h(rarity.name)}${set ? ` · ${h(set.name)}套组` : ' · 标准骰'}</div>
+    <div class="tip-sub">${h(rarity.name)}${set ? ` · ${h(set.name)}套组` : spec.id === 'standard' ? ' · 标准骰' : ' · 无套组'}</div>
     <p>${h(spec.desc)}</p>
     <div class="tip-probs">${bars}</div>
     <p style="color:#756755;font-size:8px">当前骰桶「${h(barrel.name)}」修正后的点数概率</p>
