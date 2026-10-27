@@ -1671,6 +1671,44 @@ function diceOffers(state: RunState, count: number, rng: () => number): ShopOffe
   return chosen.map((die) => ({ kind: 'die', id: die.id, sold: false }));
 }
 
+/**
+ * Items use the same per-level rarity bands as dice. Each tier's shelf share
+ * is split across the items still available in that tier, so a large pool of
+ * epics cannot drown out the rare/common bands.
+ */
+function itemOffers(state: RunState, count: number, rng: () => number): ShopOffer[] {
+  const pool = itemPool(state);
+  const chosen: ItemDef[] = [];
+  const remaining = () => pool.filter((item) => !chosen.some((pick) => pick.id === item.id));
+  while (chosen.length < count) {
+    const left = remaining();
+    if (!left.length) break;
+    const tierSize = new Map<string, number>();
+    for (const item of left) tierSize.set(item.rarity, (tierSize.get(item.rarity) || 0) + 1);
+    const candidates = left
+      .map((item) => ({
+        item,
+        weight: (rarityShopWeight(item.rarity, state.level || 1) || 0) / (tierSize.get(item.rarity) || 1),
+      }))
+      .filter((entry) => entry.weight > 0);
+    /* If every remaining item belongs to a tier that is exhausted for this
+       level, keep the shelf full rather than returning an empty slot. */
+    const total = candidates.reduce((sum, entry) => sum + entry.weight, 0);
+    if (!candidates.length || total <= 0) {
+      chosen.push(left[Math.floor(rng() * left.length)]!);
+      continue;
+    }
+    let roll = rng() * total;
+    let pick = candidates[candidates.length - 1]!.item;
+    for (const entry of candidates) {
+      roll -= entry.weight;
+      if (roll <= 0) { pick = entry.item; break; }
+    }
+    chosen.push(pick);
+  }
+  return chosen.map((item) => ({ kind: 'item', id: item.id, sold: false }));
+}
+
 export interface ShopSlots {
   dice: number;
   barrel: number;
@@ -1695,7 +1733,7 @@ export function createShop(state: RunState, { rng = getRng(state) }: { rng?: () 
   const shop: ShopState = {
     dice: diceOffers(state, slots.dice, rng),
     barrel: offers(barrelPool(state), slots.barrel, 'barrel', rng),
-    item: offers(itemPool(state), slots.item, 'item', rng),
+    item: itemOffers(state, slots.item, rng),
     refreshes: { dice: 0, barrel: 0, item: 0 },
   };
   state.shop = shop;
@@ -1756,7 +1794,7 @@ export function refreshSection(state: RunState, section: string, { rng = getRng(
   } else if (section === 'barrel') {
     state.shop.barrel = offers(barrelPool(state), slots.barrel, 'barrel', rng);
   } else if (section === 'item') {
-    state.shop.item = offers(itemPool(state), slots.item, 'item', rng);
+    state.shop.item = itemOffers(state, slots.item, rng);
   } else {
     return { ok: false, error: '未知的商店区域。' };
   }

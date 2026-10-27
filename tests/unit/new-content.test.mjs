@@ -1,10 +1,10 @@
 import { describe, expect, test } from 'vitest';
 
 import {
-  DICE_BY_ID, ITEMS,
+  DICE_BY_ID, ITEM_BY_ID, ITEMS,
 } from '../../src/content/index.ts';
 import {
-  applyItemGrant, applyScore, buildScore, createRun, getDiceCapacity, initLevel,
+  applyItemGrant, applyScore, buildScore, createRun, createShop, getDiceCapacity, initLevel,
   makeRng, refreshSection, rollDice, shopPrice, useItem,
 } from '../../src/core/engine.ts';
 
@@ -320,6 +320,28 @@ describe('新骰桶与新骰子礼包', () => {
 });
 
 describe('商店涨价', () => {
+  test('骰子和物品的稀有度刷新概率使用同一组档位', () => {
+    const state = blankState();
+    state.level = 1;
+    const rng = makeRng(20261027);
+    const itemCounts = { common: 0, rare: 0, epic: 0, legendary: 0 };
+    const dieCounts = { common: 0, rare: 0, epic: 0, legendary: 0 };
+    for (let i = 0; i < 2000; i += 1) {
+      const shop = createShop(state, { rng });
+      for (const offer of shop.item) itemCounts[ITEM_BY_ID[offer.id].rarity] += 1;
+      for (const offer of shop.dice) dieCounts[DICE_BY_ID[offer.id].rarity] += 1;
+    }
+    const itemTotal = Object.values(itemCounts).reduce((sum, n) => sum + n, 0);
+    const dieTotal = Object.values(dieCounts).reduce((sum, n) => sum + n, 0);
+    expect(itemCounts.common / itemTotal).toBeGreaterThan(0.78);
+    expect(itemCounts.common / itemTotal).toBeLessThan(0.82);
+    expect(itemCounts.rare / itemTotal).toBeGreaterThan(0.16);
+    expect(itemCounts.rare / itemTotal).toBeLessThan(0.20);
+    expect(Math.abs(itemCounts.common / itemTotal - dieCounts.common / dieTotal)).toBeLessThan(0.02);
+    expect(Math.abs(itemCounts.rare / itemTotal - dieCounts.rare / dieTotal)).toBeLessThan(0.02);
+    expect(itemCounts.legendary).toBeLessThanOrEqual(2);
+  });
+
   test('所有货品在标价基础上上浮 25%', () => {
     const state = blankState();
     expect(shopPrice(state, 35)).toBe(44);

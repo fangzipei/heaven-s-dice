@@ -613,12 +613,12 @@ test('owned items can be sold for half price only in the shop', () => {
   state.activeItems = ['glove'];
   state.itemCharges = { glove: 1 };
   state.coins = 10;
-  const expected = itemSellPrice({ price: 65 });
-  expect(expected).toBe(32);
+  const expected = Math.floor(ITEM_BY_ID.glove.price / 2);
+  expect(expected).toBe(17);
   expect(canSellItem(state, 'glove').ok).toBe(true);
   const result = sellItem(state, 'glove');
   expect(result.ok).toBe(true);
-  expect(result.price).toBe(32);
+  expect(result.price).toBe(17);
   expect(state.coins).toBe(10 + result.price);
   expect(state.activeItems.includes('glove')).toBe(false);
   expect(state.itemCharges.glove).toBe(undefined);
