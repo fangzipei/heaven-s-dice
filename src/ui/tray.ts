@@ -190,7 +190,8 @@ function renderDiceTrayGL(run: RunState, tray: HTMLElement) {
     tray.querySelector('#dice-dom-fallback')!.remove();
     delete tray.dataset.dieSignature;
   }
-  const dice = run.dice.map((die) => {
+  const visible = run.dice.filter((die) => !die.scored);
+  const dice = visible.map((die) => {
     const state = dieStateOf(run, die);
     return {
       uid: die.uid, value: die.value, hidden: state.hidden, blank: state.blank,
@@ -203,14 +204,14 @@ function renderDiceTrayGL(run: RunState, tray: HTMLElement) {
     diceTable!.setDice(dice);
   }
   const states = new Map();
-  run.dice.forEach((die) => {
+  visible.forEach((die) => {
     const state = dieStateOf(run, die);
     states.set(die.uid, {
       selected: state.selected, scored: state.scored, blank: state.blank, blocked: state.blocked,
     });
   });
   diceTable!.applyStates(states);
-  motion.settle(diceTable, run.dice.map((die) => die.uid));
+  motion.settle(diceTable, visible.map((die) => die.uid));
   renderDiceA11y(run);
   motion.markDirty();
 }

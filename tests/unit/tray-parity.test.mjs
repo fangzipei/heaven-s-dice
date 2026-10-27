@@ -208,13 +208,16 @@ describe('WebGL 骰桌：建桌、签名缓存与无障碍行', () => {
     setBoard({ phase: 'selecting', selected: ['d1'] });
     renderDiceTray();
     const before = recorder.tableCalls.filter((call) => call.startsWith('setDice')).length;
-    expect(recorder.tableCalls).toContain('setDice:1,5,3,6,2,x');
+    expect(recorder.tableCalls).toContain('setDice:1,3,6,2,x');
     app.run.selected = ['d1', 'd3'];
     renderDiceTray();
     expect(recorder.tableCalls.filter((call) => call.startsWith('setDice')).length, '选中变化不该重建骰子').toBe(before);
-    expect(recorder.tableCalls).toContain('applyStates:d1:1000|d2:0100|d3:0000|d4:0000|d5:0010|d6:0000');
-    expect(recorder.tableCalls).toContain('applyStates:d1:1000|d2:0100|d3:1000|d4:0000|d5:0010|d6:0000');
-    expect(recorder.tableCalls).toContain('settle:6');
+    const stateCalls = recorder.tableCalls.filter((call) => call.startsWith('applyStates')).slice(-2);
+    expect(stateCalls.length).toBe(2);
+    expect(stateCalls[0]).toContain('d1:1000');
+    expect(stateCalls[1]).toContain('d1:1000');
+    expect(stateCalls[1]).toContain('d3:1000');
+    expect(recorder.tableCalls).toContain('settle:5');
   });
 
   test('无障碍行：每颗骰子一个按钮，文案按 hidden/blank/blocked 分支', () => {

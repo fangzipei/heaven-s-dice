@@ -14,6 +14,7 @@ import type { PricedDie, RunState } from '../core/types.ts';
 import { clamp, h, num, sleep } from '../core/util.ts';
 import { motion, type MotionPoint } from '../render/motion.ts';
 import { artDieHtml } from '../render/dice-dom.ts';
+import { pipIndexes } from '../render/pip-layout.ts';
 import { sound } from '../platform/sound.ts';
 import { discoverLoadout } from '../platform/storage.ts';
 import { recordScore, recordThrow, getRunRecord } from '../platform/run-record.ts';
@@ -41,6 +42,7 @@ export function renderGame(): void {
   renderScorePanel();
   renderRail();
   renderDiceTray();
+  renderScoredPanel(run);
   renderComboPreview();
   renderActionDock();
   renderDangerStrip();
@@ -65,6 +67,44 @@ function cupDiceToGather(run: RunState) {
   if (run.phase === 'dead') return run.dice.slice();
   if (run.flags.rerollAll || run.flags.hotDice) return run.dice.slice();
   return run.dice.filter((die) => !die.scored);
+}
+
+function scoredMini(value: number): string {
+  const positions = pipIndexes(value);
+  const pips = positions.map((index) => {
+    const left = [20, 50, 80][index % 3];
+    const top = [20, 50, 80][Math.floor(index / 3)];
+    return `<i style="left:${left}%;top:${top}%"></i>`;
+  }).join('');
+  return `<span class="scored-mini" aria-label="${value} 点">${pips}</span>`;
+}
+
+function renderScoredPanel(run: RunState): void {
+  const panel = $('#scored-panel');
+  if (!panel) return;
+  const scored = run.dice.filter((die) => die.scored);
+  if (!scored.length) {
+    panel.hidden = true;
+    panel.innerHTML = '';
+    return;
+  }
+  const rows: string[] = [];
+  const combos = run.lastScore?.combos || [];
+  if (combos.length) {
+    for (const combo of combos) {
+      const values = combo.type === 'single' ? [combo.face]
+        : combo.type === 'nkind' ? Array.from({ length: combo.count }, () => combo.face)
+          : combo.faces;
+      rows.push(`<div class="scored-row"><span class="scored-dice">${values.map(scoredMini).join('')}</span><b>${h(combo.label)}</b><em>+${num(combo.points)}</em></div>`);
+    }
+  } else {
+    for (const die of scored) {
+      if (die.value == null) continue;
+      rows.push(`<div class="scored-row"><span class="scored-dice">${scoredMini(die.value)}</span><b>${die.wild ? '恶魔赖子' : '已计分'}</b><em>${die.value}</em></div>`);
+    }
+  }
+  panel.innerHTML = rows.join('');
+  panel.hidden = rows.length === 0;
 }
 
 function dieElement(uid: string) {
@@ -1022,6 +1062,12 @@ export function bindCupDrag(): void {
   cup.addEventListener('pointercancel', finish);
   window.addEventListener('pointerup', finish);
   window.addEventListener('pointercancel', finish);
+  // Dragging the cup out of the window should commit the throw immediately
+  // instead of leaving the cup mid-shake forever.
+  window.addEventListener('mouseout', (event) => {
+    if (dragging && !event.relatedTarget) void finish();
+  });
+  window.addEventListener('blur', () => { if (dragging) void finish(); });
 
   cup.addEventListener('keydown', (event) => {
     if (event.key === 'Enter' || event.code === 'Space') {

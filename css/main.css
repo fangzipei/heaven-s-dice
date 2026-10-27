@@ -2133,3 +2133,57 @@ svg { width: 1em; height: 1em; display: block; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
 }
+
+/* ── 2026-10 polish: cup on the right, item-only rail, larger type ───── */
+.cup-zone { left: auto; right: calc(4.2% + 332px); }
+.rail > .rail-card:not(.items-card) { display: none; }
+.rail { padding-top: 16px; }
+.items-card { min-height: 0; }
+body { font-size: 15px; }
+.rail-card-head { font-size: 12px; }
+.rail-note { font-size: 10px; }
+.item-slot .item-name { font-size: 11px; }
+.passive-chip { font-size: 11px; }
+.score-panel-top { font-size: 11px; }
+.score-breakdown { font-size: 10px; }
+.dice-tray-head { font-size: 11px; }
+.combo-placeholder, .combo-label { font-size: 11px; }
+.action-hint { font-size: 10px; }
+
+/* Scored dice leave the WebGL row and stack on the left, one combo per row. */
+.scored-panel { position: absolute; z-index: 10; left: 50%; bottom: 116px; width: min(20%, 190px); transform: translateX(calc(-50% - 330px)); display: flex; flex-direction: column; gap: 5px; pointer-events: none; }
+.scored-panel[hidden] { display: none; }
+.scored-row { display: flex; align-items: center; gap: 7px; padding: 5px 7px; border: 1px solid rgba(217,180,106,.16); background: rgba(9,7,4,.72); }
+.scored-dice { display: flex; gap: 3px; }
+.scored-mini { width: 22px; height: 22px; border-radius: 5px; position: relative; border: 1px solid rgba(238,222,184,.5); background: linear-gradient(150deg,#e6d5ae,#b3945f); box-shadow: inset -2px -2px 3px rgba(56,32,10,.3); }
+.scored-mini .pip { width: 4px; height: 4px; }
+.scored-row b { font-family: var(--serif); font-size: 9px; font-weight: 400; color: #dcc49a; letter-spacing: .04em; }
+.scored-row em { margin-left: auto; color: #9c8a70; font-size: 8px; font-style: normal; }
+
+@media (max-width: 1240px) { .cup-zone { right: calc(4.2% + 305px); } }
+@media (max-width: 1050px) { .cup-zone { right: 4.2%; } }
+
+@media (max-width: 760px) {
+  .topbar { height: 62px; padding: 0 12px; }
+  .level-track-wrap { display: none; }
+  .score-panel { top: 70px; left: 10px; width: min(56vw, 230px); padding: 10px 12px; border-radius: 5px; background: rgba(10,8,5,.82); }
+  .score-number strong { font-size: 32px; }
+  .score-number .score-target { font-size: 11px; }
+  .score-panel-top { font-size: 10px; }
+  .score-breakdown { font-size: 9px; }
+  .chapter-tag { display: none; }
+  .opponent { height: 34%; top: 3%; right: 4%; }
+  .opponent-image-wrap { max-width: 42vw; }
+  .opponent-plate { padding: 6px 9px; }
+  .opponent-plate strong { font-size: 16px; }
+  .dice-zone { bottom: 94px; width: 96%; }
+  .cup-zone { bottom: 148px; width: 112px; right: 6px; }
+  .scored-panel { left: 10px; bottom: 170px; width: 132px; transform: none; }
+  .scored-row { padding: 4px 5px; }
+  .scored-mini { width: 18px; height: 18px; }
+  .action-dock { width: calc(100% - 16px); bottom: 8px; }
+  .score-action { min-height: 54px; padding: 7px 10px; }
+  .score-action b { font-size: 14px; }
+  .rail { top: 68px; width: min(88vw, 320px); }
+}
+.scored-mini i { position: absolute; width: 4px; height: 4px; margin: -2px 0 0 -2px; border-radius: 50%; background: #191209; box-shadow: inset 1px 1px 1px rgba(0,0,0,.7); }
