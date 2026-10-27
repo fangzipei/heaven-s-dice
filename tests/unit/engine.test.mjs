@@ -522,6 +522,8 @@ test('the glove turns a demon die into a joker', () => {
   expect(useItem(state, 'glove').ok).toBe(true);
   expect(state.dice[0].wild).toBe(true);
   expect(state.dice[0].value).toBe(1);
+  expect(state.activeItems).not.toContain('glove');
+  expect(state.itemCharges.glove).toBe(undefined);
 });
 
 test('face-score barrel pays per scored face plus a triple bonus', () => {

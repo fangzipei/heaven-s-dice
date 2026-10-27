@@ -253,7 +253,7 @@ footer code{color:#93836b;font-family:Consolas,monospace;font-size:9.5px}
 <header class="hero">
   <p class="kicker">HEAVEN'S DICE · THE GAMBLER'S ARCHIVE</p>
   <h1>天国骰局 · 内容总览</h1>
-  <p class="lede">骰子 36 枚（狼裔 5 / 恶魔 5 / 无套组 25 / 标准 1）、骰桶 13 只、物品 27 件（含一次性 9 件）。骰面立绘取自游戏真实皮肤（材质渐变 + 刻纹 + 点数），骰桶与物品为仓库 <code>assets/</code> 内的原始矢量图；所有数值由 <code>src/content/</code> 与 <code>src/core/engine.ts</code> 直接生成，不会与游戏脱节。</p>
+  <p class="lede">骰子 36 枚（狼裔 5 / 恶魔 5 / 无套组 25 / 标准 1）、骰桶 13 只、物品 27 件（含一次性 10 件）。骰面立绘取自游戏真实皮肤（材质渐变 + 刻纹 + 点数），骰桶与物品为仓库 <code>assets/</code> 内的原始矢量图；所有数值由 <code>src/content/</code> 与 <code>src/core/engine.ts</code> 直接生成，不会与游戏脱节。</p>
   <div class="legend">
     <span style="--c:#b9b2a4"><i></i>普通</span><span style="--c:#61a9d8"><i></i>稀有</span><span style="--c:#b57bea"><i></i>史诗</span><span style="--c:#f0b95f"><i></i>传说</span>
     <span style="--c:#8a6d3d"><i></i>普通 14 · 稀有 8 · 史诗 8 · 传说 5</span>
@@ -3167,9 +3167,9 @@ footer code{color:#93836b;font-family:Consolas,monospace;font-size:9.5px}
   <path d="M22 88 Q60 108 98 88" fill="none" stroke="#c69bd1" stroke-opacity=".22" stroke-width="1"/>
 </svg></div>
     <h4>魔术手套</h4>
-    <p class="desc">将当前选中的一颗骰子改为 1 点。</p>
+    <p class="desc">将当前选中的一颗骰子改为 1 点。一次性消耗。</p>
     <p class="flavor">“完全合法。只要没有人看见袖口里的第二只手。”</p>
-    <span class="effect"><b>主动 · 每关恢复 1 次</b></span>
+    <span class="effect"><b>主动 · 每关恢复 1 次</b> · 一次性消耗</span>
   </article><article class="card item-card" data-rarity="epic" data-name="烟雾弹" style="--rarity:#b57bea;--glow:rgba(181,123,234,.45)">
     <div class="top"><span class="rarity">史诗</span><span class="price">95 银币</span></div>
     <div class="art icon"><svg xmlns="http://www.w3.org/2000/svg" width="120" height="120" viewBox="0 0 120 120">
@@ -3708,7 +3708,7 @@ footer code{color:#93836b;font-family:Consolas,monospace;font-size:9.5px}
       <div class="m-line"><span>骰桶价格</span><b>35 – 80 银币</b></div>
       <div class="m-line"><span>物品货位</span><b>3 件 · 暗格货架 +1 · 刷新 12</b></div>
       <div class="m-line"><span>物品价格</span><b>35 – 260 银币</b></div>
-      <div class="m-line"><span>一次性消耗品</span><b>9 件</b></div>
+      <div class="m-line"><span>一次性消耗品</span><b>10 件</b></div>
       <table style="margin-top:10px">
         <tbody>
           <tr><td>单颗 1 / 5</td><td>100 / 50 分</td></tr>
@@ -3750,7 +3750,7 @@ footer code{color:#93836b;font-family:Consolas,monospace;font-size:9.5px}
 </section>
 
 <footer>
-  <span>数据：src/content/ · 皮肤：src/render/dice-skins.ts · 插画：assets/cups、assets/items · 本页由 tools/build-codex.mjs 生成 · 2026-10-27 17:09</span>
+  <span>数据：src/content/ · 皮肤：src/render/dice-skins.ts · 插画：assets/cups、assets/items · 本页由 tools/build-codex.mjs 生成 · 2026-10-27 20:42</span>
   <span>天国骰局 · 骰子落下之前，命运只是一句空话。</span>
 </footer>
 

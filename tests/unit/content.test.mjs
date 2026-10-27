@@ -84,11 +84,11 @@ test('shop rarity weights open up across five level bands', () => {
   }
 });
 
-test('item mix: 27 items, 14 active / 13 passive, 9 one-shot consumables', () => {
+test('item mix: 27 items, 14 active / 13 passive, 10 one-shot consumables', () => {
   expect(ITEMS.length).toBe(27);
   expect(countBy(ITEMS, 'type')).toEqual({ active: 14, passive: 13 });
   expect(ITEMS.filter((item) => item.consumable).map((item) => item.id).sort()).toEqual([
-    'boss_ward', 'courage', 'epic_chest', 'hunter_mark', 'lucky_coin',
+    'boss_ward', 'courage', 'epic_chest', 'glove', 'hunter_mark', 'lucky_coin',
     'powder', 'rare_pair', 'salt', 'wager',
   ]);
   for (const item of ITEMS.filter((entry) => entry.consumable)) {
