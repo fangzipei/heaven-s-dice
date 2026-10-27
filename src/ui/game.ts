@@ -12,7 +12,7 @@ import {
 import type { ScoreAction } from '../core/engine.ts';
 import type { RunState } from '../core/types.ts';
 import { clamp, h, num, sleep } from '../core/util.ts';
-import { motion } from '../render/motion.ts';
+import { motion, type MotionPoint } from '../render/motion.ts';
 import { sound } from '../platform/sound.ts';
 import { discoverLoadout } from '../platform/storage.ts';
 import { closeOverlay, openOverlay } from './components/overlay.ts';
@@ -107,7 +107,8 @@ async function gatherDiceToCup(uids: string[]) {
   if (prefersReducedMotion()) return;
   if (!uids.length) return;
   if (diceTable) {
-    await motion.gather(diceTable, uids, cupWorldPoint());
+    // Pass a callback, not a snapshot: the cup is dragged while the dice fly.
+    await motion.gather(diceTable, uids, () => cupWorldPoint());
     return;
   }
   // ── DOM fallback ──
@@ -136,9 +137,9 @@ async function gatherDiceToCup(uids: string[]) {
 }
 
 /* Pour every rerolled die out of the cup and let it settle. */
-async function pourDiceIntoTable(uids: string[]) {
+async function pourDiceIntoTable(uids: string[], from?: MotionPoint | null) {
   if (!diceTable || !uids.length) return;
-  await motion.rollDice(diceTable, uids, cupWorldPoint(), { stagger: 0.045, duration: 0.58 });
+  await motion.rollDice(diceTable, uids, from ?? cupWorldPoint(), { stagger: 0.045, duration: 0.58 });
 }
 
 export function pulseCup(): void {
@@ -392,7 +393,9 @@ function capped<T>(promise: Promise<T>, ms: number): Promise<T | void> {
   ]);
 }
 
-async function performCupRoll({ free = false, prepared = false }: { free?: boolean; prepared?: boolean } = {}) {
+async function performCupRoll({ free = false, prepared = false, from = null }: {
+  free?: boolean; prepared?: boolean; from?: MotionPoint | null;
+} = {}) {
   const run = app.run;
   if (!run) return;
   const previousPhase = run.phase;
@@ -440,7 +443,7 @@ async function performCupRoll({ free = false, prepared = false }: { free?: boole
     if (result.bust) showBustNotice(result.bust);
     // The dice pour out of the cup and settle; wait for the real motion
     // instead of a guessed timeout.
-    if (diceTable) await capped(pourDiceIntoTable(pouring.length ? pouring : run.dice.map((die) => die.uid)), 2500);
+    if (diceTable) await capped(pourDiceIntoTable(pouring.length ? pouring : run.dice.map((die) => die.uid), from), 2500);
     else await sleep(680);
     app.busy = false;
     app.rolling = false;
@@ -837,9 +840,12 @@ export function bindCupDrag(): void {
       if (app.cupTrace) finishCupTrace();
       removeCupOverlays();
       try { await app.cupHoldPromise; } catch { /* handled in startCupHold */ }
+      // Capture where the player actually let go before the cup snaps home;
+      // the dice must reappear from that spot.
+      const releaseFrom = cupWorldPoint();
       cup.style.transform = '';
       if (!app.cupHoldStarted) return;
-      await performCupRoll({ prepared: true, free: app.run?.phase === 'hot' });
+      await performCupRoll({ prepared: true, free: app.run?.phase === 'hot', from: releaseFrom });
       return;
     }
     removeCupOverlays();

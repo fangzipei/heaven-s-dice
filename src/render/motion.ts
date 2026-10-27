@@ -38,6 +38,7 @@ export interface MotionMesh {
   position: MotionSettable;
   rotation: MotionSettable;
   scale: MotionSettable;
+  visible?: boolean;
 }
 
 /** 动效只关心“这颗骰子被选中了吗”；其余状态位由表格自己解释。 */
@@ -157,12 +158,12 @@ export const motion = {
       const targetX = entry.baseX;
       const spinY = Math.PI * 2 * (1 + (index % 2 ? 1 : 2));
       const spinX = Math.PI * 2 * (index % 3 === 0 ? 1 : 2);
+      mesh.visible = true;
       mesh.rotation.set(rest.x - spinX, rest.y + spinY, rest.z);
-      mesh.position.set(
-        (from?.x ?? 0) + (targetX - (from?.x ?? 0)) * 0.2,
-        from?.y ?? 3.4,
-        from?.z ?? 1.1,
-      );
+      // Start exactly at the cup mouth at zero size, then grow while flying to
+      // the table. The gather left these meshes hidden at scale 0.
+      mesh.position.set(from?.x ?? 0, from?.y ?? 3.4, from?.z ?? 1.1);
+      mesh.scale.set(0.001, 0.001, 0.001);
       const tl = gsap.timeline({ delay: reduced() ? 0 : index * stagger });
       tl.to(mesh.position, {
         x: targetX, z: 0, duration, ease: 'power2.out',
@@ -176,8 +177,8 @@ export const motion = {
         duration: duration * 1.25, ease: 'power3.out',
       }, 0);
       tl.fromTo(mesh.scale,
-        { x: 1.1, y: 0.82, z: 1.1 },
-        { x: 1, y: 1, z: 1, duration: duration * 0.7, ease: 'back.out(2.2)' }, duration * 0.72);
+        { x: 0.001, y: 0.001, z: 0.001 },
+        { x: 1, y: 1, z: 1, duration: duration * 1.1, ease: 'back.out(1.8)' }, 0);
       timelines.push(tl);
     });
     if (!timelines.length) return Promise.resolve();
@@ -206,34 +207,71 @@ export const motion = {
   },
 
   /* Sweep dice back into the cup before a reroll. */
-  gather(table: MotionDiceTable | null, uids: string[], target?: MotionPoint | null,
+  gather(table: MotionDiceTable | null, uids: string[],
+    target?: MotionPoint | null | (() => MotionPoint | null),
     options: { duration?: number } = {}) {
     if (!table || !gsap) return Promise.resolve();
     const duration = reduced() ? 0.01 : (options.duration ?? 0.5);
-    const tweens = uids.map((uid, index) => {
+    const targetAt = typeof target === 'function' ? target : () => target;
+    const items = uids.map((uid, index) => {
       const entry = table.entries.find((item) => item.uid === uid);
       if (!entry) return null;
-      const mesh = entry.mesh;
-      const tx = (target?.x ?? 0) + (index - 2) * 0.05;
-      const ty = target?.y ?? 1.4;
-      const tz = target?.z ?? 0.9;
-      // Move first, arc upward, and only shrink once the die is already on its
-      // way to the cup. The old tween started scaling almost immediately, so
-      // short holds made the dice look like they merely shrank in place.
-      return gsap.timeline({ delay: reduced() ? 0 : index * 0.022 })
-        .to(mesh.position, { x: tx, z: tz, duration, ease: 'power2.inOut' }, 0)
-        .to(mesh.position, { y: ty + 0.42, duration: duration * 0.46, ease: 'sine.out' }, 0)
-        .to(mesh.position, { y: ty, duration: duration * 0.54, ease: 'power2.in' }, duration * 0.46)
-        .to(mesh.rotation, {
-          x: `+=${Math.PI * 0.8}`, y: `+=${Math.PI * 1.2}`, duration, ease: 'power1.inOut',
-        }, 0)
-        .to(mesh.scale, {
-          x: 0.16, y: 0.16, z: 0.16, duration: duration * 0.34, ease: 'power2.in',
-        }, duration * 0.52)
-        .then();
-    }).filter(Boolean) as Promise<unknown>[];
-    if (!tweens.length) return Promise.resolve();
-    return this.busy(Promise.all(tweens));
+      const { mesh } = entry;
+      return {
+        mesh, index,
+        sx: mesh.position.x, sy: mesh.position.y, sz: mesh.position.z,
+        rx: mesh.rotation.x, ry: mesh.rotation.y, rz: mesh.rotation.z,
+      };
+    }).filter(Boolean) as {
+      mesh: MotionDiceTable['entries'][number]['mesh']; index: number;
+      sx: number; sy: number; sz: number; rx: number; ry: number; rz: number;
+    }[];
+    if (!items.length) return Promise.resolve();
+    // The cup itself is draggable. Read its world point every frame so the
+    // dice keep flying into wherever the cup is *now*, not where it was when
+    // the gesture started. At the end they shrink to zero and disappear.
+    const startedAt = performance.now() / 1000;
+    const promise = new Promise<void>((resolve) => {
+      const tick = () => {
+        const now = performance.now() / 1000;
+        const point = targetAt();
+        let finished = true;
+        for (const item of items) {
+          const local = (now - startedAt - item.index * 0.022) / duration;
+          const p = Math.max(0, Math.min(1, local));
+          if (p < 1) finished = false;
+          const ease = p * p * (3 - 2 * p);
+          const tx = (point?.x ?? 0) + (item.index - 2) * 0.05;
+          const ty = point?.y ?? 1.4;
+          const tz = point?.z ?? 0.9;
+          item.mesh.position.set(
+            item.sx + (tx - item.sx) * ease,
+            item.sy + (ty - item.sy) * ease + Math.sin(Math.PI * p) * 0.28,
+            item.sz + (tz - item.sz) * ease,
+          );
+          item.mesh.rotation.set(
+            item.rx + Math.PI * 0.8 * ease,
+            item.ry + Math.PI * 1.2 * ease,
+            item.rz,
+          );
+          // Hold full size for the first half of the flight, then shrink all
+          // the way to zero: no half-size ghosts left at the old cup position.
+          const shrink = p < 0.55 ? 0 : Math.pow((p - 0.55) / 0.45, 2);
+          const scale = Math.max(0, 1 - shrink);
+          item.mesh.scale.set(scale, scale, scale);
+          if (p >= 1) item.mesh.visible = false;
+        }
+        loop.dirty = true;
+        if (finished) {
+          gsap!.ticker.remove(tick);
+          loop.dirty = true;
+          resolve();
+        }
+      };
+      tick();
+      gsap.ticker.add(tick);
+    });
+    return this.busy(promise);
   },
 
   /* Selection / scoring lift. Cheap enough to fire on every tap. */
