@@ -31,7 +31,7 @@ async function hover(selector) {
 await js(`document.querySelector('[data-action="start-run"]').click(); document.querySelector('[data-action="start-direct"]')?.click()`); await sleep(600);
 await js(`document.querySelector('[data-action="close-intro"]')?.click()`); await sleep(450);
 const report = {};
-report.die = await hover('.die[data-die-tip]');
+report.die = await hover('[data-die-tip]');
 report.item = await hover('.item-slot[data-item-tip]');
 report.cup = await hover('#cup[data-barrel-tip]');
 report.barrelThumb = await hover('#barrel-thumb[data-barrel-tip]');

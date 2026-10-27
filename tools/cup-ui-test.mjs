@@ -1,14 +1,12 @@
 import { spawn } from 'node:child_process';
 import { writeFile, mkdir } from 'node:fs/promises';
-import { dirname, join, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
 const EDGE = 'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe';
 const PORT = 9361;
-const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const OUT = join(ROOT, 'tools');
-const DOCS = join(ROOT, 'docs', 'screenshots');
-await mkdir(join(OUT, 'edge-profile-cupui'), { recursive: true });
-const edge = spawn(EDGE, ['--headless', '--disable-gpu', '--hide-scrollbars', '--no-first-run', '--disable-extensions', '--mute-audio', `--remote-debugging-port=${PORT}`, `--user-data-dir=${join(OUT, 'edge-profile-cupui')}`, '--window-size=1600,1000', 'about:blank'], { stdio: 'ignore' });
+const ROOT = `D:\\vs_workspace\\Heaven's Dice`;
+const OUT = `${ROOT}\\tools`;
+const DOCS = `${ROOT}\\docs\\screenshots`;
+await mkdir(`${OUT}\\edge-profile-cupui`, { recursive: true });
+const edge = spawn(EDGE, ['--headless', '--disable-gpu', '--hide-scrollbars', '--no-first-run', '--disable-extensions', '--mute-audio', `--remote-debugging-port=${PORT}`, `--user-data-dir=${OUT}\\edge-profile-cupui`, '--window-size=1600,1000', 'about:blank'], { stdio: 'ignore' });
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 async function getJson(path) { for (let i = 0; i < 60; i += 1) { try { const r = await fetch(`http://127.0.0.1:${PORT}${path}`); if (r.ok) return await r.json(); } catch {} await sleep(250); } throw new Error('No CDP'); }
 const page = (await getJson('/json/list')).find((t) => t.type === 'page');
@@ -21,10 +19,15 @@ await send('Runtime.enable'); await send('Page.enable'); await send('Log.enable'
 const targetUrl = process.env.BASE_URL || 'http://127.0.0.1:4173/';
 await send('Page.navigate', { url: targetUrl }); await sleep(3500);
 const js = async (expression) => { const r = await send('Runtime.evaluate', { expression, returnByValue: true, awaitPromise: true, userGesture: true }); if (r.exceptionDetails) throw new Error(r.exceptionDetails.exception?.description || r.exceptionDetails.text); return r.result.value; };
-async function shot(name, docsName = null) { const r = await send('Page.captureScreenshot', { format: 'png' }); const b = Buffer.from(r.data, 'base64'); await writeFile(join(OUT, `${name}.png`), b); if (docsName) await writeFile(join(DOCS, docsName), b); }
+const boot = await js(`({dice:typeof window.HeavensDice,run:!!window.HeavensDice?.run,start:!!document.querySelector('[data-action="start-run"]'),cup:!!document.querySelector('#cup-zone')})`);
+const bootErrors = events.filter((e) => e.method === 'Runtime.exceptionThrown' || (e.method === 'Log.entryAdded' && e.params.entry.level === 'error')).map((e) => e.params.exceptionDetails?.exception?.description || e.params.entry?.text);
+console.log('BOOT', boot, JSON.stringify(bootErrors));
+async function shot(name, docsName = null) { const r = await send('Page.captureScreenshot', { format: 'png' }); const b = Buffer.from(r.data, 'base64'); await writeFile(`${OUT}\\${name}.png`, b); if (docsName) await writeFile(`${DOCS}\\${docsName}`, b); }
 const move = (x, y) => send('Input.dispatchMouseEvent', { type: 'mouseMoved', x, y, button: 'left', buttons: 1 });
 
 await js(`document.querySelector('[data-action="start-run"]').click(); document.querySelector('[data-action="start-direct"]')?.click()`); await sleep(600);
+const started = await js(`({dice:typeof window.HeavensDice,run:!!window.HeavensDice?.run,prompt:!!document.querySelector('.start-choice-modal')})`);
+console.log('STARTED', started);
 await js(`document.querySelector('[data-action="close-intro"]')?.click()`); await sleep(450);
 const desktop = await js(`({
   parent:document.querySelector('#cup-zone').parentElement.id,

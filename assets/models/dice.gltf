@@ -1,0 +1,191 @@
+{
+  "asset": {
+    "version": "2.0",
+    "generator": "Heaven's Dice · dice model exporter"
+  },
+  "scene": 0,
+  "scenes": [
+    {
+      "name": "DiceScene",
+      "nodes": [
+        0
+      ]
+    }
+  ],
+  "nodes": [
+    {
+      "name": "Dice",
+      "mesh": 0,
+      "extras": {
+        "unit": "cube is 1 x 1 x 1, centered at origin",
+        "upAxis": "+Y",
+        "frontFace": 1,
+        "faceValues": {
+          "front": 1,
+          "back": 6,
+          "right": 3,
+          "left": 4,
+          "top": 2,
+          "bottom": 5
+        }
+      }
+    }
+  ],
+  "meshes": [
+    {
+      "name": "DiceMesh",
+      "primitives": [
+        {
+          "attributes": {
+            "POSITION": 0,
+            "NORMAL": 1
+          },
+          "indices": 2,
+          "material": 0,
+          "mode": 4
+        },
+        {
+          "attributes": {
+            "POSITION": 3,
+            "NORMAL": 4
+          },
+          "indices": 5,
+          "material": 1,
+          "mode": 4
+        }
+      ]
+    }
+  ],
+  "materials": [
+    {
+      "name": "BoneDie",
+      "pbrMetallicRoughness": {
+        "baseColorFactor": [
+          0.951,
+          0.906,
+          0.792,
+          1
+        ],
+        "metallicFactor": 0,
+        "roughnessFactor": 0.52
+      },
+      "doubleSided": false
+    },
+    {
+      "name": "PipInk",
+      "pbrMetallicRoughness": {
+        "baseColorFactor": [
+          0.094,
+          0.067,
+          0.047,
+          1
+        ],
+        "metallicFactor": 0,
+        "roughnessFactor": 0.38
+      },
+      "doubleSided": false
+    }
+  ],
+  "accessors": [
+    {
+      "bufferView": 0,
+      "componentType": 5126,
+      "count": 5046,
+      "type": "VEC3",
+      "min": [
+        -0.5,
+        -0.5,
+        -0.5
+      ],
+      "max": [
+        0.5,
+        0.5,
+        0.5
+      ]
+    },
+    {
+      "bufferView": 1,
+      "componentType": 5126,
+      "count": 5046,
+      "type": "VEC3"
+    },
+    {
+      "bufferView": 2,
+      "componentType": 5125,
+      "count": 28224,
+      "type": "SCALAR"
+    },
+    {
+      "bufferView": 3,
+      "componentType": 5126,
+      "count": 301,
+      "type": "VEC3",
+      "min": [
+        -0.504,
+        -0.504,
+        -0.504
+      ],
+      "max": [
+        0.504,
+        0.504,
+        0.504
+      ]
+    },
+    {
+      "bufferView": 4,
+      "componentType": 5126,
+      "count": 441,
+      "type": "VEC3"
+    },
+    {
+      "bufferView": 5,
+      "componentType": 5125,
+      "count": 1260,
+      "type": "SCALAR"
+    }
+  ],
+  "bufferViews": [
+    {
+      "buffer": 0,
+      "byteOffset": 0,
+      "byteLength": 60552,
+      "target": 34962
+    },
+    {
+      "buffer": 0,
+      "byteOffset": 60552,
+      "byteLength": 60552,
+      "target": 34962
+    },
+    {
+      "buffer": 0,
+      "byteOffset": 121104,
+      "byteLength": 112896,
+      "target": 34963
+    },
+    {
+      "buffer": 0,
+      "byteOffset": 234000,
+      "byteLength": 3612,
+      "target": 34962
+    },
+    {
+      "buffer": 0,
+      "byteOffset": 237612,
+      "byteLength": 5292,
+      "target": 34962
+    },
+    {
+      "buffer": 0,
+      "byteOffset": 242904,
+      "byteLength": 5040,
+      "target": 34963
+    }
+  ],
+  "buffers": [
+    {
+      "uri": "dice.bin",
+      "byteLength": 247944
+    }
+  ]
+}

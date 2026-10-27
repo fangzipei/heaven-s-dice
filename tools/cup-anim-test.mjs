@@ -22,8 +22,9 @@ async function shot(name, docsName = null) {
   await writeFile(`${OUT}\\${name}.png`, buffer);
   if (docsName) await writeFile(`${DOCS}\\${docsName}`, buffer);
 }
+for (let i = 0; i < 40 && !(await js(`Boolean(document.querySelector('[data-action="start-run"]'))`)); i += 1) await sleep(250);
 await js(`document.querySelector('[data-action="start-run"]').click(); document.querySelector('[data-action="start-direct"]')?.click()`); await sleep(400);
-await js(`document.querySelector('[data-action="close-intro"]').click()`); await sleep(500);
+await js(`document.querySelector('[data-action="close-intro"]')?.click()`); await sleep(500);
 const cup = await js(`document.querySelector('#cup').getBoundingClientRect().toJSON()`);
 const cx = cup.x + cup.width / 2, cy = cup.y + cup.height / 2;
 await send('Input.dispatchMouseEvent', { type: 'mousePressed', x: cx, y: cy, button: 'left', buttons: 1, clickCount: 1 });

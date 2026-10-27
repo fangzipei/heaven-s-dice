@@ -1,0 +1,13 @@
+{
+  "cell": 256,
+  "cols": 3,
+  "rows": 2,
+  "order": "value-1..6",
+  "skins": {
+    "standard": {
+      "file": "standard.png",
+      "width": 768,
+      "height": 512
+    }
+  }
+}

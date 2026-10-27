@@ -78,7 +78,7 @@ for (const [level, name] of [[4, 'stone'], [7, 'iron'], [10, 'gold']]) {
 }
 
 // Final table + boss intro. A real final run has six dealer sigils.
-await js(`(() => { window.HeavensDice.run.bossBoons = 6; window.HeavensDice.setLevel(15); window.HeavensDice.render(); })()`); await sleep(600);
+await js(`(() => { window.HeavensDice.setLevel(15); window.HeavensDice.render(); })()`); await sleep(600);
 await shot('05-diamond-table');
 await js(`window.HeavensDice.intro()`); await sleep(450);
 await shot('06-boss-intro');

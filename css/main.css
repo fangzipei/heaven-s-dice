@@ -259,22 +259,78 @@ svg { width: 1em; height: 1em; display: block; }
 .home-halo::before, .home-halo::after { content: ""; position: absolute; inset: 8%; border: 1px solid rgba(217,180,106,.08); border-radius: 50%; }
 .home-halo::after { inset: 23%; border-color: rgba(217,180,106,.1); }
 .home-cup { position: absolute; left: 5.5%; bottom: 8%; width: clamp(100px, 12vw, 205px); opacity: .72; filter: drop-shadow(0 20px 26px rgba(0,0,0,.7)) saturate(.8); transform: rotate(-7deg); }
-.home-dice { position: absolute; right: 6.5%; bottom: 12%; display: flex; gap: clamp(7px, .9vw, 15px); transform: rotate(-7deg); opacity: .82; }
-.home-die {
-  --die-face-bg: linear-gradient(145deg, #fff4da, #dfc394 52%, #a17c48);
-  --die-pip: #291d12;
-  --die-pip-rim: #8c7150;
-  position: relative; width: clamp(34px, 3.6vw, 58px); aspect-ratio: 1;
-  display: grid; grid-template-columns: repeat(3,1fr); grid-template-rows: repeat(3,1fr);
-  gap: 2px; padding: 17%; border: 1px solid rgba(255,244,216,.7); border-radius: 20%;
-  background: radial-gradient(circle at 20% 14%, rgba(255,255,255,.32), transparent 38%), var(--die-face-bg);
-  box-shadow: inset 1px 1px 0 rgba(255,255,255,.55), inset -3px -3px 6px rgba(66,40,16,.22), 0 2px 0 #785a34, 0 16px 26px rgba(0,0,0,.5);
+/* Decorative dice on the home screen: three real cubes, three materials. */
+.home-dice {
+  --d: clamp(38px, 3.9vw, 62px);
+  --half: calc(var(--d) / 2);
+  position: absolute; right: 6.5%; bottom: 12%;
+  display: flex; align-items: flex-end; gap: clamp(9px, 1.1vw, 18px);
+  perspective: 760px; perspective-origin: 46% 26%; opacity: .9;
 }
-.home-die::before { content: ""; position: absolute; inset: 8%; border: 1px solid rgba(67,42,18,.16); border-radius: 13%; box-shadow: 0 1px 0 rgba(255,255,255,.16); }
-.home-die::after { content: ""; position: absolute; inset: 1px; border-radius: inherit; background: linear-gradient(135deg, rgba(255,255,255,.15), transparent 34% 70%, rgba(49,28,10,.1)); pointer-events: none; }
-.home-die:nth-child(2) { transform: translateY(-12px) rotate(8deg); }
-.home-die:nth-child(3) { transform: translateY(4px) rotate(-4deg); }
-.home-die i { position: relative; z-index: 1; display: block; width: clamp(4px, .45vw, 7px); height: clamp(4px, .45vw, 7px); align-self: center; justify-self: center; border-radius: 50%; background: radial-gradient(circle at 61% 66%, #100c08 0 34%, var(--die-pip) 60%, var(--die-pip-rim) 100%); box-shadow: inset 1px 1px 2px rgba(0,0,0,.75), 0 1px 0 rgba(255,246,220,.4); }
+.home-die {
+  position: relative; width: var(--d); height: var(--d);
+  transform-style: preserve-3d;
+}
+.home-die::after {
+  content: ""; position: absolute; z-index: -1; left: 6%; right: 6%; bottom: -14%; height: 26%;
+  border-radius: 50%;
+  background:
+    radial-gradient(ellipse at 50% 40%, rgba(0,0,0,.82), rgba(0,0,0,.45) 50%, transparent 74%),
+    radial-gradient(ellipse, rgba(0,0,0,.35), transparent 72%);
+  filter: blur(3px);
+}
+.home-die:nth-child(2) { transform: translateY(-24%) rotate(-6deg); }
+.home-die:nth-child(3) { transform: translateY(-4%) rotate(4deg); }
+.home-cube {
+  position: absolute; inset: 0; transform-style: preserve-3d;
+  transform: rotateX(var(--rx, -15deg)) rotateY(var(--ry, 24deg)) rotateZ(var(--rz, 0deg));
+}
+.home-face {
+  position: absolute; inset: 0; border-radius: 13%;
+  display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(3, 1fr);
+  padding: 15%; gap: 0;
+  border: 1px solid var(--face-edge, rgba(238,222,184,.5));
+  background:
+    linear-gradient(var(--face-light, rgba(0,0,0,0)), var(--face-light, rgba(0,0,0,0))),
+    var(--face-grain, linear-gradient(rgba(0,0,0,0), rgba(0,0,0,0))),
+    radial-gradient(circle at 22% 14%, rgba(255,248,226,.14), transparent 42%),
+    var(--face-bg);
+  box-shadow:
+    inset 1px 1px 0 rgba(255,246,220,.26),
+    inset -2px -3px 6px var(--face-shade, rgba(52,30,10,.4)),
+    0 0 0 1px rgba(20,12,4,.3);
+  backface-visibility: hidden;
+}
+.hf-front { transform: translateZ(var(--half)); }
+.hf-top { --face-light: rgba(255,248,224,.1); transform: rotateX(90deg) translateZ(var(--half)); }
+.hf-right { --face-light: rgba(16,8,2,.24); transform: rotateY(90deg) translateZ(var(--half)); }
+.home-face i {
+  width: calc(var(--d) * .135); height: calc(var(--d) * .135);
+  align-self: center; justify-self: center; border-radius: 50%;
+  background: radial-gradient(circle at 61% 66%, #0d0906 0 34%, var(--pip, #191209) 60%, var(--pip-rim, #6d5636) 100%);
+  box-shadow: inset 1px 1px 2px rgba(0,0,0,.8), 0 1px 0 rgba(255,246,220,.3);
+}
+/* aged bone */
+.home-die.is-bone {
+  --face-bg: linear-gradient(150deg, #e6d5ae, #d2ba8c 48%, #b3945f 76%, #8a6b3f);
+  --pip: #191209; --pip-rim: #6d5636; --face-edge: rgba(238,222,184,.55);
+  --face-shade: rgba(52,30,10,.34);
+  --face-grain: repeating-linear-gradient(96deg, rgba(255,255,255,.03) 0 1px, rgba(90,60,26,.05) 1px 3px, rgba(255,255,255,0) 3px 11px);
+}
+/* oak-stained bone */
+.home-die.is-oak {
+  --face-bg: linear-gradient(150deg, #c9ab84, #a9855c 46%, #785738 76%, #4a3520);
+  --pip: #150e06; --pip-rim: #7a5a33; --face-edge: rgba(226,204,168,.45);
+  --face-shade: rgba(38,22,10,.44);
+  --face-grain: repeating-linear-gradient(88deg, rgba(255,255,255,.02) 0 1px, rgba(56,34,14,.09) 1px 3px, rgba(255,255,255,0) 3px 12px);
+}
+/* gilt brass */
+.home-die.is-gilt {
+  --face-bg: linear-gradient(150deg, #e9d6a4, #d2ae66 34%, #ab7f3a 62%, #6f4f1d 88%, #452f0e);
+  --pip: #170e02; --pip-rim: #cfa85e; --face-edge: rgba(244,226,172,.6);
+  --face-shade: rgba(60,38,8,.46);
+  --face-grain: conic-gradient(from 198deg at 30% 16%, rgba(255,246,214,.16), rgba(255,238,190,.04) 15%, rgba(255,255,255,0) 34%, rgba(255,255,255,0) 66%, rgba(238,206,138,.06) 80%, rgba(255,244,206,.13) 100%);
+}
 .home-main { position: relative; z-index: 4; flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 24px 24px 10px; }
 .home-logo { display: flex; flex-direction: column; align-items: center; margin-bottom: clamp(26px, 4.6vh, 48px); text-align: center; }
 .home-crest { width: clamp(38px, 4vw, 52px); height: clamp(38px, 4vw, 52px); display: grid; place-items: center; margin-bottom: 15px; border: 1px solid rgba(217,180,106,.5); color: #f1cf8e; background: radial-gradient(circle at 40% 30%, rgba(236,196,112,.18), rgba(0,0,0,.5)); transform: rotate(45deg); box-shadow: 0 0 32px rgba(217,180,106,.13); }
@@ -606,6 +662,17 @@ svg { width: 1em; height: 1em; display: block; }
 .score-panel.is-danger { border-left-color: var(--blood); }
 .score-panel.is-danger .score-number strong { color: #f0a298; }
 .score-panel.is-bust { animation: score-bust-pulse .55s ease-out; }
+/* 悬秤人的漂浮分：分数还没落袋，面板整体偏冷紫，待结算那半边在呼吸。 */
+.score-panel.is-floating { border-left-color: #a48ed6; box-shadow: 0 0 26px rgba(164,142,214,.14); }
+.score-panel.is-floating .score-number strong { color: #cfc2ee; }
+.score-panel.is-floating .score-number .score-pending b,
+.score-panel.is-floating .score-breakdown-pending b { color: #bfa8f0; }
+.score-panel.is-floating .score-number .score-pending em { color: #a48ed6; }
+.score-panel.is-floating .progress-fill.is-pending { animation: float-breathe 2.8s ease-in-out infinite; }
+@keyframes float-breathe {
+  0%, 100% { opacity: .55; }
+  50% { opacity: .95; }
+}
 @keyframes score-bust-pulse {
   0% { box-shadow: inset 0 0 0 0 rgba(177,63,48,0), 0 0 0 rgba(177,63,48,0); }
   35% { box-shadow: inset 0 0 0 1px rgba(224,112,91,.45), 0 0 22px rgba(177,63,48,.3); }
@@ -686,7 +753,7 @@ svg { width: 1em; height: 1em; display: block; }
 .cup-zone { position: fixed; z-index: 30; left: 4.2%; bottom: 15%; width: clamp(150px, 13.5vw, 208px); transform: none; }
 .cup-drag { position: relative; cursor: grab; touch-action: none; transition: transform .25s var(--ease); will-change: transform; }
 .cup-drag:active { cursor: grabbing; }
-.cup-drag.is-breathing::before { content: ""; position: absolute; z-index: -1; inset: -14% -16% -8%; border-radius: 50%; background: radial-gradient(ellipse at 50% 52%, rgba(244,199,106,.34), rgba(217,180,106,.12) 48%, transparent 72%); box-shadow: 0 0 34px rgba(238,190,95,.2); filter: blur(10px); animation: cup-breathe 2.4s ease-in-out infinite; pointer-events: none; }
+.cup-drag.is-breathing::before { content: ""; position: absolute; z-index: -1; inset: -14% -16% -8%; border-radius: 50%; background: radial-gradient(ellipse at 50% 52%, rgba(244,199,106,.3), rgba(217,180,106,.1) 48%, transparent 72%); filter: blur(10px); animation: cup-breathe 2.4s ease-in-out infinite; pointer-events: none; }
 .cup-drag.is-breathing .cup-glow { animation: cup-breathe-glow 2.4s ease-in-out infinite; }
 @keyframes cup-breathe { 0%,100% { opacity: .25; transform: scale(.94); } 50% { opacity: .8; transform: scale(1.06); } }
 @keyframes cup-breathe-glow { 0%,100% { opacity: .55; filter: blur(15px); } 50% { opacity: 1; filter: blur(22px); } }
@@ -734,11 +801,40 @@ svg { width: 1em; height: 1em; display: block; }
 .dice-tray-head { display: flex; align-items: center; justify-content: space-between; padding: 0 4px 7px; color: #8f816b; font-size: 9px; letter-spacing: .14em; text-shadow: 0 1px 4px #000; }
 .dice-count { color: #b9a98e; transition: color .2s, text-shadow .2s; }
 #throw-label.is-active, .dice-count.is-active { color: #ffd88b; text-shadow: 0 0 12px rgba(255,180,66,.45), 0 1px 4px #000; }
+/* The tray is a WebGL viewport now: one canvas, one raycast, no preserve-3d
+   subtree per die. Height is explicit so the renderer always has a real
+   aspect ratio to solve the camera against. */
 .dice-tray {
-  position: relative; min-height: 78px; display: flex; justify-content: center; align-items: flex-end;
+  position: relative; display: block;
+  /* tall enough that a lifted (selected) die never clips at the top */
+  height: clamp(132px, 10.6vw, 178px);
+  padding: 0 4px;
+}
+/* DOM fallback (no WebGL): recreated inside a dedicated host so it never
+   clobbers the canvas. */
+.dice-dom-fallback {
+  position: absolute; inset: 0; display: flex; justify-content: center; align-items: flex-end;
   gap: clamp(10px, 1.15vw, 18px); padding: 9px 10px 13px;
   perspective: 940px; perspective-origin: 50% 30%;
   transform-style: preserve-3d;
+}
+.dice-canvas {
+  position: absolute; inset: 0; display: block;
+  width: 100%; height: 100%;
+  touch-action: manipulation;
+}
+/* Invisible labels + focus order for keyboard and screen readers. */
+.dice-a11y { position: absolute; inset: 0; pointer-events: none; }
+.die-a11y-button {
+  position: absolute; width: 1px; height: 1px; padding: 0; border: 0;
+  background: none; opacity: 0; overflow: hidden; clip-path: inset(50%);
+}
+.die-a11y-button:focus-visible {
+  opacity: 1; clip-path: none; width: auto; height: auto;
+  left: 50%; top: 50%; transform: translate(-50%, -50%);
+  padding: 4px 12px; border: 1px solid rgba(255, 200, 120, .85); border-radius: 7px;
+  color: #ffd88b; font-size: 11px; letter-spacing: .08em;
+  background: rgba(12, 8, 5, .86);
 }
 .dice-tray::before {
   content: ""; position: absolute; z-index: -2; left: -2%; right: -2%; bottom: -10px; height: 56px;
@@ -1608,6 +1704,7 @@ svg { width: 1em; height: 1em; display: block; }
 .tut-card { padding: 11px 12px; border: 1px solid rgba(217,180,106,.12); background: linear-gradient(150deg, rgba(31,22,14,.6), rgba(8,6,4,.35)); }
 .tut-card b { display: block; color: #dbc49d; font-family: var(--serif); font-size: 12px; font-weight: 400; letter-spacing: .05em; margin-bottom: 3px; }
 .tut-card p { color: #95846b; font-size: 9px; line-height: 1.75; }
+.tut-card.is-gold { border-color: rgba(217,180,106,.3); background: linear-gradient(150deg, rgba(217,180,106,.09), rgba(8,6,4,.35)); }
 .tut-flow { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 7px; margin: 12px 0 14px; }
 .tut-flow div { display: flex; flex-direction: column; gap: 2px; padding: 9px; border: 1px solid rgba(217,180,106,.1); background: rgba(255,255,255,.015); }
 .tut-flow i { font: 10px var(--sans); color: #c59d5f; }
@@ -1771,6 +1868,48 @@ svg { width: 1em; height: 1em; display: block; }
   .minions-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
 @media (max-width: 760px) {
+  /* ── mobile perf: cut the expensive compositing work ──────────────────
+     backdrop-filter, blend modes, ambient infinite animations and deep
+     box-shadow stacks are the top GPU/battery cost on phones. None of them
+     carry gameplay information, so degrade them hard on small screens. */
+  .score-panel, .danger-strip, .rail, .floating-tooltip, .home-option,
+  .rail-card, .modal, .toast { backdrop-filter: none !important; }
+  .score-panel { background: rgba(13,9,6,.95); }
+  .danger-strip { background: rgba(37,12,10,.96); }
+  .rail { background: rgba(9,7,4,.97); }
+  .home-option { background: rgba(7,6,4,.78); }
+
+  .scene-vignette { mix-blend-mode: normal; background: linear-gradient(180deg, rgba(5,4,3,.22), transparent 16%, transparent 74%, rgba(5,3,2,.3)); }
+  .start-grain { display: none; }
+
+  .start-backdrop { animation: none; filter: brightness(.62) saturate(.82); transform: scale(1.02); }
+  .scene-dust { display: none; }
+  .hero-portrait img, .opponent-image-wrap img, .die-show-one, .die-show-five { animation: none !important; }
+  .button-shine { display: none; }
+
+  /* per-face shine sweeps repaint large layers every few seconds — drop them,
+     keep the static material treatment (gold frame, studs, engravings) */
+  .die .die-sheen { display: none !important; }
+  .die.is-selected::before { animation: none; opacity: .8; }
+  .auto-pulse, .progress-shine { animation: none !important; }
+
+  /* die faces: 6 shadow layers each × 6 faces × 6 dice is brutal on phones;
+     two inset layers keep the read without the cost */
+  .die-face {
+    box-shadow:
+      inset 1px 1px 0 rgba(255,246,222,.4),
+      inset -2px -2px 5px rgba(52,30,12,.3);
+  }
+  .die.rarity-epic .die-face, .die.rarity-legendary .die-face {
+    box-shadow:
+      inset 1px 1px 0 rgba(255,248,224,.5),
+      inset -2px -2px 6px rgba(48,26,8,.34),
+      0 0 7px var(--die-peak-glow, rgba(255,198,90,.16));
+  }
+  .die-face::before { display: none; }
+  .die-face .die-motif, .die-face .die-rune { filter: none; }
+  .cup-drag img { filter: drop-shadow(0 10px 12px rgba(0,0,0,.5)); }
+
   .start-header { padding: 18px 20px 0; }
   .start-nav .ghost-button span { display: none; }
   .start-nav .ghost-button { width: 38px; padding: 0; }
@@ -1785,8 +1924,7 @@ svg { width: 1em; height: 1em; display: block; }
   .home-play { height: 54px; font-size: 16px; }
   .home-option { height: 44px; font-size: 11px; }
   .home-cup { display: block; left: 6%; bottom: 11%; width: 70px; opacity: .55; }
-  .home-dice { display: flex; right: 6%; bottom: 13%; gap: 4px; opacity: .5; transform: rotate(-7deg) scale(.68); transform-origin: right bottom; }
-  .home-die { width: 36px; }
+  .home-dice { --d: 34px; right: 6%; bottom: 13%; gap: 7px; opacity: .72; }
   .home-halo { top: 39%; width: 92vw; }
   .home-legal { padding: 0 18px calc(14px + env(safe-area-inset-bottom, 0px)); }
   .home-legal p { max-width: 330px; font-size: 8px; line-height: 1.65; }
@@ -1803,21 +1941,28 @@ svg { width: 1em; height: 1em; display: block; }
   .topbar-actions .icon-button:not(.sound-toggle):not(.rail-toggle):not(.help-button) { display: none; }
   .topbar-actions .rail-toggle { display: inline-flex !important; }
   .game-layout { height: calc(100vh - 60px); height: calc(var(--app-height, 100dvh) - 60px); }
-  .score-panel { width: 200px; left: 12px; top: 60px; padding: 10px; }
+  /* compact score panel: stops covering the opponent's face */
+  .score-panel { width: 168px; left: 10px; top: 56px; padding: 8px 10px 7px; }
   .chapter-tag { left: 13px; top: 12px; }
   .score-number { gap: 4px; }
-  .score-number strong { font-size: 29px; }
+  .score-number strong { font-size: 26px; }
   .score-number .score-pending { font-size: 12px; }
   .score-number .score-pending em { font-size: 7px; }
   .score-breakdown { gap: 4px; font-size: 8px; letter-spacing: .02em; }
   .next-level-button { padding: 7px 8px; font-size: 10px; }
-  .opponent { width: 270px; height: 300px; top: 14px; }
-  .opponent.is-boss { width: 300px; height: 340px; }
+  .opponent { width: 236px; height: 264px; top: 2px; }
+  .opponent.is-boss { width: 266px; height: 302px; }
   .speech-bubble, .boss-effect-card { display: none; }
-  .cup-zone { left: 10px; width: 70px; bottom: 242px; }
+  .cup-zone { left: 6px; width: 64px; bottom: 236px; }
   .cup-hint span, .cup-badge { display: none; }
-  .dice-zone { width: 94%; bottom: 118px; }
+  .dice-zone { width: 96%; bottom: 112px; }
   .dice-tray { padding-left: 0; padding-right: 0; }
+  /* tray header would sit under the cup — shift it clear and drop the label
+     (reroll count already lives on the dock button) */
+  .dice-tray-head { padding-left: 72px; }
+  .dice-tray-head #throw-label { display: none; }
+  /* placeholder combo text duplicates the dock hint on mobile */
+  .combo-preview:has(.combo-placeholder) { visibility: hidden; }
   .action-dock {
     position: absolute; left: 0; right: 0; bottom: 0; width: 100%; transform: none;
     padding: 10px 10px calc(10px + env(safe-area-inset-bottom, 0px));
