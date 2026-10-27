@@ -41,7 +41,7 @@ describe('结算弹窗搬到 ui/screens/result.ts 之后仍然写同样的文案
     expect(html).not.toContain('夺下庄家徽记');
   });
 
-  test('庄家关：换标题并宣告重投上限 +1', () => {
+  test('庄家关：换标题但不再承诺重投上限 +1', () => {
     const run = app.run;
     run.level = 10;
     expect(getLevelConfig(10).boss, '第 10 关是庄家关').toBeTruthy();
@@ -49,7 +49,8 @@ describe('结算弹窗搬到 ui/screens/result.ts 之后仍然写同样的文案
     showVictory();
     const html = overlay();
     expect(html).toContain('<h2>庄家败北</h2>');
-    expect(html).toContain('夺下庄家徽记 <b>后续重投上限 +1</b>');
+    expect(html).not.toContain('夺下庄家徽记');
+    expect(html).not.toContain('重投上限 +1');
   });
 
   test('终局：通关摘要与再来一局', () => {

@@ -4,7 +4,7 @@
 // 因为 tools/ 的 CDP 截图和 boss-test 都在比对这里渲染出的文本；任何一处
 // 改动都会让 docs/screenshots 基线失效。
 import {
-  DICE_SETS, ITEM_BY_ID, LEVEL_COUNT, LEVELS, getLevelConfig, getOpponent, getTable,
+  DICE_BY_ID, DICE_SETS, ITEM_BY_ID, LEVEL_COUNT, LEVELS, getLevelConfig, getOpponent, getTable,
 } from '../content/index.ts';
 import {
   bossStatusText, canUseItem, getBarrel, isFloatingScore, setCounts,
@@ -155,9 +155,35 @@ export function renderRail() {
     gestureButton.hidden = true;
   }
   renderRollHint();
+  renderDiceEffects();
   renderItems();
   renderSets();
   renderLog();
+}
+
+export function renderDiceEffects() {
+  const run = app.run;
+  if (!run) return;
+  const list = $('#dice-effects');
+  if (!list) return;
+  $('#dice-effect-note')!.textContent = `${run.bag.length} 颗`;
+  const counts = setCounts(run);
+  const rows = run.bag.map((entry) => {
+    const spec = DICE_BY_ID[entry.dieId];
+    if (!spec) return '';
+    const set = spec.setId ? DICE_SETS[spec.setId] : null;
+    const effect = spec.bonus?.label || '无额外骰面特性';
+    return `<div class="dice-effect-row" data-die-tip="${h(spec.id)}">
+      <b>${h(spec.name)}</b><span>${h(effect)}</span><em>${set ? h(set.name) : '无套组'}</em>
+    </div>`;
+  }).join('');
+  const sets = Object.values(DICE_SETS).map((set) => {
+    const count = counts[set.id]?.count || 0;
+    if (!count) return '';
+    const active = [...set.bonuses].reverse().find((bonus) => count >= bonus.pieces);
+    return `<div class="dice-effect-set ${active ? 'is-active' : ''}">${h(set.name)} ${count} / 4${active ? ` · ${h(active.text)}` : ''}</div>`;
+  }).join('');
+  list.innerHTML = rows + sets;
 }
 
 export function renderRollHint() {

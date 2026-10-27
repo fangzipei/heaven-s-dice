@@ -132,6 +132,7 @@ export function dieTooltip(dieId: string): string {
     const height = Math.max(3, Math.round(p * 30));
     return `<div class="tip-prob"><i style="height:${height}px"></i><span>${i + 1}</span><em>${Math.round(p * 100)}%</em></div>`;
   }).join('');
+  const setCount = set && app.run ? (setCounts(app.run)[set.id]?.count || 0) : 0;
   return `
     <h5>${h(spec.name)}</h5>
     <div class="tip-sub">${h(rarity.name)}${set ? ` · ${h(set.name)}套组` : spec.id === 'standard' ? ' · 标准骰' : ' · 无套组'}</div>
@@ -139,6 +140,7 @@ export function dieTooltip(dieId: string): string {
     <div class="tip-probs">${bars}</div>
     <p style="color:#756755;font-size:8px">当前骰桶「${h(barrel.name)}」修正后的点数概率</p>
     ${spec.bonus ? `<p class="tip-bonus">${h(spec.bonus.label)}</p>` : ''}
+    ${set ? `<div class="tip-set"><div class="tip-set-head">${h(set.name)}套组 · ${setCount} / 4</div>${set.bonuses.map((bonus) => `<p class="${setCount >= bonus.pieces ? 'is-active' : ''}">${setCount >= bonus.pieces ? '✦ 已生效' : '◇ 未激活'} · ${bonus.pieces} 件：${h(bonus.text)}</p>`).join('')}</div>` : ''}
     ${set ? `<p style="color:#8d7c64;font-size:8px">${h(set.motto)}</p>` : ''}
   `;
 }

@@ -11,9 +11,9 @@ import {
   buyBarrel as engineBuyBarrel, buyDie as engineBuyDie,
   buyItem as engineBuyItem, canSellItem, effectiveProbs,
   getBarrel, getDiceCapacity, getDieSpec, getOwnedItemIds, itemSellPrice,
-  refreshCost, refreshSection, sectionLabel, sellItem, shopPrice, shopSlots,
+  refreshCost, refreshSection, sectionLabel, sellItem, setCounts, shopPrice, shopSlots,
 } from '../../core/engine.ts';
-import type { RunState, ShopOffer } from '../../core/types.ts';
+import type { DiceDef, RunState, ShopOffer } from '../../core/types.ts';
 import { h, num } from '../../core/util.ts';
 import { artDieHtml } from '../../render/dice-dom.ts';
 import { dieSkinStyle, favoredFaces } from '../../render/dice-skins.ts';
@@ -164,6 +164,18 @@ function shopZone(
     </section>`;
 }
 
+function setPurchaseHint(spec: DiceDef): string {
+  const set = spec.setId ? DICE_SETS[spec.setId] : null;
+  if (!set || !app.run) return '';
+  const count = setCounts(app.run)[set.id]?.count || 0;
+  const after = Math.min(4, count + 1);
+  const unlocked = set.bonuses.find((bonus) => count < bonus.pieces && after >= bonus.pieces);
+  const active = [...set.bonuses].reverse().find((bonus) => count >= bonus.pieces);
+  if (unlocked) return `<div class="card-set is-unlock"><b>购入后激活 ${unlocked.pieces} 件套</b><span>${h(unlocked.text)}</span></div>`;
+  if (active) return `<div class="card-set is-active"><b>${h(set.name)} ${count} / 4 · ${active.pieces} 件套已生效</b><span>${h(active.text)}</span></div>`;
+  return `<div class="card-set"><b>${h(set.name)} ${count} / 4</b><span>再买 ${Math.max(0, 2 - after)} 枚激活 2 件套</span></div>`;
+}
+
 function renderDiceShopCard(entry: ShopOffer, index: number): string {
   if (!entry || !entry.id) return emptyShopCard();
   const spec = DICE_BY_ID[entry.id];
@@ -181,6 +193,7 @@ function renderDiceShopCard(entry: ShopOffer, index: number): string {
       <div class="card-art">${artDieHtml(spec)}</div>
       <h4>${h(spec.name)}</h4>
       <div class="card-sub">${h(spec.desc)}</div>
+      ${setPurchaseHint(spec)}
       ${bars}
       ${spec.bonus ? `<div class="card-bonus">${h(spec.bonus.label)}</div>` : '<div class="card-bonus" style="opacity:.4">没有额外骰面特性</div>'}
       <div class="card-foot">
