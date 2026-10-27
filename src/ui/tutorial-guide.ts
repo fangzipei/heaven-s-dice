@@ -9,27 +9,25 @@ interface Step { selector: string; title: string; body: string; gate: Gate }
 
 const STEPS: Step[] = [
   { selector: '.score-panel', title: '先认识牌桌', body: '左上角是本关得分与目标；中间是骰桌；右侧是随身物品。点「下一步」继续。', gate: 'next' },
-  { selector: '.cup-zone', title: '手动摇桶', body: '按住右侧骰桶，左右拖动约 2 秒后松手。摇出骰子后这一步才会前进。', gate: 'roll' },
-  { selector: '.dice-zone', title: '选择 1 和 5', body: '点选一颗 1 和一颗 5；两块都选上后，浮动分会出现在计分板。', gate: 'selectOneFive' },
-  { selector: '.action-dock', title: '计分并继续', body: '点击「计分并继续」：选中的骰子移出，剩下的骰子免费重投，本轮分数继续挂账。', gate: 'continue' },
-  { selector: '.cup-zone', title: '自动摇桶', body: '这次点「自动摇骰」让系统代摇；摇出结果后继续。', gate: 'roll' },
-  { selector: '.dice-zone', title: '选择三条', body: '选中三颗相同点数，组成条子。三个 1 = 1000 分。', gate: 'selectTriple' },
-  { selector: '.action-dock', title: '计分并重投', body: '点击「计分并重投」结束本轮，把累计分落袋，并消耗一次重投。', gate: 'reroll' },
-  { selector: '.dice-zone', title: '摇出顺子', body: '先摇一次，然后选中连续五个点数，组成小顺。', gate: 'next' },
-  { selector: '.dice-zone', title: '选择顺子', body: '选中连续五个点数；选中后这一步会自动继续。', gate: 'selectStraight' },
-  { selector: '.action-dock', title: '继续计分', body: '再点「计分并继续」，把顺子计分，其余骰子继续重投。', gate: 'continue' },
-  { selector: '.score-panel', title: '掷空会清零', body: '如果下一次摇出没有任何分型，本轮浮动分会全部作废，已经落袋的分不会退回。看完点下一步。', gate: 'next' },
-  { selector: '.cup-zone', title: '重投', body: '掷空后仍可消耗一次重投；这次会把全部骰子重新放回桌上。摇一次继续。', gate: 'roll' },
-  { selector: '.dice-zone', title: '选择通天顺', body: '1 到 6 各一颗是通天顺。选中六颗骰子。', gate: 'selectFullStraight' },
-  { selector: '.action-dock', title: '全骰继续', body: '六颗骰子全部得分时，「计分并继续」会把六颗一起免费重投。点它继续。', gate: 'continue' },
-  { selector: '.dice-zone', title: '选择四条', body: '选中四颗相同点数，再点「计分并重投」结束本关。条子按「点数 × 数量倍率」计算，四条远高于三条。', gate: 'reroll' },
-  { selector: '.action-dock', title: '进入下一关', body: '点「计分并重投」结束本关。之后可以在市集补骰子、骰桶和物品。', gate: 'reroll' },
+  { selector: '.cup-zone', title: '手动摇桶', body: '按住右侧骰桶，左右拖动约 2 秒后松手。教程会固定给你 1·5·1·5·2·3。', gate: 'roll' },
+  { selector: '.dice-zone', title: '点选 1 和 5', body: '点选两颗 1 和两颗 5；选中后浮动分会出现在计分板。', gate: 'selectOneFive' },
+  { selector: '.action-dock', title: '点「计分并继续」', body: '点击「计分并继续」：这四颗骰子移出，教程会继续发下一手。', gate: 'continue' },
+  { selector: '.cup-zone', title: '点「自动摇骰」', body: '这次点自动摇骰，让系统代摇。教程会固定给你三颗 3。', gate: 'roll' },
+  { selector: '.dice-zone', title: '点选三条 3', body: '选中三颗 3，组成条子。三个 3 = 300 分。', gate: 'selectTriple' },
+  { selector: '.action-dock', title: '点「计分并重投」', body: '点击「计分并重投」结束本轮，把累计分落袋，并消耗一次重投。', gate: 'reroll' },
+  { selector: '.cup-zone', title: '再摇一手顺子', body: '手动摇桶。教程会固定给你 1·2·3·4·5·6。', gate: 'roll' },
+  { selector: '.dice-zone', title: '点选小顺子', body: '点选 1、2、3、4、5，组成小顺子。', gate: 'selectStraight' },
+  { selector: '.action-dock', title: '点「计分并继续」', body: '把顺子计分并继续。教程会发一手没有分型的骰子，让你看掷空。', gate: 'continue' },
+  { selector: '.score-panel', title: '摇出掷空', body: '现在摇桶。这一手没有任何分型，本轮浮动分会清零。', gate: 'bust' },
+  { selector: '.cup-zone', title: '点「重投」', body: '掷空后消耗一次重投，重新摇桶。教程会固定给你通天顺。', gate: 'roll' },
+  { selector: '.dice-zone', title: '点选通天顺', body: '点选 1 到 6 六颗骰子，组成通天顺。', gate: 'selectFullStraight' },
+  { selector: '.action-dock', title: '点「计分并继续」', body: '六颗骰子全部得分时，继续会把六颗一起免费重投，形成全骰。', gate: 'continue' },
+  { selector: '.action-dock', title: '选四条并「计分并重投」', body: '选中四颗 2，再点「计分并重投」结束本关。条子按点数 × 数量倍率计算，四条远高于三条。', gate: 'reroll' },
 ];
 
-/* Roll script keeps the interactive steps teachable instead of random. */
 const ROLLS: number[][] = [
   [1, 5, 1, 5, 2, 3],
-  [1, 1, 1, 5, 2, 3],
+  [3, 3, 3, 5, 2, 3],
   [1, 2, 3, 4, 5, 6],
   [2, 3, 4, 6, 2, 3],
   [1, 2, 3, 4, 5, 6],
@@ -85,13 +83,13 @@ function paint(): void {
   if (!guideRoot) return;
   const manual = step.gate === 'next';
   guideRoot.innerHTML = `
-    <section class="guide-card" role="dialog" aria-label="新手引导">
-      <header><span>新手引导</span><em>${guideIndex + 1} / ${STEPS.length}</em></header>
+    <section class="guide-card" role="dialog" aria-label="鏂版墜寮曞">
+      <header><span>鏂版墜寮曞</span><em>${guideIndex + 1} / ${STEPS.length}</em></header>
       <h3>${step.title}</h3>
       <p>${step.body}</p>
       <div class="guide-actions">
-        ${manual ? '<button class="primary-button" data-guide="next">下一步</button>' : '<span class="guide-wait">按提示操作后自动继续</span>'}
-        <button class="text-button" data-guide="close">跳过引导</button>
+        ${manual ? '<button class="primary-button" data-guide="next">涓嬩竴姝?/button>' : '<span class="guide-wait">鎸夋彁绀烘搷浣滃悗鑷姩缁х画</span>'}
+        <button class="text-button" data-guide="close">璺宠繃寮曞</button>
       </div>
     </section>`;
   guideRoot.querySelector('[data-guide="next"]')?.addEventListener('click', advance);

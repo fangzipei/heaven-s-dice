@@ -279,8 +279,10 @@ async function handleAction(action: string, target: HTMLElement, _event?: MouseE
       startRun();
       break;
     case 'start-guided':
-      startRun();
-      setTimeout(startTutorialGuide, 260);
+      void (async () => {
+        await startRun();
+        if (app.run) startTutorialGuide();
+      })();
       break;
     case 'restart-run':
       startRun();

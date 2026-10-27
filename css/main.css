@@ -2197,3 +2197,11 @@ body { font-size: 15px; }
   .guide-card h3 { font-size: 19px; }
   .guide-card p { font-size: 12px; }
 }
+
+/* Shop item descriptions need to be readable at a glance. */
+.shop-card[data-item-tip] .card-desc { font-size: 13px; line-height: 1.75; min-height: 0; color: #c1ad90; }
+.shop-card[data-item-tip] .card-sub { font-size: 10px; }
+.shop-card[data-item-tip] h4 { font-size: 17px; }
+@media (max-width: 760px) {
+  .shop-card[data-item-tip] .card-desc { font-size: 14px; line-height: 1.8; }
+}

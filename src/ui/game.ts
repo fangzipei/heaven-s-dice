@@ -442,7 +442,19 @@ async function performCupRoll({ free = false, prepared = false, from = null }: {
   try {
     /* Commit the throw first. The token has to be spent the instant the
        player commits; the ceremony below is only theatre. */
-    const result = rollDice(run, { free: isFreeThrow, forced: nextTutorialRoll() });
+    /* The tutorial scripts a full six-die hand for every throw; clear the
+       table first so a continue doesn't make the next script partial. */
+    const tutorialValues = nextTutorialRoll();
+    if (tutorialValues) {
+      for (const die of run.dice) {
+        die.value = null;
+        die.scored = false;
+        die.blank = false;
+        die.wild = false;
+      }
+      run.selected = [];
+    }
+    const result = rollDice(run, { free: isFreeThrow, forced: tutorialValues });
     if (!result.ok) {
       resetCupVisuals();
       app.busy = false;
