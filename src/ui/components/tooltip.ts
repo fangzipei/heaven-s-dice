@@ -75,7 +75,11 @@ export function dieTooltip(dieId: string): string {
   const rarity = rarityOf(spec);
   const set = spec.setId ? DICE_SETS[spec.setId] : null;
   const barrel: BarrelDef = app.run ? getBarrel(app.run) : BARRELS[0]!;
-  const probs = effectiveProbs(spec.id, barrel.id);
+  const override = app.run
+    ? (app.run.dice.find((die) => die.dieId === spec.id)?.probs
+      ?? app.run.bag.find((entry) => entry.dieId === spec.id)?.probs)
+    : undefined;
+  const probs = effectiveProbs(spec.id, barrel.id, override);
   const bars = probs.map((p, i) => {
     const height = Math.max(3, Math.round(p * 30));
     return `<div class="tip-prob"><i style="height:${height}px"></i><span>${i + 1}</span><em>${Math.round(p * 100)}%</em></div>`;
@@ -120,6 +124,11 @@ export function barrelTypeLabel(barrel: BarrelDef): string {
   if (barrel.type === 'probability') return '概率';
   if (barrel.type === 'faceScore') return '点数加成';
   if (barrel.type === 'wildScore') return '赖子加成';
+  if (barrel.type === 'gild') return '染金';
+  if (barrel.type === 'forceOne') return '定点';
+  if (barrel.type === 'straightFix') return '补顺';
+  if (barrel.type === 'extraDie') return '增殖';
+  if (barrel.type === 'singlesBonus') return '单骰加成';
   return '普通';
 }
 
@@ -133,6 +142,7 @@ export function barrelTooltip(barrelId: string): string {
     ${barrel.type === 'probability' ? `<p class="tip-bonus">偏向：${h(barrel.short)}</p>` : ''}
     ${barrel.type === 'faceScore' ? `<p class="tip-bonus">指定点数：${h(barrel.short)}</p>` : ''}
     ${barrel.type === 'wildScore' ? `<p class="tip-bonus">赖子加成：${h(barrel.short)}</p>` : ''}
+    ${['gild', 'forceOne', 'straightFix', 'extraDie', 'singlesBonus'].includes(barrel.type) ? `<p class="tip-bonus">${h(barrel.short)}</p>` : ''}
     ${'gesture' in barrel && barrel.gesture ? '<p class="tip-bonus">完成仪式后，本次投掷获得加成。</p>' : ''}
   `;
 }

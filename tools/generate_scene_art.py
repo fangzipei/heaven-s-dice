@@ -382,6 +382,11 @@ CUPS_THEMES = {
     "demon-totem": dict(body="#4a2231", body2="#160a12", rim="#d1798f", band="#241018", accent="#f7a9bd", emblem="demon", finish="leather"),
     "pentagram": dict(body="#452a25", body2="#180c09", rim="#d8a072", band="#1f1310", accent="#f0c497", emblem="pentagram", finish="metal"),
     "vortex": dict(body="#1a4d57", body2="#071c22", rim="#9ee2ea", band="#0d2a31", accent="#c9fbfd", emblem="vortex", finish="arcane"),
+    "gilded": dict(body="#8a6a24", body2="#2a1d08", rim="#f0d48a", band="#3a2a10", accent="#ffe9b0", emblem="star", finish="metal"),
+    "marker": dict(body="#3d5a4a", body2="#10241a", rim="#cfe0c8", band="#1e2c14", accent="#e7f2d8", emblem="heart", finish="leather"),
+    "guide": dict(body="#2f4a6a", body2="#0d1a2a", rim="#bcd8ef", band="#1a2838", accent="#dcecff", emblem="serpent", finish="arcane"),
+    "brood": dict(body="#4a2f63", body2="#170d24", rim="#c9a8e8", band="#2a1838", accent="#e8d4ff", emblem="pentagram", finish="arcane"),
+    "singles": dict(body="#5a3a2a", body2="#21120c", rim="#e0b080", band="#2e1a10", accent="#ffd9a8", emblem="heart", finish="leather"),
 }
 
 

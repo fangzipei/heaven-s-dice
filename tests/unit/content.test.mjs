@@ -11,16 +11,16 @@ const countBy = (list, key) => list.reduce((counts, entry) => {
   return counts;
 }, {});
 
-test('dice roster: 5 wolf + 5 demon + 10 free agents, rarity 3/7/6/4', () => {
-  expect(DICE.length).toBe(20);
-  expect(countBy(DICE, 'rarity')).toEqual({ common: 3, rare: 7, epic: 6, legendary: 4 });
+test('dice roster: 5 wolf + 5 demon + 25 free agents, rarity 14/8/8/5', () => {
+  expect(DICE.length).toBe(35);
+  expect(countBy(DICE, 'rarity')).toEqual({ common: 14, rare: 8, epic: 8, legendary: 5 });
   expect(Object.keys(DICE_SETS)).toEqual(['wolf', 'demon']);
   for (const set of Object.values(DICE_SETS)) {
     expect(DICE.filter((die) => die.setId === set.id).length).toBe(5);
     expect(set.bonuses.length).toBe(2);
   }
   // The whole point of the reshuffle: not every die has to be in a set.
-  expect(DICE.filter((die) => !die.setId).length).toBe(10);
+  expect(DICE.filter((die) => !die.setId).length).toBe(25);
   for (const die of DICE) {
     expect(die.probs.length).toBe(6);
     const sum = die.probs.reduce((a, b) => a + b, 0);
@@ -29,13 +29,21 @@ test('dice roster: 5 wolf + 5 demon + 10 free agents, rarity 3/7/6/4', () => {
   }
 });
 
-test('bonuses only sit on epic and legendary dice', () => {
+test('every die bonus is well-formed, and six common dice bias a face to 30%', () => {
   for (const die of DICE) {
-    if (die.bonus) {
-      expect(['epic', 'legendary'].includes(die.rarity)).toBeTruthy();
-    }
+    if (!die.bonus) continue;
+    expect(typeof die.bonus.type).toBe('string');
+    expect(typeof die.bonus.label).toBe('string');
+    expect(die.bonus.label.length).toBeGreaterThan(0);
   }
-  expect(DICE.filter((die) => die.bonus).length).toBe(10);
+  expect(DICE.filter((die) => die.bonus).length).toBe(19);
+  const bias = DICE.filter((die) => /^bias_/.test(die.id));
+  expect(bias.length).toBe(6);
+  for (const die of bias) {
+    expect(die.rarity).toBe('common');
+    expect(Math.max(...die.probs)).toBeCloseTo(0.30);
+    expect(die.bonus).toBe(null);
+  }
 });
 
 test('set dice actually lean on their mechanic', () => {
@@ -61,8 +69,12 @@ test('set dice actually lean on their mechanic', () => {
 test('shop rarity weights open up across five level bands', () => {
   expect(SHOP_RARITY_WEIGHTS.length).toBe(5);
   expect(SHOP_RARITY_WEIGHTS.map((band) => band.untilLevel)).toEqual([6, 12, 18, 24, 28]);
-  expect(rarityShopWeight('legendary', 1)).toBe(0);
-  expect(rarityShopWeight('legendary', 6)).toBe(0);
+  // Early shelves are mostly common; legendaries are a 1-in-10000 slot.
+  expect(rarityShopWeight('common', 1)).toBeCloseTo(80);
+  expect(rarityShopWeight('rare', 1)).toBeCloseTo(17.99);
+  expect(rarityShopWeight('epic', 1)).toBeCloseTo(2);
+  expect(rarityShopWeight('legendary', 1)).toBeCloseTo(0.01);
+  expect(rarityShopWeight('legendary', 1)).toBe(rarityShopWeight('legendary', 6));
   expect(rarityShopWeight('legendary', 12) > 0).toBeTruthy();
   expect(rarityShopWeight('legendary', 28) > rarityShopWeight('legendary', 12)).toBeTruthy();
   expect(rarityShopWeight('epic', 1) < rarityShopWeight('epic', 25)).toBeTruthy();
@@ -72,19 +84,32 @@ test('shop rarity weights open up across five level bands', () => {
   }
 });
 
-test('item mix: 18 items, 12 active / 6 passive, 7 one-shot consumables', () => {
-  expect(ITEMS.length).toBe(18);
-  expect(countBy(ITEMS, 'type')).toEqual({ active: 12, passive: 6 });
-  expect(ITEMS.filter((item) => item.consumable).map((item) => item.id).sort()).toEqual(['boss_ward', 'courage', 'hunter_mark', 'lucky_coin', 'powder', 'salt', 'wager']);
+test('item mix: 27 items, 14 active / 13 passive, 9 one-shot consumables', () => {
+  expect(ITEMS.length).toBe(27);
+  expect(countBy(ITEMS, 'type')).toEqual({ active: 14, passive: 13 });
+  expect(ITEMS.filter((item) => item.consumable).map((item) => item.id).sort()).toEqual([
+    'boss_ward', 'courage', 'epic_chest', 'hunter_mark', 'lucky_coin',
+    'powder', 'rare_pair', 'salt', 'wager',
+  ]);
   for (const item of ITEMS.filter((entry) => entry.consumable)) {
     expect(item.type).toBe('active');
   }
+  const scoreItems = ITEMS.filter((item) => item.scoreRule);
+  expect(scoreItems.length).toBe(7);
+  for (const item of scoreItems) {
+    expect(item.type).toBe('passive');
+    expect(item.scoreRule.multiplier > 1).toBeTruthy();
+  }
+  const grants = ITEMS.filter((item) => item.grant);
+  expect(grants.map((item) => `${item.id}:${item.grant.rarity}:${item.grant.count}:${item.grant.choose}`).sort()).toEqual([
+    'epic_chest:epic:1:1', 'rare_pair:rare:2:1',
+  ]);
 });
 
-test('shop prices sit in the 35–260 band', () => {
+test('shop prices sit in the 35–300 band', () => {
   const prices = ITEMS.map((item) => item.price);
   expect(Math.min(...prices)).toBe(35);
-  expect(Math.max(...prices)).toBe(260);
+  expect(Math.max(...prices)).toBe(300);
   // 时间沙漏 is epic now and must out-price the rare tier.
   const hourglass = ITEMS.find((item) => item.id === 'hourglass');
   expect(hourglass.rarity).toBe('epic');
@@ -106,8 +131,8 @@ test('three shelf passives each open one extra shop slot', () => {
   for (const item of shelves) expect(item.type).toBe('passive');
 });
 
-test('barrel composition: starter + 3 probability + face/wild score + 2 gesture', () => {
-  expect(BARRELS.length).toBe(8);
+test('barrel composition: starter + probability + score + interaction + gesture', () => {
+  expect(BARRELS.length).toBe(13);
   expect(BARRELS.filter((barrel) => barrel.type === 'probability').length).toBe(3);
   expect(BARRELS.filter((barrel) => barrel.type === 'gesture').length).toBe(2);
   expect(BARRELS.filter((barrel) => barrel.type === 'none').length).toBe(1);
@@ -120,6 +145,9 @@ test('barrel composition: starter + 3 probability + face/wild score + 2 gesture'
     expect(barrel.value > 0 && barrel.tripleValue > 0).toBeTruthy();
   }
   for (const barrel of wild) expect(barrel.value > 0).toBeTruthy();
+  for (const type of ['gild', 'forceOne', 'straightFix', 'extraDie', 'singlesBonus']) {
+    expect(BARRELS.filter((barrel) => barrel.type === type).length, type).toBe(1);
+  }
 });
 
 test('33 levels with eight dealers and growing minion gaps', () => {
@@ -150,10 +178,15 @@ test('33 levels with eight dealers and growing minion gaps', () => {
     expect(level.reward > 0).toBeTruthy();
     expect(level.boss === true).toBe(dealerLevels.includes(level.level));
   }
-  // Targets climb every level; minion rewards climb too, and a dealer always
-  // pays more than the minions sitting on either side of their table.
-  for (let i = 1; i < LEVELS.length; i += 1) {
-    expect(LEVELS[i].target > LEVELS[i - 1].target).toBeTruthy();
+  // Minion targets climb every level; a dealer is a milestone whose target
+  // jumps above the level before it (the run eases back afterwards).
+  const minions = LEVELS.filter((level) => !level.boss);
+  for (let i = 1; i < minions.length; i += 1) {
+    expect(minions[i].target > minions[i - 1].target).toBeTruthy();
+  }
+  for (const dealer of LEVELS.filter((level) => level.boss)) {
+    const before = LEVELS.find((level) => level.level === dealer.level - 1);
+    if (before) expect(dealer.target > before.target).toBeTruthy();
   }
   const minionRewards = LEVELS.filter((level) => !level.boss).map((level) => level.reward);
   for (let i = 1; i < minionRewards.length; i += 1) {

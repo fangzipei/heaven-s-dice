@@ -34,7 +34,7 @@ export const DICE_SETS: Record<'wolf' | 'demon', DiceSetDef> = {
     motto: '群狼咬住同一个数字：3。',
     bonuses: [
       { pieces: 2, key: 'wolfThree', text: '每颗计分的 3 额外 +60 分。' },
-      { pieces: 4, key: 'wolfTripleThree', text: '计分含三连 3 时额外 +600 分。' },
+      { pieces: 4, key: 'wolfTripleThree', text: '计分含三条 3 时额外 +600 分。' },
     ],
   },
   demon: {
@@ -54,21 +54,27 @@ export const DIE_PRICE_BY_RARITY: Record<RarityId, number> = {
 
 /*
  * Shop stock is weighted by level so early levels teach common/rare dice and
- * late levels actually surface epic/legendary picks. Weights are relative, not
- * percentages: 0 means the tier cannot appear in that band.
+ * late levels actually surface epic/legendary picks. Weights are aggregate
+ * rarity percentages, not per-die weights: the engine divides each tier's
+ * weight by the number of dice available in that tier so a shelf really does
+ * show 80% common even though the pool holds more rare dice than common ones.
+ * 0 means the tier cannot appear in that band.
  */
 export const SHOP_RARITY_WEIGHTS: ShopWeightBand[] = [
-  { untilLevel: 6, weights: { common: 62, rare: 32, epic: 6, legendary: 0 } },
+  { untilLevel: 6, weights: { common: 8000, rare: 1799, epic: 200, legendary: 1 } },
   { untilLevel: 12, weights: { common: 34, rare: 46, epic: 18, legendary: 2 } },
   { untilLevel: 18, weights: { common: 18, rare: 44, epic: 30, legendary: 8 } },
   { untilLevel: 24, weights: { common: 9, rare: 34, epic: 37, legendary: 20 } },
   { untilLevel: 28, weights: { common: 4, rare: 26, epic: 40, legendary: 30 } },
 ];
 
+/** A tier's share of the shelf in percent, comparable across level bands. */
 export function rarityShopWeight(rarity: string, level = 1): number {
   const band = SHOP_RARITY_WEIGHTS.find((entry) => level <= entry.untilLevel)
     || SHOP_RARITY_WEIGHTS.at(-1);
-  return band?.weights[rarity as RarityId] ?? 0;
+  if (!band) return 0;
+  const total = Object.values(band.weights).reduce((sum, weight) => sum + weight, 0);
+  return total > 0 ? (band.weights[rarity as RarityId] ?? 0) / total * 100 : 0;
 }
 
 /* ── 过关奖金细则 ───────────────────────────────────────────────────────────

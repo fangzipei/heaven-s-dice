@@ -4,7 +4,7 @@ import type { DiceDef } from '../../core/types.ts';
 export default {
   id: 'jack', name: '骰王', setId: null, rarity: 'legendary',
   probs: [1 / 6, 1 / 6, 1 / 6, 1 / 6, 1 / 6, 1 / 6],
-  flavor: '它看起来毫无偏私。可它记得每一个三连。',
-  desc: '六面完全均衡；计分含任意三连时 +340（靠组合吃饭，不靠点数偏好）。',
-  bonus: { type: 'anyTriple', value: 340, label: '骰王：计分含任意三连时 +340' },
+  flavor: '它看起来毫无偏私。可它记得每一个三条。',
+  desc: '六面完全均衡；计分含任意三条时 +340（靠组合吃饭，不靠点数偏好）。',
+  bonus: { type: 'anyTriple', value: 340, label: '骰王：计分含任意三条时 +340' },
 } satisfies DiceDef;

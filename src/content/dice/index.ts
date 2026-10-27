@@ -25,6 +25,21 @@ import hex from './hex.ts';
 import echo from './echo.ts';
 import ace from './ace.ts';
 import jack from './jack.ts';
+import balance from './balance.ts';
+import cliff from './cliff.ts';
+import refrain from './refrain.ts';
+import shifting from './shifting.ts';
+import merchant from './merchant.ts';
+import gilded_trace from './gilded_trace.ts';
+import last_road from './last_road.ts';
+import shadow from './shadow.ts';
+import neighbor from './neighbor.ts';
+import bias_one from './bias_one.ts';
+import bias_two from './bias_two.ts';
+import bias_three from './bias_three.ts';
+import bias_four from './bias_four.ts';
+import bias_five from './bias_five.ts';
+import bias_six from './bias_six.ts';
 import type { DiceDef } from '../../core/types.ts';
 
 export const DICE_DEFS: DiceDef[] = [
@@ -51,4 +66,21 @@ export const DICE_DEFS: DiceDef[] = [
   echo,
   ace,
   jack,
+  // ── 新增：计分触发 / 顺序互动 / 商店成长 ────────────────────────────
+  balance,
+  cliff,
+  refrain,
+  shifting,
+  merchant,
+  gilded_trace,
+  last_road,
+  shadow,
+  neighbor,
+  // ── 新增：六枚普通偏向骰，各把一面抬到 30% ─────────────────────────
+  bias_one,
+  bias_two,
+  bias_three,
+  bias_four,
+  bias_five,
+  bias_six,
 ];

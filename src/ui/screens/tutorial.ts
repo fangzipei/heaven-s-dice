@@ -3,7 +3,7 @@
 // 从 app.js「Rules」「Tutorial / first-run briefing」两节原样搬出。教程正文、
 // 计分示例与规则表是截图脚本与新手体验的验收对象，这里只改 import、类型标注。
 import {
-  BOSSES, DICE, ITEMS, LEVEL_COUNT, LEVEL_CURVE, MINION_GAPS,
+  BARRELS, BOSSES, DICE, ITEMS, LEVEL_COUNT, LEVEL_CURVE, MINION_GAPS,
   RARITIES, REROLL_BONUS_RATE, OVERSHOOT_BONUS_RATE, TABLES,
 } from '../../content/index.ts';
 import { SCORING_ROWS } from '../../core/scoring.ts';
@@ -92,16 +92,16 @@ function tutorialHtml(): string {
       </section>
 
       <section class="tut-section" id="tut-score">
-        <div class="tut-section-head"><span>02</span><div><p>THE ONLY MATH YOU NEED</p><h3>计分图解：三个相同点数，就是“三连”</h3></div></div>
-        <p class="tut-lede">不用记术语，先看骰子。下面每一张牌都把“应该选哪几颗”和“最后拿多少分”画出来了。</p>
+        <div class="tut-section-head"><span>02</span><div><p>THE ONLY MATH YOU NEED</p><h3>计分图解：三个及以上相同点数，就是“条子”</h3></div></div>
+        <p class="tut-lede">三个相同是<strong>三条</strong>，四个是<strong>四条</strong>，五个是<strong>五条</strong>，六个是<strong>六条</strong>；这一整类现在统称“条子”。下面每一张牌都把“应该选哪几颗”和“最后拿多少分”画出来了。</p>
         <div class="tut-callout is-key">
           <b>最重要的例子：三个 3 = 300 分。</b>
-          <p>“三连”只是说<strong>三个相同点数</strong>。四个 3 是 300 × 2 = 600；五个 3 是 300 × 4 = 1200；六个 3 是 300 × 8 = 2400。</p>
+          <p>“三条”只是说<strong>三个相同点数</strong>。四个 3 是 300 × 2 = 600；五个 3 是 300 × 4 = 1200；六个 3 是 300 × 8 = 2400。</p>
         </div>
         <div class="tut-combo-grid">
           ${tutorialCombo({ title: '单颗 1', values: [1], points: '100', note: '一颗 1 就能单独计分。', formula: '100' })}
           ${tutorialCombo({ title: '单颗 5', values: [5], points: '50', note: '一颗 5 就能单独计分。', formula: '50' })}
-          ${tutorialCombo({ title: '三个 3（三连）', values: [3, 3, 3], points: '300', note: '三个相同点数先看基础分。', formula: '3 × 100 = 300', highlight: true })}
+          ${tutorialCombo({ title: '三个 3（三条）', values: [3, 3, 3], points: '300', note: '三个相同点数先看基础分。', formula: '3 × 100 = 300', highlight: true })}
         </div>
 
         <h4 class="tut-subtitle">三个相同点数的基础分</h4>
@@ -110,23 +110,23 @@ function tutorialHtml(): string {
         <h4 class="tut-subtitle">四个、五个、六个相同点数</h4>
         <p>先算“三个”的基础分，再按数量翻倍。以 3 点为例：</p>
         <div class="tut-combo-grid">
-          ${tutorialCombo({ title: '四个 3（四连）', values: [3, 3, 3, 3], points: '600', note: '四个相同点数 = 三个的基础分 × 2。', formula: '300 × 2 = 600', highlight: true })}
-          ${tutorialCombo({ title: '五个 3（五连）', values: [3, 3, 3, 3, 3], points: '1,200', note: '五个相同点数 = 三个的基础分 × 4。', formula: '300 × 4 = 1,200' })}
-          ${tutorialCombo({ title: '六个 3（六连）', values: [3, 3, 3, 3, 3, 3], points: '2,400', note: '六个相同点数 = 三个的基础分 × 8。', formula: '300 × 8 = 2,400' })}
+          ${tutorialCombo({ title: '四个 3（四条）', values: [3, 3, 3, 3], points: '600', note: '四个相同点数 = 三个的基础分 × 2。', formula: '300 × 2 = 600', highlight: true })}
+          ${tutorialCombo({ title: '五个 3（五条）', values: [3, 3, 3, 3, 3], points: '1,200', note: '五个相同点数 = 三个的基础分 × 4。', formula: '300 × 4 = 1,200' })}
+          ${tutorialCombo({ title: '六个 3（六条）', values: [3, 3, 3, 3, 3, 3], points: '2,400', note: '六个相同点数 = 三个的基础分 × 8。', formula: '300 × 8 = 2,400' })}
         </div>
         <div class="tut-multiplier-strip">
           <span><b>3 个</b> ×1</span><span><b>4 个</b> ×2</span><span><b>5 个</b> ×4</span><span><b>6 个</b> ×8</span>
         </div>
         <div class="tut-callout">
           <b>1 点是唯一例外。</b>
-          <p>三个 1 = 1000 分，所以四个 1 = 2000、五个 1 = 4000、六个 1 = 8000。2–6 的三连基础分分别是 200 / 300 / 400 / 500 / 600。</p>
+          <p>三个 1 = 1000 分，所以四个 1 = 2000、五个 1 = 4000、六个 1 = 8000。2–6 的三条基础分分别是 200 / 300 / 400 / 500 / 600。</p>
         </div>
 
         <h4 class="tut-subtitle">顺子：五个或六个连续点数</h4>
         <div class="tut-combo-grid">
           ${tutorialCombo({ title: '顺子 1–2–3–4–5', values: [1, 2, 3, 4, 5], points: '500', note: '五颗连续点数。', formula: '500' })}
           ${tutorialCombo({ title: '顺子 2–3–4–5–6', values: [2, 3, 4, 5, 6], points: '750', note: '另一种五颗连续点数。', formula: '750' })}
-          ${tutorialCombo({ title: '通天顺 1–6', values: [1, 2, 3, 4, 5, 6], points: '1,500', note: '六颗骰子刚好组成一条完整顺子。', formula: '1,500', highlight: true })}
+          ${tutorialCombo({ title: '天地顺 1–6', values: [1, 2, 3, 4, 5, 6], points: '1,500', note: '六颗骰子刚好组成一条完整顺子。', formula: '1,500', highlight: true })}
         </div>
 
         <h4 class="tut-subtitle">一次选择必须把每一颗都算进去</h4>
@@ -173,9 +173,9 @@ function tutorialHtml(): string {
       <section class="tut-section" id="tut-gear">
         <div class="tut-section-head"><span>04</span><div><p>THE REST OF THE TABLE</p><h3>骰桶、骰子、物品、市集与庄家</h3></div></div>
         <div class="tut-cards">
-          <div class="tut-card"><b>骰桶 · 8 只</b><p>初始橡木桶之外，3 只概率桶偏向某些点数，2 只骰型桶（狼图腾桶奖励 3、恶魔契桶奖励赖子），2 只仪式桶需要画阵。按住骰桶后桌面会显示五芒星或顺时针圆轨迹，2 秒内沿着画；偏差过大会失败。五芒星每关只能生效一次，也可点右下角「画阵」。</p></div>
-          <div class="tut-card"><b>骰子 · ${DICE.length} 枚 · 两套 + 无套</b><p>${RARITIES.common.name} ${DICE.filter((d) => d.rarity === 'common').length}、${RARITIES.rare.name} ${DICE.filter((d) => d.rarity === 'rare').length}、${RARITIES.epic.name} ${DICE.filter((d) => d.rarity === 'epic').length}、${RARITIES.legendary.name} ${DICE.filter((d) => d.rarity === 'legendary').length}。每枚骰子有自己的六面概率，悬停可看真实概率；<b>额外加分只出现在史诗与传说</b>上。<b>狼裔 5 枚</b>把 3 的概率抬高，2 / 4 件分别让每颗计分的 3 加分、三连 3 大幅加分。<b>恶魔 5 枚</b>把掷出的 1 变成「恶魔赖子」——能补三连或顺子（顺子最多替 1 颗），但不能单独计分。剩下的 <b>10 枚无套组</b>走极端骰型：只有单数、只有双数、非 1 即 6、阶梯、照面……它们不参与套装，但随时能买能卖。</p></div>
-          <div class="tut-card"><b>物品 · ${ITEMS.length} 件</b><p>${ITEMS.filter((i) => i.type === 'active').length} 主动、${ITEMS.filter((i) => i.type === 'passive').length} 被动，其中 <b>${ITEMS.filter((i) => i.consumable).length} 件一次性</b>（幸运币、猎人印记、烈酒、加注契约、幸运粉、盐、静默赦令）——用完即消失，但效果比同价位常驻物品更直接。主动物品每关恢复一次；被动物品永久生效。<b>三层骰架 / 双孔桶架 / 暗格货架</b>分别让市集的骰子、骰桶、物品各 +1 个货位。丰饶骰袋 +1 骰、裂痕骰袋 -1 骰但计分 +25%，这两件整局各只能获取一次。</p></div>
+          <div class="tut-card"><b>骰桶 · ${BARRELS.length} 只</b><p>初始橡木桶之外，概率桶偏向某些点数，点数/赖子桶奖励指定结果，还有染金、定点、补顺、增殖与单骰桶会在落骰时插手。仪式桶需要按住后沿桌面轨迹画阵，五芒星每关只能生效一次，也可点右下角「画阵」。</p></div>
+          <div class="tut-card"><b>骰子 · ${DICE.length} 枚 · 两套 + 无套</b><p>${RARITIES.common.name} ${DICE.filter((d) => d.rarity === 'common').length}、${RARITIES.rare.name} ${DICE.filter((d) => d.rarity === 'rare').length}、${RARITIES.epic.name} ${DICE.filter((d) => d.rarity === 'epic').length}、${RARITIES.legendary.name} ${DICE.filter((d) => d.rarity === 'legendary').length}。每枚骰子有自己的六面概率，悬停可看真实概率；普通骰也可能带一条明确的计分规则。<b>狼裔 5 枚</b>把 3 的概率抬高，2 / 4 件分别让每颗计分的 3 加分、三条 3 大幅加分。<b>恶魔 5 枚</b>把掷出的 1 变成「恶魔赖子」——能补三条或顺子（顺子最多替 1 颗；顺子已完整时可以顶替其中一面，把该面的自然骰解放出来单独计分），但不能单独计分。剩下的 <b>${DICE.filter((d) => !d.setId).length} 枚无套组</b>走极端骰型、顺序互动与商店成长：复制第一颗、贴邻前一颗、每关换面、重随成长……它们不参与套装，但随时能买能卖。</p></div>
+          <div class="tut-card"><b>物品 · ${ITEMS.length} 件</b><p>${ITEMS.filter((i) => i.type === 'active').length} 主动、${ITEMS.filter((i) => i.type === 'passive').length} 被动，其中 <b>${ITEMS.filter((i) => i.consumable).length} 件一次性</b>——用完即消失，但效果比同价位常驻物品更直接。被动物品里有专门抬高三条/四条/五条/六条/顺子/天地顺/一点五点得分的护符，也有能随机开出史诗骰、或从两枚稀有骰里挑一枚的骰匣。主动物品每关恢复一次；被动物品永久生效。<b>三层骰架 / 双孔桶架 / 暗格货架</b>分别让市集的骰子、骰桶、物品各 +1 个货位。丰饶骰袋 +1 骰、裂痕骰袋 -1 骰但计分 +25%，这两件整局各只能获取一次。</p></div>
           <div class="tut-card"><b>市集</b><p>每关之后进入：骰子 2 枚、骰桶 1 只、物品 3 件；带上货架类被动会各 +1。骰子按等级加权：前 6 关以普通 / 稀有为主，过了 24 关才真正放出传说。每次刷新都消耗银币；随身物品可以半价卖回，出售后不会再次上架。</p></div>
           <div class="tut-card"><b>赌桌 · ${TABLES.length} 张</b><p>木头、青石、黑铁、黄金、钻石。五张桌子平分 ${LEVEL_COUNT} 关（${LEVEL_CURVE.targetBase} 分起步），庄家按难度穿插落座：越晚的桌子越贵，也越不像人坐的地方。</p></div>
         </div>
@@ -256,6 +256,7 @@ export function openRules(): void {
         <div class="rules-section">
           <h3>计分组合</h3>
           <table class="scoring-table">${rows}</table>
+          <div class="rules-note">三个及以上相同点数统称“条子”：三个是三条、四个是四条、五个是五条、六个是六条。</div>
           <div class="rules-note">一次计分必须把所选骰子全部纳入合法组合。1 和 5 可以单颗计分；其他点数至少三颗才能计分。所有组合取最高合法分值。</div>
           <h3 style="margin-top:18px">一掷的流程</h3>
           <p>1. 按住骰桶摇动，2 秒倒计时后落骰；或点击下方「自动投掷」。<br>2. 点击选择要计分的骰子。<br>3. 选择「计分并继续」，计分后把选中骰放一边、免费重投剩余骰子；或「计分并重投」，计分后把全部六颗骰子重新投，消耗 1 次重投。<br>4. 六颗骰子全部计分会触发「全骰」，免费重投全部骰子。<br>5. 没有重投次数时，仍可免费「计分并继续」，也可以「计分并结算」。</p>
@@ -273,8 +274,8 @@ export function openRules(): void {
               <p>${h(boss.effectName)}：${h(boss.effectDesc)}</p>
             </div>`).join('')}
           <h3 style="margin-top:16px">装备与市集</h3>
-          <p>骰子有各自的点数概率与套组效果，${DICE.length} 枚秘骰分为普通、稀有、史诗、传说：狼裔 5 枚、恶魔 5 枚，其余 10 枚无套组。鼠标移到骰子上查看六面概率；额外加分只出现在史诗与传说骰上。骰桶分为概率偏向与仪式加成两类，点「画阵」完成星阵或旋涡，能为本次投掷争取优势。</p>
-          <p>每关之后进入市集：骰子区默认 2 枚、骰桶区 1 只、物品区 3 件，刷新均需银币。三层骰架 / 双孔桶架 / 暗格货架会各让对应区域多摆 1 件。主动物品每关恢复一次，被动物品永久生效；幸运币、猎人印记、烈酒、加注契约、幸运粉、盐、静默赦令是一次性消耗品，用完即消失。市集下方可以把随身物品按半价卖回。</p>
+          <p>骰子有各自的点数概率与套组效果，${DICE.length} 枚秘骰分为普通、稀有、史诗、传说：狼裔 5 枚、恶魔 5 枚，其余 ${DICE.filter((d) => !d.setId).length} 枚无套组。鼠标移到骰子上查看六面概率；普通骰也可能带计分规则。骰桶分为概率、点数/赖子、染金/定点/补顺/增殖/单骰与仪式等类型，点「画阵」完成星阵或旋涡，能为本次投掷争取优势。</p>
+          <p>每关之后进入市集：骰子区默认 2 枚、骰桶区 1 只、物品区 3 件，刷新均需银币。三层骰架 / 双孔桶架 / 暗格货架会各让对应区域多摆 1 件。主动物品每关恢复一次，被动物品永久生效；一次性消耗品用完即消失。市集下方可以把随身物品按半价卖回。</p>
           <div class="rules-note">提示：空格投掷，数字键 1 / 2 分别使用「计分并继续」「计分并重投」。“计分并继续”会触发金冠赌王的抽成。</div>
         </div>
       </div>

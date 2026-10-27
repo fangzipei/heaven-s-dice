@@ -37,12 +37,12 @@ describe('图解教程搬到 ui/screens/tutorial.ts 之后仍然写同样的正�
     expect((html.match(/class="tut-section"/g) || []).length).toBe(5);
   });
 
-  test('计分示例：三连与四连的点数与骰面都照写', () => {
+  test('计分示例：三条与四条的点数与骰面都照写', () => {
     openTutorial();
     const html = overlay();
     expect(html).toContain('三个 3 = 300 分');
-    expect(html).toContain('<b>三个 3（三连）</b><strong>300<small>分</small></strong>');
-    expect(html).toContain('<b>四个 3（四连）</b><strong>600<small>分</small></strong>');
+    expect(html).toContain('<b>三个 3（三条）</b><strong>300<small>分</small></strong>');
+    expect(html).toContain('<b>四个 3（四条）</b><strong>600<small>分</small></strong>');
     expect(html).toContain('300 × 2 = 600');
     expect(html).toContain('三个 1 = 1000 分，所以四个 1 = 2000、五个 1 = 4000、六个 1 = 8000');
     // 三颗 3 的骰面：每颗 3 个点，共 9 个 tut-pip。

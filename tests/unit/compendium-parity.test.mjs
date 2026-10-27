@@ -33,9 +33,9 @@ describe('图鉴搬到 ui/screens/compendium.ts 之后仍然写同样的文案',
     const html = overlay();
     expect(html).toContain("THE GAMBLER'S ARCHIVE");
     expect(html).toContain('<h2>赌徒图鉴</h2>');
-    expect(html).toContain('五张桌子，二十枚秘骰，六只骰桶，十件物品，以及坐在对面的那些东西。');
+    expect(html).toContain(`五张桌子，${DICE.length} 枚秘骰，${BARRELS.length} 只骰桶，${ITEMS.length} 件物品，以及坐在对面的那些东西。`);
     for (const [id, label] of [
-      ['dice', '秘骰 20'], ['barrels', '骰桶 8'], ['items', `物品 ${ITEMS.length}`],
+      ['dice', `秘骰 ${DICE.length}`], ['barrels', `骰桶 ${BARRELS.length}`], ['items', `物品 ${ITEMS.length}`],
       ['tables', '赌桌 5'], ['bosses', '庄家与小兵'],
     ]) {
       expect(html, `${id} 页签`).toContain(`data-action="switch-compendium-tab" data-tab="${id}">${label}</button>`);
@@ -60,7 +60,7 @@ describe('图鉴搬到 ui/screens/compendium.ts 之后仍然写同样的文案',
     openCompendium('dice');
     switchCompendiumTab('barrels');
     expect(app.compendiumTab).toBe('barrels');
-    expect(body()).toContain('骰桶决定骰子怎样离手。');
+    expect(body()).toContain('骰桶决定骰子怎样离手：概率桶改写六面权重');
     expect(body()).toContain(`已遇见 1 / ${BARRELS.length}`);
     expect(body()).toContain('data-barrel-tip="oak"');
   });
@@ -70,7 +70,7 @@ describe('图鉴搬到 ui/screens/compendium.ts 之后仍然写同样的文案',
     const active = ITEMS.filter((item) => item.type === 'active').length;
     const passive = ITEMS.filter((item) => item.type === 'passive').length;
     const consumable = ITEMS.filter((item) => item.consumable).length;
-    expect(overlay()).toContain(`${active} 件主动物品、${passive} 件被动物品，其中 ${consumable} 件是一次性消耗品：幸运币、猎人印记、烈酒、加注契约、幸运粉、盐、静默赦令。`);
+    expect(overlay()).toContain(`${active} 件主动物品、${passive} 件被动物品，其中 ${consumable} 件是一次性消耗品。`);
     expect(overlay()).toContain('data-item-tip="lucky_coin"');
     expect(overlay()).toContain(`已遇见 1 / ${ITEMS.length}`);
   });

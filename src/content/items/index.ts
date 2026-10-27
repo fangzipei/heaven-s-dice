@@ -20,6 +20,15 @@ import dice_bag from './dice_bag.ts';
 import cracked_pouch from './cracked_pouch.ts';
 import shelf_dice from './shelf_dice.ts';
 import shelf_item from './shelf_item.ts';
+import triple_charm from './triple_charm.ts';
+import straight_bell from './straight_bell.ts';
+import quad_seal from './quad_seal.ts';
+import quint_clasp from './quint_clasp.ts';
+import sext_crown from './sext_crown.ts';
+import heaven_plate from './heaven_plate.ts';
+import pip_ward from './pip_ward.ts';
+import epic_chest from './epic_chest.ts';
+import rare_pair from './rare_pair.ts';
 import type { ItemDef } from '../../core/types.ts';
 
 export const ITEM_DEFS: ItemDef[] = [
@@ -37,6 +46,8 @@ export const ITEM_DEFS: ItemDef[] = [
   powder,
   salt,
   boss_ward,
+  epic_chest,
+  rare_pair,
   // ── 被动物品 · 永久生效 ────────────────────────────────────────────────
   gold_cuff,
   shelf_barrel,
@@ -44,4 +55,11 @@ export const ITEM_DEFS: ItemDef[] = [
   cracked_pouch,
   shelf_dice,
   shelf_item,
+  triple_charm,
+  straight_bell,
+  quad_seal,
+  quint_clasp,
+  sext_crown,
+  heaven_plate,
+  pip_ward,
 ];

@@ -32,12 +32,13 @@ import { clearToasts, showToast } from './components/toast.ts';
 import { bindTooltip, hideTooltip } from './components/tooltip.ts';
 import { $, $$, setCss } from './dom.ts';
 import {
-  advanceCurrentLevel, answerSaltOffer, beginRoll, bindCupDrag, confirmUseItem, forfeitRun,
-  handleScore, pulseCup, renderGame, requestUseItem, setSpeech,
+  advanceCurrentLevel, answerSaltOffer, beginRoll, bindCupDrag, cancelGrant, chooseGrantDie,
+  confirmUseItem, forfeitRun, handleScore, pulseCup, renderGame, requestUseItem, setSpeech,
 } from './game.ts';
 import { renderTopbar } from './hud.ts';
 import { baseReward } from './reward.ts';
 import { openCompendium, switchCompendiumTab } from './screens/compendium.ts';
+import { openHistory } from './screens/history.ts';
 import { openGesture } from './screens/gesture.ts';
 import { showDefeat, showVictory } from './screens/result.ts';
 import {
@@ -247,6 +248,9 @@ async function handleAction(action: string, target: HTMLElement, _event?: MouseE
     case 'open-account':
       openAccount();
       break;
+    case 'open-history':
+      void openHistory();
+      break;
     case 'identity-next':
       void identityNext();
       break;
@@ -372,6 +376,12 @@ async function handleAction(action: string, target: HTMLElement, _event?: MouseE
       break;
     case 'confirm-replace':
       confirmReplace(target.dataset.bagUid!);
+      break;
+    case 'choose-grant-die':
+      chooseGrantDie(target.dataset.dieId!);
+      break;
+    case 'cancel-grant':
+      cancelGrant();
       break;
     case 'cancel-replace':
       app.pendingReplace = null;

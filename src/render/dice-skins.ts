@@ -155,6 +155,38 @@ export const DIE_SKINS: Record<string, DieSkin> = {
     'rgba(250,216,196,.62)', 'rgba(255,142,112,.7)', 'skull', grain.ember('56,22,16'), 'rgba(255,132,96,.55)'),
   jack: S(ramp('#f4e8c6', '#e0c98c 36%', '#b89a4c 64%', '#886d26'), '#1c1404', '#9d8038',
     'rgba(254,248,220,.7)', 'rgba(252,220,140,.72)', 'crown', grain.metal('110,86,32'), 'rgba(252,220,140,.58)'),
+
+  /* ── 扩充骰：计分触发、顺序互动与商店成长 ─────────────────────────── */
+  balance: S(ramp('#e4e2da', '#c8c4b6 42%', '#9c9788 72%', '#6a665b'), '#17150f', '#7d7869',
+    'rgba(244,242,230,.58)', 'rgba(210,202,178,.55)', 'coin', grain.metal('82,78,64'), 'rgba(210,202,178,.45)'),
+  cliff: S(ramp('#d8c6b0', '#ab8c6f 42%', '#745741 72%', '#3f2d21'), '#1b0f08', '#8a6a4f',
+    'rgba(244,222,198,.55)', 'rgba(226,160,104,.62)', 'moon', grain.bone('86,52,30'), 'rgba(226,160,104,.5)'),
+  refrain: S(ramp('#dcd6ec', '#b3a8cf 42%', '#8375a8 72%', '#524774'), '#140f21', '#74669a',
+    'rgba(242,236,254,.58)', 'rgba(198,176,246,.62)', 'comet', grain.night('58,44,92'), 'rgba(198,176,246,.52)'),
+  shifting: S(ramp('#cfe0e4', '#a4c2c8 42%', '#71949c 72%', '#45636b'), '#0f1a1d', '#628892',
+    'rgba(232,248,252,.58)', 'rgba(158,224,232,.62)', 'fateeye', grain.night('40,68,76'), 'rgba(158,224,232,.5)'),
+  merchant: S(ramp('#f0dfb4', '#dcc080 38%', '#ad8c46 66%', '#7a5d20'), '#1c1304', '#9a7a34',
+    'rgba(252,244,214,.68)', 'rgba(246,212,132,.7)', 'coin', grain.metal('108,82,26'), 'rgba(246,212,132,.58)'),
+  gilded_trace: S(ramp('#f6e8b2', '#e4c86e 36%', '#b89532 66%', '#7d6114'), '#1d1402', '#a2832c',
+    'rgba(255,250,224,.72)', 'rgba(255,222,120,.74)', 'seal', grain.metal('116,90,20'), 'rgba(255,222,120,.6)'),
+  last_road: S(ramp('#d8d0c2', '#aaa08e 42%', '#746b5b 72%', '#423c32'), '#15120c', '#7c7262',
+    'rgba(244,238,224,.55)', 'rgba(206,186,152,.55)', 'cracks', grain.bone('72,64,50'), 'rgba(206,186,152,.42)'),
+  shadow: S(ramp('#b9b3c4', '#87808f 42%', '#585260 72%', '#2e2a35'), '#0d0b10', '#625b6b',
+    'rgba(230,226,238,.52)', 'rgba(168,158,188,.58)', 'eye', grain.night('48,44,58'), 'rgba(168,158,188,.45)'),
+  neighbor: S(ramp('#cfe4d2', '#a2c4a8 42%', '#6f9478 72%', '#456251'), '#0f1a12', '#5f8870',
+    'rgba(232,248,236,.55)', 'rgba(166,222,182,.6)', 'scales', grain.scale('44,74,56'), 'rgba(166,222,182,.48)'),
+  bias_one: S(ramp('#e8d8b0', '#c9b484 42%', '#977f4e 72%', '#65532d'), '#1a1206', '#7e683c',
+    'rgba(246,234,206,.58)', 'rgba(226,190,116,.58)', 'star', grain.bone('98,76,36'), 'rgba(226,190,116,.46)'),
+  bias_two: S(ramp('#d8e0c8', '#b2bf9c 42%', '#7e8c64 72%', '#505a3c'), '#121608', '#6d7a52',
+    'rgba(240,248,226,.55)', 'rgba(190,214,146,.58)', 'moon', grain.bone('78,90,48'), 'rgba(190,214,146,.46)'),
+  bias_three: S(ramp('#e0d2c4', '#bda68f 42%', '#8a7058 72%', '#5a4432'), '#180f08', '#806448',
+    'rgba(248,236,222,.58)', 'rgba(214,166,116,.6)', 'claw', grain.bone('96,68,44'), 'rgba(214,166,116,.48)'),
+  bias_four: S(ramp('#cfd8e4', '#a4b4c6 42%', '#70849a 72%', '#45566a'), '#0f141c', '#647a90',
+    'rgba(234,242,252,.58)', 'rgba(166,194,226,.6)', 'coin', grain.metal('58,72,88'), 'rgba(166,194,226,.48)'),
+  bias_five: S(ramp('#e8dcc8', '#cbb998 42%', '#9a8462 72%', '#69563c'), '#181106', '#826c4c',
+    'rgba(250,242,228,.58)', 'rgba(230,196,140,.6)', 'seal', grain.bone('98,78,48'), 'rgba(230,196,140,.48)'),
+  bias_six: S(ramp('#e4d6c0', '#c2a98c 42%', '#8d7256 72%', '#5b4632'), '#170f08', '#7e6448',
+    'rgba(248,238,222,.58)', 'rgba(222,180,126,.6)', 'crown', grain.metal('96,68,40'), 'rgba(222,180,126,.48)'),
 };
 
 // 每颗骰子都能在这里找到皮肤；漏配时退回标准骰，而不是让 UI 报错。
@@ -208,6 +240,10 @@ export const DIE_FAMILY: Record<string, GrainId> = {
   odd_eye: 'bone', even_twin: 'metal', polar: 'bone', ladder: 'bone',
   mirror: 'metal', five_fold: 'metal', hex: 'scale', echo: 'night',
   ace: 'ember', jack: 'metal',
+  balance: 'metal', cliff: 'bone', refrain: 'night', shifting: 'night',
+  merchant: 'metal', gilded_trace: 'metal', last_road: 'bone', shadow: 'night',
+  neighbor: 'scale', bias_one: 'bone', bias_two: 'bone', bias_three: 'bone',
+  bias_four: 'metal', bias_five: 'bone', bias_six: 'metal',
 };
 
 export function dieFamily(spec?: DieSkinSubject | null): GrainId {

@@ -41,6 +41,8 @@ export interface DieView {
   spec: DiceDef;
   blank?: boolean;
   hidden?: boolean;
+  gilded?: boolean;
+  extra?: boolean;
 }
 
 /** 高亮状态位。selected 会抬升骰子，其余走材质变暗。 */
@@ -544,20 +546,23 @@ export class DiceTable implements MotionDiceTable {
       const family = dieFamily(die.spec);
       const favored = favoredFaces(die.spec);
       const peak = peakFace(die.spec);
-      const materials = GROUP_ORDER.map((faceKey) => {
+      const surfaces = GROUP_ORDER.map((faceKey) => {
         const faceValue = values[faceKey];
         const emphasis: FaceEmphasis = peak && faceValue === peak ? 'peak'
           : favored.includes(faceValue) ? 'favored' : 'none';
-        const surface = FAMILY_SURFACE[family] || FAMILY_SURFACE.bone;
-        return new THREE.MeshStandardMaterial({
+        return {
           map: this.faceTexture(faceValue, skin, family, emphasis),
+          surface: FAMILY_SURFACE[family] || FAMILY_SURFACE.bone,
+        };
+      });
+      if (!entry) {
+        const materials = surfaces.map(({ map, surface }) => new THREE.MeshStandardMaterial({
+          map,
           roughness: surface.roughness,
           metalness: surface.metalness,
           envMapIntensity: family === 'metal' ? 1.15 : 0.6,
           emissive: new THREE.Color(0x000000),
-        });
-      });
-      if (!entry) {
+        }));
         const mesh = new THREE.Mesh(this.geometry, materials);
         mesh.castShadow = true;
         mesh.receiveShadow = false;
@@ -573,16 +578,34 @@ export class DiceTable implements MotionDiceTable {
         this.group.add(mesh);
         entry = { uid: die.uid, mesh, ring, state: {}, baseX: 0 };
       } else {
-        // Materials own no textures — face art is shared through the cache —
-        // so only the material wrapper is dropped here.
-        entry.mesh.material.forEach((material) => material.dispose());
-        entry.mesh.material = materials;
+        // Keep the six material wrappers alive. Disposing them releases the
+        // shader program three.js cached for this renderer, so the next throw
+        // would recompile and hitch; swapping the shared face texture keeps the
+        // program (and its compile cost) out of the throw path.
+        const existing = entry.mesh.material as THREE.MeshStandardMaterial[];
+        surfaces.forEach(({ map, surface }, index) => {
+          const material = existing[index]!;
+          if (material.map !== map) {
+            material.map = map;
+            material.needsUpdate = true;
+          }
+          material.roughness = surface.roughness;
+          material.metalness = surface.metalness;
+          material.envMapIntensity = family === 'metal' ? 1.15 : 0.6;
+        });
       }
       entry.spec = die.spec;
       entry.value = die.value;
       entry.baseX = (index - (total - 1) / 2) * spacing;
       entry.mesh.userData.uid = die.uid;
       entry.mesh.visible = true;
+      /* Gilded dice get a low warm emissive so the gold mark reads on the
+         felt without turning the whole die into a lamp. */
+      const gold = new THREE.Color(die.gilded ? 0x6a410c : 0x000000);
+      for (const material of entry.mesh.material as THREE.MeshStandardMaterial[]) {
+        material.emissive.copy(gold);
+        material.emissiveIntensity = die.gilded ? 0.9 : 0;
+      }
       this.entries.push(entry);
     });
     Array.from(keep.values()).forEach((entry) => {

@@ -31,7 +31,7 @@ import {
 import {
   createRun, rollDice, applyScore, getScorePreview, availableDice,
   advanceLevel, isBossDieBlocked, initLevel, createShop, makeRng,
-  getDieSpec, effectiveProbs,
+  getDieSpec, effectiveProbs, BASE_REROLLS,
 } from '../src/core/engine.ts';
 import { bestSelection } from '../src/core/scoring.ts';
 
@@ -229,7 +229,7 @@ const started = Date.now();
 const cfg = getLevelConfig(LEVEL);
 console.log('');
 console.log('════ 骰子期望分数评估 ════');
-console.log(`关卡：第 ${LEVEL} 关（目标 ${cfg.target} 分${cfg.boss ? '，庄家关' : ''}） · 重投 ${5} 次 · 无道具`);
+console.log(`关卡：第 ${LEVEL} 关（目标 ${cfg.target} 分${cfg.boss ? '，庄家关' : ''}） · 重投 ${BASE_REROLLS} 次 · 无道具`);
 console.log(`样本：单掷 ${THROW_TRIALS} 次/骰 · 关卡 ${T} 局/配置 · 商店 ${SHOP_TRIALS} 次/等级`);
 
 console.log('\n计算基准中…');

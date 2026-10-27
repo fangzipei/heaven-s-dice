@@ -49,7 +49,7 @@
         {
           "pieces": 4,
           "key": "wolfTripleThree",
-          "text": "计分含三连 3 时额外 +600 分。"
+          "text": "计分含三条 3 时额外 +600 分。"
         }
       ]
     },
@@ -305,11 +305,11 @@
         0.6
       ],
       "flavor": "它只掷出偶数。成双的东西从不独自计分。",
-      "desc": "只有 2、4、6（22% / 18% / 60%）；单颗不能计分，是纯组合骰，但三连极好凑。计分含任意三连时 +520。",
+      "desc": "只有 2、4、6（22% / 18% / 60%）；单颗不能计分，是纯组合骰，但三条极好凑。计分含任意三条时 +520。",
       "bonus": {
         "type": "anyTriple",
         "value": 520,
-        "label": "双生：计分含任意三连时 +520"
+        "label": "双生：计分含任意三条时 +520"
       },
       "price": 130
     },
@@ -470,14 +470,317 @@
         0.16666666666666666,
         0.16666666666666666
       ],
-      "flavor": "它看起来毫无偏私。可它记得每一个三连。",
-      "desc": "六面完全均衡；计分含任意三连时 +340（靠组合吃饭，不靠点数偏好）。",
+      "flavor": "它看起来毫无偏私。可它记得每一个三条。",
+      "desc": "六面完全均衡；计分含任意三条时 +340（靠组合吃饭，不靠点数偏好）。",
       "bonus": {
         "type": "anyTriple",
         "value": 340,
-        "label": "骰王：计分含任意三连时 +340"
+        "label": "骰王：计分含任意三条时 +340"
       },
       "price": 210
+    },
+    {
+      "id": "balance",
+      "name": "衡心骰",
+      "setId": null,
+      "rarity": "common",
+      "probs": [
+        0.16666666666666666,
+        0.16666666666666666,
+        0.16666666666666666,
+        0.16666666666666666,
+        0.16666666666666666,
+        0.16666666666666666
+      ],
+      "flavor": "它不偏向任何一面，只偏向选中它的人。",
+      "desc": "六面各 16.7%；此骰参与计分时额外 +100 分。",
+      "bonus": {
+        "type": "flatScored",
+        "value": 100,
+        "label": "衡心：此骰计分 +100"
+      },
+      "price": 35
+    },
+    {
+      "id": "cliff",
+      "name": "孤崖骰",
+      "setId": null,
+      "rarity": "common",
+      "probs": [
+        0.05,
+        0.225,
+        0.225,
+        0.225,
+        0.05,
+        0.225
+      ],
+      "flavor": "两边是悬崖，中间是窄路；掉下去的人才会想起它。",
+      "desc": "1、5 各 5%，其余四面对半分（各 22.5%）；此骰参与计分时额外 +300 分。",
+      "bonus": {
+        "type": "flatScored",
+        "value": 300,
+        "label": "孤崖：此骰计分 +300"
+      },
+      "price": 35
+    },
+    {
+      "id": "refrain",
+      "name": "重奏骰",
+      "setId": null,
+      "rarity": "rare",
+      "probs": [
+        0.16666666666666666,
+        0.16666666666666666,
+        0.16666666666666666,
+        0.16666666666666666,
+        0.16666666666666666,
+        0.16666666666666666
+      ],
+      "flavor": "同一段旋律，它坚持再唱一遍。",
+      "desc": "六面均衡；此骰按条子（三条及以上）计分时，额外结算一次。",
+      "bonus": {
+        "type": "retriggerKind",
+        "label": "重奏：按条子计分时额外结算一次"
+      },
+      "price": 70
+    },
+    {
+      "id": "shifting",
+      "name": "浮面骰",
+      "setId": null,
+      "rarity": "common",
+      "probs": [
+        0.16666666666666666,
+        0.16666666666666666,
+        0.16666666666666666,
+        0.16666666666666666,
+        0.16666666666666666,
+        0.16666666666666666
+      ],
+      "flavor": "每关醒来，它都换一副面孔。",
+      "desc": "每关开始时随机重排六面概率；没有固定偏向。",
+      "bonus": {
+        "type": "randomFaces",
+        "label": "浮面：每关随机六面概率"
+      },
+      "price": 35
+    },
+    {
+      "id": "merchant",
+      "name": "商旅骰",
+      "setId": null,
+      "rarity": "legendary",
+      "probs": [
+        0.16666666666666666,
+        0.16666666666666666,
+        0.16666666666666666,
+        0.16666666666666666,
+        0.16666666666666666,
+        0.16666666666666666
+      ],
+      "flavor": "它记得每一次讨价还价，也记得每一次你忍不住重随。",
+      "desc": "六面均衡；每次商店重随（每店最多一次）后，此骰计分永久 +10%。",
+      "bonus": {
+        "type": "shopRerollMultiplier",
+        "value": 0.1,
+        "label": "商旅：每次商店重随，计分 +10%"
+      },
+      "price": 210
+    },
+    {
+      "id": "gilded_trace",
+      "name": "金痕骰",
+      "setId": null,
+      "rarity": "common",
+      "probs": [
+        0.16666666666666666,
+        0.16666666666666666,
+        0.16666666666666666,
+        0.16666666666666666,
+        0.16666666666666666,
+        0.16666666666666666
+      ],
+      "flavor": "落桌时会在桌布上留下一道洗不掉的金痕。",
+      "desc": "六面均衡；此骰每次计分时，额外获得 20 银币。",
+      "bonus": {
+        "type": "coinsPerScore",
+        "value": 20,
+        "label": "金痕：此骰计分 +20 银币"
+      },
+      "price": 35
+    },
+    {
+      "id": "last_road",
+      "name": "末路骰",
+      "setId": null,
+      "rarity": "common",
+      "probs": [
+        0.16666666666666666,
+        0.16666666666666666,
+        0.16666666666666666,
+        0.16666666666666666,
+        0.16666666666666666,
+        0.16666666666666666
+      ],
+      "flavor": "没有退路时，它才肯认真。",
+      "desc": "六面均衡；本关没有重投次数时，此骰计分 ×1.5。",
+      "bonus": {
+        "type": "noRerollMultiplier",
+        "value": 1.5,
+        "label": "末路：无重投时此骰 ×1.5"
+      },
+      "price": 35
+    },
+    {
+      "id": "shadow",
+      "name": "随影骰",
+      "setId": null,
+      "rarity": "epic",
+      "probs": [
+        0.16666666666666666,
+        0.16666666666666666,
+        0.16666666666666666,
+        0.16666666666666666,
+        0.16666666666666666,
+        0.16666666666666666
+      ],
+      "flavor": "影子总是跟着第一颗落下的骰子。",
+      "desc": "六面均衡；落骰后总是复制桌面第一颗骰子的点数（自己排第一时失效）。",
+      "bonus": {
+        "type": "copyFirst",
+        "label": "随影：复制桌面第一颗骰子"
+      },
+      "price": 130
+    },
+    {
+      "id": "neighbor",
+      "name": "邻行骰",
+      "setId": null,
+      "rarity": "epic",
+      "probs": [
+        0.16666666666666666,
+        0.16666666666666666,
+        0.16666666666666666,
+        0.16666666666666666,
+        0.16666666666666666,
+        0.16666666666666666
+      ],
+      "flavor": "它总想和左边那颗并排走。",
+      "desc": "六面均衡；落骰后有 50% 概率变成前一颗骰子的相邻点数（可能 +1，也可能 −1）。",
+      "bonus": {
+        "type": "adjacentChance",
+        "chance": 0.5,
+        "label": "邻行：50% 变成前一颗的相邻点数"
+      },
+      "price": 130
+    },
+    {
+      "id": "bias_one",
+      "name": "壹面骰",
+      "setId": null,
+      "rarity": "common",
+      "probs": [
+        0.3,
+        0.14,
+        0.14,
+        0.14,
+        0.14,
+        0.14
+      ],
+      "flavor": "它只认最左边的那一面。",
+      "desc": "1 点概率 30%，其余五面各 14%。",
+      "bonus": null,
+      "price": 35
+    },
+    {
+      "id": "bias_two",
+      "name": "贰面骰",
+      "setId": null,
+      "rarity": "common",
+      "probs": [
+        0.14,
+        0.3,
+        0.14,
+        0.14,
+        0.14,
+        0.14
+      ],
+      "flavor": "两面三刀的人最喜欢它。",
+      "desc": "2 点概率 30%，其余五面各 14%。",
+      "bonus": null,
+      "price": 35
+    },
+    {
+      "id": "bias_three",
+      "name": "叁面骰",
+      "setId": null,
+      "rarity": "common",
+      "probs": [
+        0.14,
+        0.14,
+        0.3,
+        0.14,
+        0.14,
+        0.14
+      ],
+      "flavor": "逢三则变，赌桌上也不例外。",
+      "desc": "3 点概率 30%，其余五面各 14%。",
+      "bonus": null,
+      "price": 35
+    },
+    {
+      "id": "bias_four",
+      "name": "肆面骰",
+      "setId": null,
+      "rarity": "common",
+      "probs": [
+        0.14,
+        0.14,
+        0.14,
+        0.3,
+        0.14,
+        0.14
+      ],
+      "flavor": "四方桌，四面风，四点的骰子最稳。",
+      "desc": "4 点概率 30%，其余五面各 14%。",
+      "bonus": null,
+      "price": 35
+    },
+    {
+      "id": "bias_five",
+      "name": "伍面骰",
+      "setId": null,
+      "rarity": "common",
+      "probs": [
+        0.14,
+        0.14,
+        0.14,
+        0.14,
+        0.3,
+        0.14
+      ],
+      "flavor": "五根手指，五道抓痕。",
+      "desc": "5 点概率 30%，其余五面各 14%。",
+      "bonus": null,
+      "price": 35
+    },
+    {
+      "id": "bias_six",
+      "name": "陆面骰",
+      "setId": null,
+      "rarity": "common",
+      "probs": [
+        0.14,
+        0.14,
+        0.14,
+        0.14,
+        0.14,
+        0.3
+      ],
+      "flavor": "六面都刻着同一个小字：赢。",
+      "desc": "6 点概率 30%，其余五面各 14%。",
+      "bonus": null,
+      "price": 35
     }
   ],
   "STANDARD_DIE": {
@@ -581,8 +884,8 @@
       "face": 3,
       "value": 50,
       "tripleValue": 150,
-      "desc": "每颗参与本次计分的 3 额外 +50 分；本次计分含三连 3 再 +150 分。",
-      "short": "每颗计分的 3 +50 分 · 三连 3 再 +150"
+      "desc": "每颗参与本次计分的 3 额外 +50 分；本次计分含三条 3 再 +150 分。",
+      "short": "每颗计分的 3 +50 分 · 三条 3 再 +150"
     },
     {
       "id": "demon_pact",
@@ -616,6 +919,61 @@
       "gesture": "circle",
       "desc": "顺时针画满一圈，本掷计分 +15%，并在此关获得 1 次额外重投（每关一次）。",
       "short": "旋涡仪式：本掷 +15% 且每关 +1 重投"
+    },
+    {
+      "id": "gilded",
+      "name": "鎏金桶",
+      "rarity": "rare",
+      "type": "gild",
+      "art": "gilded",
+      "price": 90,
+      "chance": 0.1,
+      "coin": 100,
+      "desc": "每次摇动有 10% 概率让一颗骰子染上金痕；该骰计分时额外获得 100 银币。",
+      "short": "10% 染金 · 金骰计分 +100 银币"
+    },
+    {
+      "id": "marker",
+      "name": "定一桶",
+      "rarity": "rare",
+      "type": "forceOne",
+      "art": "marker",
+      "price": 90,
+      "chance": 0.1,
+      "desc": "每次摇动有 10% 概率指定一颗骰子的点数为 1。",
+      "short": "10% 指定一颗骰子为 1"
+    },
+    {
+      "id": "guide",
+      "name": "顺遂桶",
+      "rarity": "legendary",
+      "type": "straightFix",
+      "art": "guide",
+      "price": 220,
+      "desc": "若本次摇出的骰型只差一颗就能组成顺子，桶会转动其中一颗骰子，补成顺子。",
+      "short": "差一颗成顺时自动补顺"
+    },
+    {
+      "id": "brood",
+      "name": "增殖桶",
+      "rarity": "epic",
+      "type": "extraDie",
+      "art": "brood",
+      "price": 140,
+      "chance": 0.05,
+      "desc": "每次摇动有 5% 概率多滚出一颗骰子；多出的骰子只参与本次投掷。",
+      "short": "5% 多出一颗临时骰"
+    },
+    {
+      "id": "singles",
+      "name": "独注桶",
+      "rarity": "rare",
+      "type": "singlesBonus",
+      "art": "singles",
+      "price": 90,
+      "multiplier": 1.2,
+      "desc": "若本轮此前每次都只按单颗骰型计分，则本次计分 +20%。",
+      "short": "整轮只计单骰时 +20%"
     }
   ],
   "ITEMS": [
@@ -759,6 +1117,40 @@
       "flavor": "羊皮纸上只写了一句话：今晚，庄家闭嘴。落款处盖着一枚被划掉的王冠。"
     },
     {
+      "id": "epic_chest",
+      "name": "史诗骰匣",
+      "type": "active",
+      "icon": "pouch",
+      "rarity": "epic",
+      "price": 140,
+      "charges": 1,
+      "consumable": true,
+      "desc": "使用后消耗，随机获得 1 枚史诗骰子。",
+      "flavor": "匣子里只有一格，但那一格会呼吸。",
+      "grant": {
+        "rarity": "epic",
+        "count": 1,
+        "choose": 1
+      }
+    },
+    {
+      "id": "rare_pair",
+      "name": "双择骰函",
+      "type": "active",
+      "icon": "scroll",
+      "rarity": "rare",
+      "price": 90,
+      "charges": 1,
+      "consumable": true,
+      "desc": "使用后消耗，随机出现 2 枚稀有骰子，选择其中 1 枚。",
+      "flavor": "两封信，两个名字，只有一枚骰子会跟你走。",
+      "grant": {
+        "rarity": "rare",
+        "count": 2,
+        "choose": 1
+      }
+    },
+    {
       "id": "gold_cuff",
       "name": "镀金袖扣",
       "type": "passive",
@@ -825,6 +1217,118 @@
       "charges": 0,
       "desc": "商店物品货位 +1（默认 3 → 4）。",
       "flavor": "最值钱的东西从来不在明面上。"
+    },
+    {
+      "id": "triple_charm",
+      "name": "三环坠",
+      "type": "passive",
+      "icon": "amulet",
+      "rarity": "rare",
+      "price": 100,
+      "charges": 0,
+      "desc": "三条的得分 +15%。",
+      "flavor": "三个环扣在一起，第四个就再也解不开了。",
+      "scoreRule": {
+        "hand": "triple",
+        "multiplier": 1.15,
+        "label": "三条 +15%"
+      }
+    },
+    {
+      "id": "straight_bell",
+      "name": "顺风铃",
+      "type": "passive",
+      "icon": "scroll",
+      "rarity": "epic",
+      "price": 150,
+      "charges": 0,
+      "desc": "顺子的得分 +20%。",
+      "flavor": "铃舌顺着风走，从不回头。",
+      "scoreRule": {
+        "hand": "straight",
+        "multiplier": 1.2,
+        "label": "顺子 +20%"
+      }
+    },
+    {
+      "id": "quad_seal",
+      "name": "四方印",
+      "type": "passive",
+      "icon": "edict",
+      "rarity": "epic",
+      "price": 160,
+      "charges": 0,
+      "desc": "四条的得分 +20%。",
+      "flavor": "四个角都盖了章，这张契才算数。",
+      "scoreRule": {
+        "hand": "quad",
+        "multiplier": 1.2,
+        "label": "四条 +20%"
+      }
+    },
+    {
+      "id": "quint_clasp",
+      "name": "五指扣",
+      "type": "passive",
+      "icon": "cuff",
+      "rarity": "epic",
+      "price": 170,
+      "charges": 0,
+      "desc": "五条的得分 +25%。",
+      "flavor": "五根手指扣住桌沿，谁也别想掀桌。",
+      "scoreRule": {
+        "hand": "quint",
+        "multiplier": 1.25,
+        "label": "五条 +25%"
+      }
+    },
+    {
+      "id": "sext_crown",
+      "name": "六芒冠",
+      "type": "passive",
+      "icon": "amulet",
+      "rarity": "legendary",
+      "price": 280,
+      "charges": 0,
+      "desc": "六条的得分 +50%。",
+      "flavor": "六道光芒同时照下来时，连庄家也要眯眼。",
+      "scoreRule": {
+        "hand": "sext",
+        "multiplier": 1.5,
+        "label": "六条 +50%"
+      }
+    },
+    {
+      "id": "heaven_plate",
+      "name": "天地盘",
+      "type": "passive",
+      "icon": "hourglass",
+      "rarity": "legendary",
+      "price": 300,
+      "charges": 0,
+      "desc": "天地顺的得分 +20%。",
+      "flavor": "盘面刻着天与地，中间的缝隙刚好放下一颗骰子。",
+      "scoreRule": {
+        "hand": "straight16",
+        "multiplier": 1.2,
+        "label": "天地顺 +20%"
+      }
+    },
+    {
+      "id": "pip_ward",
+      "name": "点金符",
+      "type": "passive",
+      "icon": "eye",
+      "rarity": "epic",
+      "price": 140,
+      "charges": 0,
+      "desc": "一点或五点的得分 +10%。",
+      "flavor": "它不改变点数，只改变点数在账本上的重量。",
+      "scoreRule": {
+        "hand": "oneOrFive",
+        "multiplier": 1.1,
+        "label": "一点/五点 +10%"
+      }
     }
   ],
   "TABLES": [
@@ -966,7 +1470,7 @@
       "id": "rotfang",
       "art": "boss-rat",
       "curve": {
-        "target": 1,
+        "target": 1.3,
         "reward": 1.65
       },
       "name": "腐牙伯爵",
@@ -1161,10 +1665,10 @@
     {
       "untilLevel": 6,
       "weights": {
-        "common": 62,
-        "rare": 32,
-        "epic": 6,
-        "legendary": 0
+        "common": 8000,
+        "rare": 1799,
+        "epic": 200,
+        "legendary": 1
       }
     },
     {
@@ -1233,7 +1737,7 @@
     },
     {
       "level": 3,
-      "target": 550,
+      "target": 720,
       "reward": 100,
       "curve": {
         "target": 550,

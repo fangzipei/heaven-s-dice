@@ -30,7 +30,7 @@ describe('操作坞搬到 ui/dock.ts 之后仍然写同样的文案', () => {
     renderComboPreview();
     renderActionDock();
     expect(html('#combo-preview')).toBe(
-      '<span class="combo-placeholder">1 与 5 总能计分 · 三连、四连与顺子会带来大分</span>',
+      '<span class="combo-placeholder">1 与 5 总能计分 · 三条、四条与顺子会带来大分</span>',
     );
     expect(html('#action-dock')).toContain('data-action="manual-roll"');
     expect(html('#action-dock')).toContain('<b>自动投掷</b>');

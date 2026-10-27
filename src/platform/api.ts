@@ -26,6 +26,24 @@ export interface LeaderboardRow {
   endedAt: string;
 }
 
+export interface HistoryEntry {
+  clientRunId: string;
+  startedAt: string;
+  endedAt: string;
+  durationMs: number;
+  result: string;
+  levelReached: number;
+  finalScore: number;
+  coins: number;
+  loadout: {
+    dice: string[];
+    barrel: string;
+    activeItems: string[];
+    passiveItems: string[];
+  };
+  summary?: Record<string, number>;
+}
+
 export interface EntityStat {
   id: string;
   uses: number;
@@ -114,6 +132,11 @@ export async function uploadRuns(token: string, runs: RunRecord[]): Promise<void
 export async function fetchLeaderboard(board: 'time' | 'luck', limit = 20): Promise<LeaderboardRow[]> {
   const result = await request<{ rows: LeaderboardRow[] }>(`leaderboards?board=${board}&limit=${limit}`);
   return result.rows;
+}
+
+export async function fetchRunHistory(token: string, limit = 50): Promise<HistoryEntry[]> {
+  const result = await request<{ runs: HistoryEntry[] }>(`history?limit=${limit}`, { token });
+  return result.runs;
 }
 
 export async function fetchEntityStats(kind: 'die' | 'barrel' | 'item', limit = 50): Promise<EntityStat[]> {

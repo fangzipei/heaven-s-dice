@@ -304,6 +304,37 @@ async function saveRunRequest(req, res, batch = false) {
   return json(res, 200, { ok: true, ids });
 }
 
+async function history(req, res, url) {
+  const user = await accountFromRequest(req);
+  if (!user) return fail(res, 401, '登录已过期，请重新登录。');
+  const limit = Math.max(1, Math.min(Number(url.searchParams.get('limit')) || 50, 100));
+  const [rows] = await pool.query(
+    `SELECT client_run_id AS clientRunId, started_at AS startedAt, ended_at AS endedAt,
+            duration_ms AS durationMs, result, level_reached AS levelReached,
+            final_score AS finalScore, coins, payload, summary
+       FROM hd_runs WHERE user_id = ? ORDER BY ended_at DESC LIMIT ?`,
+    [user.id, limit],
+  );
+  const runs = rows.map((row) => {
+    const payload = parseJson(row.payload, {});
+    const levels = Array.isArray(payload.levels) ? payload.levels : [];
+    const last = levels[levels.length - 1] || {};
+    return {
+      clientRunId: row.clientRunId,
+      startedAt: row.startedAt,
+      endedAt: row.endedAt,
+      durationMs: Number(row.durationMs) || 0,
+      result: row.result,
+      levelReached: Number(row.levelReached) || 1,
+      finalScore: Number(row.finalScore) || 0,
+      coins: Number(row.coins) || 0,
+      loadout: last.loadout || { dice: [], barrel: 'oak', activeItems: [], passiveItems: [] },
+      summary: parseJson(row.summary, {}),
+    };
+  });
+  return json(res, 200, { runs });
+}
+
 async function leaderboards(req, res, url) {
   const board = url.searchParams.get('board') === 'luck' ? 'luck' : 'time';
   const limit = Math.max(1, Math.min(Number(url.searchParams.get('limit')) || 20, 50));
@@ -401,6 +432,7 @@ const server = http.createServer(async (req, res) => {
     if (req.method === 'GET' && path === '/me') return await me(req, res);
     if (req.method === 'POST' && path === '/runs') return await saveRunRequest(req, res, false);
     if (req.method === 'POST' && path === '/runs/batch') return await saveRunRequest(req, res, true);
+    if (req.method === 'GET' && path === '/history') return await history(req, res, url);
     if (req.method === 'GET' && path === '/leaderboards') return await leaderboards(req, res, url);
     if (req.method === 'GET' && path === '/stats/entities') return await entityStats(req, res, url);
     if (req.method === 'GET' && path === '/stats/summary') return await summary(req, res);

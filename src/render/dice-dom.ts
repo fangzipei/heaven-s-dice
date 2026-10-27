@@ -110,7 +110,10 @@ function dieFaceState(run: RunState, die: BoardDie) {
   const blank = Boolean(die.blank);
   const blocked = !hidden && !blank && isBossDieBlocked(run, die);
   const selected = run.selected.includes(die.uid);
-  return { spec, hidden, blank, blocked, selected, scored: Boolean(die.scored) };
+  return {
+    spec, hidden, blank, blocked, selected, scored: Boolean(die.scored),
+    gilded: Boolean(die.gilded), extra: Boolean(die.extra),
+  };
 }
 
 function dieClasses(state: ReturnType<typeof dieFaceState>, rolling: boolean): string {
@@ -119,6 +122,7 @@ function dieClasses(state: ReturnType<typeof dieFaceState>, rolling: boolean): s
     state.hidden ? 'is-hidden' : '', state.selected ? 'is-selected' : '',
     state.scored ? 'is-scored' : '', state.spec.setId === 'demon' ? 'is-demon' : '',
     state.blank ? 'is-blank' : '', state.blocked ? 'is-boss-blocked' : '',
+    state.gilded ? 'is-gilded' : '', state.extra ? 'is-extra' : '',
     rolling && !state.hidden && !state.scored ? 'is-rolling' : '',
   ].filter(Boolean).join(' ');
 }
@@ -141,7 +145,7 @@ export function renderDiceTrayDom(run: RunState, tray: HTMLElement, view: DiceTr
      sync classes and attributes in place. */
   const signature = run.dice.map((die) => {
     const state = dieFaceState(run, die);
-    return `${die.uid}:${die.value ?? 'x'}:${state.scored ? 1 : 0}:${state.blank ? 1 : 0}:${state.blocked ? 1 : 0}:${view.rolling ? 1 : 0}`;
+    return `${die.uid}:${die.value ?? 'x'}:${state.scored ? 1 : 0}:${state.blank ? 1 : 0}:${state.blocked ? 1 : 0}:${state.gilded ? 1 : 0}:${view.rolling ? 1 : 0}`;
   }).join('|');
   if (tray.dataset.dieSignature !== signature) {
     tray.dataset.dieSignature = signature;

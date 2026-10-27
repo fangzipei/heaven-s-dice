@@ -12,11 +12,13 @@
    Straight 2-6 ............ 750
    Full straight 1-6 ....... 1500
 
-   Demon wilds (WILD_VALUE) are jokers: they may stand in for one missing face
-   in a straight (at most one wild per straight) or join natural dice of the
-   same face to build triples and larger. A wild never scores on its own: every
-   group it joins must contain at least one natural die, and a wild cannot be
-   used to pad single 1/5 scoring.
+   Demon wilds (WILD_VALUE) are jokers: they may stand in for one face in a
+   straight (at most one wild per straight) — filling a missing face, or
+   displacing a natural face on a complete straight so that natural die can
+   score on its own — or join natural dice of the same face to build triples
+   and larger. A wild never scores on its own: every group it joins must
+   contain at least one natural die, and a wild cannot be used to pad single
+   1/5 scoring.
    ============================================================ */
 
 export const WILD_VALUE = 7;
@@ -24,14 +26,14 @@ export const WILD_VALUE = 7;
 export const SCORING_ROWS = [
   { key: 'one', label: '单颗 1', detail: '每颗', points: '100' },
   { key: 'five', label: '单颗 5', detail: '每颗', points: '50' },
-  { key: 'triple', label: '三连', detail: '1x1000，其余点数x100', points: '200-1000' },
-  { key: 'four', label: '四连', detail: '三连 x2', points: '400-2000' },
-  { key: 'fiveKind', label: '五连', detail: '三连 x4', points: '800-4000' },
-  { key: 'sixKind', label: '六连', detail: '三连 x8', points: '1600-8000' },
+  { key: 'triple', label: '三条', detail: '1x1000，其余点数x100', points: '200-1000' },
+  { key: 'four', label: '四条', detail: '三条 x2', points: '400-2000' },
+  { key: 'fiveKind', label: '五条', detail: '三条 x4', points: '800-4000' },
+  { key: 'sixKind', label: '六条', detail: '三条 x8', points: '1600-8000' },
   { key: 'straight15', label: '顺子 1-5', detail: '五颗连续', points: '500' },
   { key: 'straight26', label: '顺子 2-6', detail: '五颗连续', points: '750' },
-  { key: 'straight16', label: '通天顺 1-6', detail: '六颗连续', points: '1500' },
-  { key: 'demon', label: '恶魔赖子', detail: '补三连/顺子缺口，不能单独计分', points: '-' },
+  { key: 'straight16', label: '天地顺 1-6', detail: '六颗连续', points: '1500' },
+  { key: 'demon', label: '恶魔赖子', detail: '补三条/顺子缺口，不能单独计分', points: '-' },
 ];
 
 export type FaceCount = [number, number, number, number, number, number, number];
@@ -56,12 +58,12 @@ interface Scored { score: number; combos: Combo[] }
 interface Best extends Scored { counts: FaceCount }
 
 const N_KIND_MULTIPLIER: Record<number, number> = { 3: 1, 4: 2, 5: 4, 6: 8 };
-const N_KIND_LABEL: Record<number, string> = { 3: '三连', 4: '四连', 5: '五连', 6: '六连' };
+const N_KIND_LABEL: Record<number, string> = { 3: '三条', 4: '四条', 5: '五条', 6: '六条' };
 const SINGLE_POINTS: Record<number, number> = { 1: 100, 5: 50 };
 const STRAIGHTS = [
   { faces: [1, 2, 3, 4, 5], label: '顺子 1-5', points: 500 },
   { faces: [2, 3, 4, 5, 6], label: '顺子 2-6', points: 750 },
-  { faces: [1, 2, 3, 4, 5, 6], label: '通天顺 1-6', points: 1500 },
+  { faces: [1, 2, 3, 4, 5, 6], label: '天地顺 1-6', points: 1500 },
 ];
 
 export function emptyCounts(): FaceCount {
@@ -181,27 +183,45 @@ function analyzeCounts(counts: FaceCount, wilds: number): Best | null {
 
   let best: Best | null = null;
 
-  // Straights: a wild may fill exactly one missing face.
+  // Straights: a wild may fill a missing face, or stand in for a face that is
+  // already there — the natural die it displaces then stays in the hand and
+  // can score as a single (a complete 1-6 straight plus one spare 1 is worth
+  // 1600 even when the spare came from a joker). At most one wild per straight.
   for (const straight of STRAIGHTS) {
     const missing = straight.faces.filter((face) => counts[face] === 0);
-    const wildUsed = missing.length;
-    if (wildUsed > 1 || wildUsed > wilds) continue;
-    const remainder = cloneCounts(counts);
-    const straightCounts = emptyCounts();
+    if (missing.length > 1 || missing.length > wilds) continue;
+
+    const record = (remainder: FaceCount, wildUsed: number) => {
+      const rest = analyzeCounts(remainder, wilds - wildUsed);
+      if (!rest) return;
+      const straightCounts = emptyCounts();
+      for (const face of straight.faces) straightCounts[face]! += 1;
+      best = better(best, {
+        score: straight.points + rest.score,
+        combos: [
+          { type: 'straight', faces: [...straight.faces], points: straight.points, label: straight.label, wilds: wildUsed },
+          ...rest.combos,
+        ],
+        counts: addCounts(straightCounts, rest.counts),
+      });
+    };
+
+    const filled = cloneCounts(counts);
     for (const face of straight.faces) {
-      straightCounts[face]! += 1;
-      if (remainder[face]! > 0) remainder[face]! -= 1;
+      if (filled[face]! > 0) filled[face]! -= 1;
     }
-    const rest = analyzeCounts(remainder, wilds - wildUsed);
-    if (!rest) continue;
-    best = better(best, {
-      score: straight.points + rest.score,
-      combos: [
-        { type: 'straight', faces: [...straight.faces], points: straight.points, label: straight.label, wilds: wildUsed },
-        ...rest.combos,
-      ],
-      counts: addCounts(straightCounts, rest.counts),
-    });
+    record(filled, missing.length);
+
+    if (!missing.length && wilds > 0) {
+      for (const face of straight.faces) {
+        if (counts[face]! <= 0) continue;
+        const displaced = cloneCounts(counts);
+        for (const other of straight.faces) {
+          if (other !== face) displaced[other]! -= 1;
+        }
+        record(displaced, 1);
+      }
+    }
   }
 
   // No straight: wilds may only reinforce a face that already has a natural

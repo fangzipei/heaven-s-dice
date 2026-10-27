@@ -60,7 +60,11 @@ export function renderShopScreen(): void {
     || SHOP_RARITY_WEIGHTS[SHOP_RARITY_WEIGHTS.length - 1]!;
   const stockNote = Object.entries(band.weights)
     .filter(([, weight]) => weight > 0)
-    .map(([rarity, weight]) => `${RARITIES[rarity as keyof typeof RARITIES].short} ${Math.round(weight / Object.values(band.weights).reduce((a, b) => a + b, 0) * 100)}%`)
+    .map(([rarity, weight]) => {
+      const share = weight / Object.values(band.weights).reduce((a, b) => a + b, 0) * 100;
+      const label = share >= 1 ? `${Math.round(share)}%` : `${share.toFixed(2)}%`;
+      return `${RARITIES[rarity as keyof typeof RARITIES].short} ${label}`;
+    })
     .join(' · ');
   const slots = shopSlots(run);
   const slotNote = (count: number, unit: string, defaultCount: number, tail: string) => (count > defaultCount

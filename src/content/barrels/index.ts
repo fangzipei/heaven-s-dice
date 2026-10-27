@@ -10,6 +10,11 @@ import wolf_totem from './wolf_totem.ts';
 import demon_pact from './demon_pact.ts';
 import pentagram from './pentagram.ts';
 import vortex from './vortex.ts';
+import gilded from './gilded.ts';
+import marker from './marker.ts';
+import guide from './guide.ts';
+import brood from './brood.ts';
+import singles from './singles.ts';
 import type { BarrelDef } from '../../core/types.ts';
 
 export const BARREL_DEFS: BarrelDef[] = [
@@ -21,4 +26,9 @@ export const BARREL_DEFS: BarrelDef[] = [
   demon_pact,
   pentagram,
   vortex,
+  gilded,
+  marker,
+  guide,
+  brood,
+  singles,
 ];

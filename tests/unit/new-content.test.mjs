@@ -1,0 +1,329 @@
+import { describe, expect, test } from 'vitest';
+
+import {
+  DICE_BY_ID, ITEMS,
+} from '../../src/content/index.ts';
+import {
+  applyItemGrant, applyScore, buildScore, createRun, getDiceCapacity, initLevel,
+  makeRng, refreshSection, rollDice, shopPrice, useItem,
+} from '../../src/core/engine.ts';
+
+function blankState({ barrel = 'oak', rerolls = 3 } = {}) {
+  const state = createRun({ rng: makeRng(11) });
+  state.rng = makeRng(11);
+  state.bag = Array.from({ length: 6 }, (_, index) => ({ uid: `b${index}`, dieId: 'standard' }));
+  state.barrelId = barrel;
+  state.phase = 'selecting';
+  state.rerolls = rerolls;
+  state.target = 99_999;
+  state.score = 0;
+  state.roundScore = 0;
+  state.flags = { roundSinglesOnly: true };
+  return state;
+}
+
+function select(state, dice) {
+  state.dice = dice.map((entry, index) => ({
+    uid: `d${index}`,
+    bagUid: entry.bagUid || `b${index}`,
+    dieId: entry.dieId || 'standard',
+    value: entry.value,
+    blank: false,
+    wild: false,
+    scored: false,
+    probs: entry.probs,
+  }));
+  state.selected = state.dice.map((die) => die.uid);
+  return state;
+}
+
+const totalFor = (state) => buildScore(state, 'reroll').total;
+
+describe('条子术语与新被动物品', () => {
+  test('三条/四条/五条/六条/顺子/天地顺/一点五点各自乘算', () => {
+    const triple = blankState();
+    select(triple, [{ value: 3 }, { value: 3 }, { value: 3 }]);
+    expect(totalFor(triple)).toBe(300);
+    triple.passiveItems = ['triple_charm'];
+    expect(totalFor(triple)).toBe(345);
+
+    const quad = blankState();
+    select(quad, [{ value: 3 }, { value: 3 }, { value: 3 }, { value: 3 }]);
+    quad.passiveItems = ['quad_seal'];
+    expect(totalFor(quad)).toBe(720);
+
+    const quint = blankState();
+    select(quint, [3, 3, 3, 3, 3].map((value) => ({ value })));
+    quint.passiveItems = ['quint_clasp'];
+    expect(totalFor(quint)).toBe(1500);
+
+    const sext = blankState();
+    select(sext, [3, 3, 3, 3, 3, 3].map((value) => ({ value })));
+    sext.passiveItems = ['sext_crown'];
+    expect(totalFor(sext)).toBe(3600);
+
+    const straight = blankState();
+    select(straight, [1, 2, 3, 4, 5].map((value) => ({ value })));
+    straight.passiveItems = ['straight_bell'];
+    expect(totalFor(straight)).toBe(600);
+
+    const full = blankState();
+    select(full, [1, 2, 3, 4, 5, 6].map((value) => ({ value })));
+    full.passiveItems = ['heaven_plate'];
+    expect(totalFor(full)).toBe(1800);
+
+    const pips = blankState();
+    select(pips, [{ value: 1 }]);
+    pips.passiveItems = ['pip_ward'];
+    expect(totalFor(pips)).toBe(110);
+  });
+
+  test('三条物品不会误吃到四条', () => {
+    const state = blankState();
+    select(state, [{ value: 3 }, { value: 3 }, { value: 3 }, { value: 3 }]);
+    state.passiveItems = ['triple_charm'];
+    expect(totalFor(state)).toBe(600);
+  });
+});
+
+describe('新骰子计分规则', () => {
+  test('衡心 +100 / 孤崖 +300', () => {
+    const balance = blankState();
+    select(balance, [{ dieId: 'balance', value: 3 }, { value: 3 }, { value: 3 }]);
+    expect(totalFor(balance)).toBe(400);
+
+    const cliff = blankState();
+    select(cliff, [{ dieId: 'cliff', value: 3 }, { value: 3 }, { value: 3 }]);
+    expect(totalFor(cliff)).toBe(600);
+  });
+
+  test('重奏在条子里额外结算一次', () => {
+    const triple = blankState();
+    select(triple, [{ dieId: 'refrain', value: 3 }, { value: 3 }, { value: 3 }]);
+    expect(totalFor(triple)).toBe(400);
+
+    const quad = blankState();
+    select(quad, [{ dieId: 'refrain', value: 3 }, { value: 3 }, { value: 3 }, { value: 3 }]);
+    expect(totalFor(quad)).toBe(750);
+  });
+
+  test('末路在没有重投时 ×1.5', () => {
+    const state = blankState({ rerolls: 0 });
+    select(state, [{ dieId: 'last_road', value: 1 }]);
+    expect(totalFor(state)).toBe(150);
+  });
+
+  test('商旅每次商店重随只记一次，计分加成累加', () => {
+    const state = blankState();
+    state.bag[0] = { uid: 'b0', dieId: 'merchant' };
+    state.shop = { dice: [], barrel: [], item: [], refreshes: { dice: 0 } };
+    state.coins = 999;
+    refreshSection(state, 'dice');
+    refreshSection(state, 'dice');
+    expect(state.bag[0].shopRerolls).toBe(1);
+    state.phase = 'selecting';
+    select(state, [{ bagUid: 'b0', dieId: 'merchant', value: 1 }]);
+    expect(totalFor(state)).toBe(110);
+  });
+
+  test('金痕计分给 20 银币', () => {
+    const state = blankState();
+    select(state, [{ dieId: 'gilded_trace', value: 1 }, { value: 5 }]);
+    const result = applyScore(state, 'continue');
+    expect(result.ok).toBe(true);
+    expect(state.coins).toBe(20);
+  });
+
+  test('鎏金桶让计分骰给 100 银币', () => {
+    const state = blankState({ barrel: 'gilded' });
+    state.dice = [{ uid: 'd0', bagUid: 'b0', dieId: 'standard', value: 1, blank: false, wild: false, scored: false, gilded: true }];
+    state.selected = ['d0'];
+    applyScore(state, 'continue');
+    expect(state.coins).toBe(100);
+  });
+});
+
+describe('新骰桶与新骰子礼包', () => {
+  test('定一桶会把一颗骰子指定为 1', () => {
+    const state = blankState({ barrel: 'marker' });
+    state.dice = Array.from({ length: 6 }, (_, index) => ({
+      uid: `d${index}`, bagUid: `b${index}`, dieId: 'standard',
+      value: null, blank: false, wild: false, scored: false,
+    }));
+    // 6 次落骰都是 4 点，随后 0.0 触发 10% 概率、0.0 选中第一颗。
+    const seq = [0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0, 0, 0.5, 0.5, 0.5, 0.5, 0.5];
+    let cursor = 0;
+    const rng = () => seq[cursor++] ?? 0.5;
+    rollDice(state, { free: true, rng });
+    expect(state.dice.filter((die) => die.value === 1).length).toBe(1);
+  });
+
+  test('顺遂桶会把只差一颗的骰型补成天地顺', () => {
+    const state = blankState({ barrel: 'guide' });
+    state.dice = Array.from({ length: 6 }, (_, index) => ({
+      uid: `d${index}`, bagUid: `b${index}`, dieId: 'standard',
+      value: null, blank: false, wild: false, scored: false,
+    }));
+    // 1, 2, 3, 4, 6, 6 → 补成 1, 2, 3, 4, 5, 6。
+    const seq = [0.1, 0.25, 0.4, 0.6, 0.9, 0.95, 0.5, 0.5, 0.5, 0.5, 0.5];
+    let cursor = 0;
+    const rng = () => seq[cursor++] ?? 0.5;
+    rollDice(state, { free: true, rng });
+    const values = state.dice.map((die) => die.value).sort((a, b) => a - b);
+    expect(values).toEqual([1, 2, 3, 4, 5, 6]);
+  });
+
+  test('鎏金桶会给一颗落骰打上金痕', () => {
+    const state = blankState({ barrel: 'gilded' });
+    state.dice = Array.from({ length: 6 }, (_, index) => ({
+      uid: `d${index}`, bagUid: `b${index}`, dieId: 'standard',
+      value: null, blank: false, wild: false, scored: false,
+    }));
+    const seq = [0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0, 0, 0.5, 0.5, 0.5, 0.5, 0.5];
+    let cursor = 0;
+    const rng = () => seq[cursor++] ?? 0.5;
+    rollDice(state, { free: true, rng });
+    expect(state.dice.filter((die) => die.gilded).length).toBe(1);
+  });
+
+  test('史诗骰匣只开史诗骰，并消耗自身', () => {
+    const state = blankState();
+    state.activeItems = ['epic_chest'];
+    state.itemCharges = { epic_chest: 1 };
+    const used = useItem(state, 'epic_chest');
+    expect(used.ok).toBe(true);
+    expect(used.grant.candidates.length).toBe(1);
+    expect(used.grant.candidates[0].rarity).toBe('epic');
+    const applied = applyItemGrant(state, 'epic_chest', used.grant.candidates[0].id);
+    expect(applied.ok).toBe(true);
+    expect(state.activeItems).not.toContain('epic_chest');
+    expect(state.bag.some((entry) => entry.dieId === used.grant.candidates[0].id)).toBe(true);
+  });
+
+  test('每次摇骰都会打乱未计分骰子的桌面顺序', () => {
+    const state = blankState();
+    const ids = ['balance', 'cliff', 'refrain', 'shifting', 'merchant', 'gilded_trace'];
+    state.bag = ids.map((dieId, index) => ({ uid: `b${index}`, dieId }));
+    state.dice = ids.map((dieId, index) => ({
+      uid: `d${index}`, bagUid: `b${index}`, dieId,
+      value: null, blank: false, wild: false, scored: false,
+    }));
+    const orders = new Set();
+    for (let i = 0; i < 12; i += 1) {
+      state.phase = 'ready';
+      for (const die of state.dice) { die.value = null; die.scored = false; }
+      rollDice(state, { free: true, rng: makeRng(18000 + i) });
+      orders.add(state.dice.map((die) => die.dieId).join(','));
+    }
+    expect(orders.size).toBeGreaterThan(1);
+  });
+
+  test('独注桶只在整轮单骰计分时 +20%', () => {
+    const state = blankState({ barrel: 'singles' });
+    select(state, [{ value: 1 }]);
+    expect(totalFor(state)).toBe(120);
+
+    state.flags.roundSinglesOnly = false;
+    expect(totalFor(state)).toBe(100);
+  });
+
+  test('增殖桶会临时多出一颗骰，并在下一掷收回', () => {
+    const state = blankState({ barrel: 'brood' });
+    state.dice = Array.from({ length: 6 }, (_, index) => ({
+      uid: `d${index}`, bagUid: `b${index}`, dieId: 'standard',
+      value: null, blank: false, wild: false, scored: false,
+    }));
+    let sawExtra = false;
+    for (let i = 0; i < 120 && !sawExtra; i += 1) {
+      state.phase = 'ready';
+      for (const die of state.dice) { die.value = null; die.scored = false; }
+      rollDice(state, { free: true, rng: makeRng(8000 + i) });
+      sawExtra = state.dice.some((die) => die.extra);
+    }
+    expect(sawExtra).toBe(true);
+    expect(state.dice.length).toBe(7);
+    state.phase = 'ready';
+    rollDice(state, { free: true, rng: makeRng(9999) });
+    expect(state.dice.length).toBe(6);
+  });
+
+  test('稀有骰函给出两枚候选，选定后消耗并替换标准骰', () => {
+    const state = blankState();
+    state.activeItems = ['rare_pair'];
+    state.itemCharges = { rare_pair: 1 };
+    const used = useItem(state, 'rare_pair');
+    expect(used.ok).toBe(true);
+    expect(used.grant.candidates.length).toBe(2);
+    expect(used.grant.choose).toBe(1);
+    expect(state.activeItems).toContain('rare_pair');
+
+    const chosen = used.grant.candidates[0];
+    const applied = applyItemGrant(state, 'rare_pair', chosen.id);
+    expect(applied.ok).toBe(true);
+    expect(state.activeItems).not.toContain('rare_pair');
+    expect(state.bag.some((entry) => entry.dieId === chosen.id)).toBe(true);
+    expect(state.bag.length).toBe(getDiceCapacity(state));
+  });
+
+  test('随影复制第一颗，邻行贴向上一颗，浮面每关换概率', () => {
+    const copy = blankState();
+    copy.bag[0] = { uid: 'b0', dieId: 'shadow' };
+    copy.dice = Array.from({ length: 6 }, (_, index) => ({
+      uid: `d${index}`, bagUid: `b${index}`, dieId: index === 0 ? 'shadow' : 'standard',
+      value: null, blank: false, wild: false, scored: false,
+    }));
+    let copied = 0;
+    let copyCases = 0;
+    for (let i = 0; i < 120; i += 1) {
+      copy.phase = 'ready';
+      for (const die of copy.dice) { die.value = null; die.scored = false; }
+      rollDice(copy, { free: true, rng: makeRng(12000 + i) });
+      const index = copy.dice.findIndex((die) => die.dieId === 'shadow');
+      if (index > 0) {
+        copyCases += 1;
+        if (copy.dice[index].value === copy.dice[0].value) copied += 1;
+      }
+    }
+    expect(copyCases).toBeGreaterThan(20);
+    expect(copied).toBe(copyCases);
+
+    const neighbor = blankState();
+    neighbor.bag[0] = { uid: 'b0', dieId: 'neighbor' };
+    neighbor.dice = Array.from({ length: 6 }, (_, index) => ({
+      uid: `d${index}`, bagUid: `b${index}`, dieId: index === 0 ? 'neighbor' : 'standard',
+      value: null, blank: false, wild: false, scored: false,
+    }));
+    let adjacent = 0;
+    let neighborCases = 0;
+    for (let i = 0; i < 120; i += 1) {
+      neighbor.phase = 'ready';
+      for (const die of neighbor.dice) { die.value = null; die.scored = false; }
+      rollDice(neighbor, { free: true, rng: makeRng(15000 + i) });
+      const index = neighbor.dice.findIndex((die) => die.dieId === 'neighbor');
+      if (index > 0) {
+        neighborCases += 1;
+        const value = neighbor.dice[index].value;
+        const prev = neighbor.dice[index - 1].value;
+        if (value === prev - 1 || value === prev + 1) adjacent += 1;
+      }
+    }
+    expect(neighborCases).toBeGreaterThan(20);
+    expect(adjacent / neighborCases).toBeGreaterThan(0.5);
+
+    const shifting = blankState();
+    shifting.bag[0] = { uid: 'b0', dieId: 'shifting' };
+    initLevel(shifting);
+    const first = [...shifting.bag[0].probs];
+    initLevel(shifting);
+    expect(shifting.bag[0].probs).not.toEqual(first);
+  });
+});
+
+describe('商店涨价', () => {
+  test('所有货品在标价基础上上浮 25%', () => {
+    const state = blankState();
+    expect(shopPrice(state, 35)).toBe(44);
+    expect(shopPrice(state, 100)).toBe(125);
+    expect(shopPrice(state, 210)).toBe(263);
+  });
+});

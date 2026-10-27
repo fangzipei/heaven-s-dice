@@ -137,9 +137,12 @@ function renderDiceTrayGL(run: RunState, tray: HTMLElement) {
   }
   const dice = run.dice.map((die) => {
     const state = dieStateOf(run, die);
-    return { uid: die.uid, value: die.value, hidden: state.hidden, blank: state.blank, spec: state.spec };
+    return {
+      uid: die.uid, value: die.value, hidden: state.hidden, blank: state.blank,
+      spec: state.spec, gilded: Boolean(die.gilded), extra: Boolean(die.extra),
+    };
   });
-  const signature = dice.map((die) => `${die.uid}:${die.value ?? 'x'}:${die.spec.id}`).join('|');
+  const signature = dice.map((die) => `${die.uid}:${die.value ?? 'x'}:${die.spec.id}:${die.gilded ? 1 : 0}`).join('|');
   if (tray.dataset.dieSignature !== signature) {
     tray.dataset.dieSignature = signature;
     diceTable!.setDice(dice);

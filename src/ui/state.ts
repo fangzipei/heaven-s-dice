@@ -57,6 +57,8 @@ export interface UiState {
   compendiumTab: string;
   /** 骰袋已满时，市集买入流程挂起的那笔订单。 */
   pendingReplace: { index: number; die: PricedDie; price: number } | null;
+  /** 一次性骰子礼包开出的候选，等待玩家挑一枚。 */
+  pendingGrant: { itemId: string; candidates: PricedDie[] } | null;
   speechTimer: ReturnType<typeof setTimeout> | null;
   rollTimer: ReturnType<typeof setTimeout> | null;
   overlayTimer: ReturnType<typeof setTimeout> | null;
@@ -93,6 +95,7 @@ export const app: UiState = {
   soundEnabled: true,
   compendiumTab: 'dice',
   pendingReplace: null,
+  pendingGrant: null,
   speechTimer: null,
   rollTimer: null,
   overlayTimer: null,

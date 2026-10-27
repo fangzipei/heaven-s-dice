@@ -3,16 +3,17 @@
 // 从 app.js「Rendering — game」「Roll / score interactions」「Items」「Cup drag」
 // 四节原样搬出。面板本身在 ui/hud.ts、骰子在 ui/tray.ts、动画在 render/motion.ts，
 // 这里只负责把它们串成一次投掷。动画时序被 tools/cup-*.mjs 与截图依赖。
-import { ITEM_BY_ID, LEVEL_COUNT, getOpponent } from '../content/index.ts';
+import { ITEM_BY_ID, LEVEL_COUNT, getOpponent, rarityOf, DICE_SETS } from '../content/index.ts';
 import {
-  advanceLevel, applyGesture, applyScore, canUseItem, forfeit, getBarrel,
+  advanceLevel, applyGesture, applyItemGrant, applyScore, canUseItem, forfeit, getBarrel,
   getScorePreview, resolveSaltOffer as engineResolveSaltOffer, rollDice, selectedDice,
   useItem as engineUseItem,
 } from '../core/engine.ts';
 import type { ScoreAction } from '../core/engine.ts';
-import type { RunState } from '../core/types.ts';
+import type { PricedDie, RunState } from '../core/types.ts';
 import { clamp, h, num, sleep } from '../core/util.ts';
 import { motion, type MotionPoint } from '../render/motion.ts';
+import { artDieHtml } from '../render/dice-dom.ts';
 import { sound } from '../platform/sound.ts';
 import { discoverLoadout } from '../platform/storage.ts';
 import { recordScore, recordThrow, getRunRecord } from '../platform/run-record.ts';
@@ -759,6 +760,18 @@ export function useItem(itemId: string): void {
   if (!check.ok) { showToast(check.error!, 'error'); return; }
   const result = engineUseItem(app.run, itemId);
   if (!result.ok) { showToast(result.error!, 'error'); return; }
+
+  // Dice-granting consumables open their own choice panel before being spent.
+  if (result.grant) {
+    if (result.grant.candidates.length <= 1) {
+      grantItemDie(itemId, result.grant.candidates[0]!.id);
+      return;
+    }
+    app.pendingGrant = { itemId, candidates: result.grant.candidates };
+    showGrantModal();
+    return;
+  }
+
   sound.item();
   showToast(`${ITEM_BY_ID[itemId]!.name}：${ITEM_BY_ID[itemId]!.desc}`, 'good');
   renderGame();
@@ -769,6 +782,51 @@ export function useItem(itemId: string): void {
   } else if (app.run.phase === 'lost') {
     setTimeout(() => showDefeat(), 500);
   }
+}
+
+function showGrantModal(): void {
+  if (!app.run || !app.pendingGrant) return;
+  const { itemId, candidates } = app.pendingGrant;
+  const item = ITEM_BY_ID[itemId]!;
+  const cards = candidates.map((die: PricedDie) => {
+    const rarity = rarityOf(die);
+    return `<button class="replace-option" data-action="choose-grant-die" data-die-id="${h(die.id)}" style="--rarity:${rarity.color};--glow:${rarity.glow}">
+      ${artDieHtml(die)}
+      <b>${h(die.name)}</b><span>${rarity.name}${die.setId ? ` · ${h(DICE_SETS[die.setId].name)}` : ''}</span>
+      <small style="display:block;color:#8f8069;font-size:9px;line-height:1.6;margin-top:4px">${h(die.desc)}</small>
+    </button>`;
+  }).join('');
+  openOverlay(`
+    <div class="modal" style="width:min(660px,100%);padding:34px 36px">
+      <p class="modal-kicker">OPEN THE DICE CASE</p>
+      <h2 class="modal-title" style="font-size:28px;margin-top:5px">选择一枚骰子</h2>
+      <p class="modal-text" style="margin-top:8px">「${h(item.name)}」开出 ${candidates.length} 枚稀有骰子；选择其中 1 枚收入骰袋。骰袋已满时会替换一枚标准骰（没有标准骰则替换最便宜的骰）。</p>
+      <div class="replace-grid">${cards}</div>
+      <div class="modal-actions"><button class="secondary-button" data-action="cancel-grant">放弃</button></div>
+    </div>
+  `, { dismissible: true });
+}
+
+export function chooseGrantDie(dieId: string): void {
+  if (!app.run || !app.pendingGrant) return;
+  grantItemDie(app.pendingGrant.itemId, dieId);
+}
+
+function grantItemDie(itemId: string, dieId: string): void {
+  if (!app.run) return;
+  const result = applyItemGrant(app.run, itemId, dieId);
+  if (!result.ok) { showToast(result.error!, 'error'); return; }
+  app.pendingGrant = null;
+  closeOverlay();
+  sound.item();
+  renderGame();
+  const suffix = result.replaced ? `，替换了「${result.replaced.name}」` : '';
+  showToast(`获得「${result.die!.name}」${suffix}。`, 'good');
+}
+
+export function cancelGrant(): void {
+  app.pendingGrant = null;
+  closeOverlay();
 }
 
 export function forfeitRun(): void {

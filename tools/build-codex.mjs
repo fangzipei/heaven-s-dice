@@ -20,6 +20,7 @@ import {
 } from '../src/content/index.ts';
 import { dieSkinStyle, dieMotifSvg } from '../src/render/dice-skins.ts';
 import { pipPoints } from '../src/render/pip-layout.ts';
+import { effectiveProbs } from '../src/core/engine.ts';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const OUT = join(ROOT, 'docs', 'codex.html');
@@ -90,7 +91,7 @@ function dieCard(spec, index) {
     ? `<span class="effect"><b>${esc(spec.bonus.label.split('：')[0])}</b> · ${esc(spec.bonus.label.split('：').slice(1).join('：'))}</span>`
     : '<span class="effect none">无额外特性 · 只改变点数概率</span>';
 
-  return `<article class="card die-card" data-set="${spec.setId || 'none'}" data-rarity="${spec.rarity}" data-name="${esc(spec.name)}" data-order="${index}" style="--rarity:${rarity.color};--glow:${rarity.glow}">
+  return `<article class="card die-card" data-die-id="${spec.id}" data-set="${spec.setId || 'none'}" data-rarity="${spec.rarity}" data-name="${esc(spec.name)}" data-order="${index}" style="--rarity:${rarity.color};--glow:${rarity.glow}">
     <div class="top"><span class="rarity">${rarity.name}</span><span class="price">${spec.price ? `${spec.price} 银币` : '初始骰'}</span></div>
     <div class="art-row">
       <div class="${cls}" style="${skin}" role="img" aria-label="${esc(spec.name)}，最高概率面 ${isDemon(spec) && peak === 1 ? '恶魔赖子' : peak + ' 点'}">
@@ -129,7 +130,7 @@ function barrelExtra(barrel) {
   if (barrel.type === 'faceScore') {
     return `<div class="kv"><span>目标点数</span><b>${barrel.face} 点</b></div>`
       + `<div class="kv"><span>每颗计分</span><b>+${barrel.value} 分</b></div>`
-      + `<div class="kv"><span>三连奖励</span><b>+${barrel.tripleValue} 分</b></div>`;
+      + `<div class="kv"><span>三条奖励</span><b>+${barrel.tripleValue} 分</b></div>`;
   }
   if (barrel.type === 'wildScore') {
     return `<div class="kv"><span>每颗赖子</span><b>+${barrel.value} 分</b></div>`
@@ -144,7 +145,7 @@ function barrelExtra(barrel) {
 
 function barrelCard(barrel) {
   const rarity = RARITIES[barrel.rarity] || RARITIES.common;
-  return `<article class="card barrel-card" style="--rarity:${rarity.color};--glow:${rarity.glow}">
+  return `<article class="card barrel-card" data-rarity="${barrel.rarity}" data-name="${esc(barrel.name)}" style="--rarity:${rarity.color};--glow:${rarity.glow}">
     <div class="top"><span class="rarity">${rarity.name}</span><span class="price">${barrel.price ? `${barrel.price} 银币` : '初始持有'}</span></div>
     <div class="art cup">${inlineSvg(`assets/cups/${barrel.art}.svg`, barrel.id)}</div>
     <h4>${esc(barrel.name)}</h4>
@@ -159,7 +160,7 @@ function itemCard(item) {
   const rarity = RARITIES[item.rarity] || RARITIES.common;
   const kind = item.type === 'active' ? '主动 · 每关恢复 1 次' : '被动 · 永久生效';
   const extra = [item.unique ? '整局限一次' : '', item.consumable ? '一次性消耗' : ''].filter(Boolean);
-  return `<article class="card item-card" style="--rarity:${rarity.color};--glow:${rarity.glow}">
+  return `<article class="card item-card" data-rarity="${item.rarity}" data-name="${esc(item.name)}" style="--rarity:${rarity.color};--glow:${rarity.glow}">
     <div class="top"><span class="rarity">${rarity.name}</span><span class="price">${item.price} 银币</span></div>
     <div class="art icon">${inlineSvg(`assets/items/${item.icon}.svg`, item.id)}</div>
     <h4>${esc(item.name)}</h4>
@@ -174,10 +175,39 @@ function itemCard(item) {
 const SET_IDS = Object.keys(DICE_SETS);
 const diceList = [...DICE, STANDARD_DIE];
 const diceBySet = Object.fromEntries(SET_IDS.map((id) => [id, diceList.filter((d) => d.setId === id)]));
-diceBySet.none = diceList.filter((d) => !d.setId);
+diceBySet.none = diceList.filter((d) => d.id !== 'standard' && !d.setId);
 const rarityCount = DICE.reduce((acc, d) => { acc[d.rarity] = (acc[d.rarity] || 0) + 1; return acc; }, {});
 const activeItems = ITEMS.filter((i) => i.type === 'active');
 const passiveItems = ITEMS.filter((i) => i.type === 'passive');
+
+/* The live roller needs each die's six face drawings, its skin variables and
+   the real post-barrel probabilities. Baking them in keeps the page a single
+   offline file — no fetch, no build step in the browser. */
+const labDice = [STANDARD_DIE, ...DICE];
+const labData = labDice.map((die) => ({
+  id: die.id,
+  name: die.name,
+  rarity: die.rarity || 'common',
+  setId: die.setId || null,
+  skin: `${dieSkinStyle(die)};--glow:${(RARITIES[die.rarity] || RARITIES.common).glow}`,
+  faces: Object.fromEntries([1, 2, 3, 4, 5, 6].map((face) => [face, faceSvg(die, face)])),
+  probs: Object.fromEntries(BARRELS.map((barrel) => [
+    barrel.id,
+    effectiveProbs(die.id, barrel.id).map((p) => Number(p.toFixed(5))),
+  ])),
+}));
+const labJson = JSON.stringify(labData).replace(/</g, '\\u003c');
+const labDieGroups = [
+  ['标准骰', labDice.filter((die) => die.id === 'standard')],
+  ...SET_IDS.map((id) => [DICE_SETS[id].name, labDice.filter((die) => die.setId === id)]),
+  ['无套组', labDice.filter((die) => die.id !== 'standard' && !die.setId)],
+];
+const labDieOptions = labDieGroups.map(([label, list]) => (list.length
+  ? `<optgroup label="${esc(label)}">${list.map((die) => `<option value="${die.id}">${esc(die.name)}</option>`).join('')}</optgroup>`
+  : '')).join('');
+const labBarrelOptions = BARRELS.map(
+  (barrel) => `<option value="${barrel.id}">${esc(barrel.name)}</option>`,
+).join('');
 
 const setCards = SET_IDS.map((id) => {
   const set = DICE_SETS[id];
@@ -198,7 +228,7 @@ const diceGroups = SET_IDS.map((id) => {
     <div class="grid dice-grid">${diceBySet[id].map(dieCard).join('')}</div>
   </div>`;
 }).join('') + `<div class="set-group" style="--set-color:#8a7c66">
-    <h3>无套组 <span>不参与 2 / 4 件加成，但随时能买能卖——走的是极端骰型：只有单数、只有双数、非 1 即 6、阶梯、照面。</span></h3>
+    <h3>无套组 <span>不参与 2 / 4 件加成，但随时能买能卖——走极端点数、顺序互动或商店成长。</span></h3>
     <div class="grid dice-grid">${diceBySet.none.map(dieCard).join('')}</div>
   </div>`;
 
@@ -206,7 +236,11 @@ const shopTable = SHOP_RARITY_WEIGHTS.map((band, i) => {
   const from = i === 0 ? 1 : SHOP_RARITY_WEIGHTS[i - 1].untilLevel + 1;
   const total = Object.values(band.weights).reduce((a, b) => a + b, 0);
   const cells = Object.entries(band.weights)
-    .map(([r, w]) => `<td>${RARITIES[r].name} ${Math.round((w / total) * 100)}%</td>`).join('');
+    .map(([r, w]) => {
+      const share = (w / total) * 100;
+      const label = share >= 1 ? `${Math.round(share)}%` : `${share.toFixed(2)}%`;
+      return `<td>${RARITIES[r].name} ${label}</td>`;
+    }).join('');
   return `<tr><td>${from} – ${band.untilLevel}</td>${cells}</tr>`;
 }).join('');
 
@@ -392,6 +426,38 @@ h2{font-family:var(--serif);font-weight:400;font-size:28px;letter-spacing:.07em;
 .btn.on{background:rgba(217,180,106,.16);border-color:var(--gold);color:var(--gold-bright)}
 .count-note{margin-left:auto;color:#847459;font-size:11px;letter-spacing:.06em}
 
+/* live roller */
+.lab{display:grid;grid-template-columns:minmax(0,1fr) 260px;gap:18px 22px;padding:20px;border:1px solid rgba(255,255,255,.07);background:linear-gradient(160deg,rgba(31,24,16,.78),rgba(9,7,5,.9));box-shadow:0 18px 40px rgba(0,0,0,.3)}
+.lab-controls{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:10px 14px;align-items:flex-end}
+.lab-field{display:flex;flex-direction:column;gap:5px;font-size:10px;letter-spacing:.08em;color:#847459}
+.lab-field select{min-width:172px;padding:7px 10px;background:rgba(10,8,6,.92);border:1px solid var(--line);color:var(--ink);font-family:var(--sans);font-size:12px}
+.lab-field select:focus{outline:none;border-color:var(--gold)}
+.lab-actions{display:flex;gap:8px;margin-left:auto}
+.btn.primary{background:rgba(217,180,106,.18);border-color:rgba(217,180,106,.6);color:var(--gold-bright)}
+.btn:disabled{opacity:.45;cursor:wait}
+.lab-stage{display:flex;align-items:center;gap:24px;min-height:176px;justify-content:center;padding:8px 4px}
+.lab-die{flex:0 0 128px;width:128px;height:128px;transform:rotate(-4deg)}
+.lab-die.is-rolling{animation:lab-tumble .46s cubic-bezier(.3,.7,.35,1)}
+@keyframes lab-tumble{0%{transform:rotate(-4deg) scale(1)}22%{transform:rotate(16deg) scale(.92)}52%{transform:rotate(-22deg) scale(1.06)}78%{transform:rotate(9deg) scale(.98)}100%{transform:rotate(-4deg) scale(1)}}
+.lab-readout{display:flex;flex-direction:column;gap:6px;min-width:180px}
+.lab-readout b{font-family:var(--serif);font-weight:400;font-size:19px;color:var(--gold-bright);letter-spacing:.05em}
+.lab-readout span{font-size:10.5px;color:#93836b;line-height:1.7}
+.lab-probs{grid-column:1/-1;display:flex;align-items:flex-end;gap:6px;height:108px;padding:6px 2px 0}
+.lab-pb{flex:1;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:3px}
+.lab-pb i{width:100%;border-radius:2px 2px 0 0;background:linear-gradient(180deg,rgba(217,180,106,.8),rgba(217,180,106,.18));box-shadow:0 0 10px rgba(217,180,106,.15);transition:height .35s ease}
+.lab-pb.is-peak i{background:linear-gradient(180deg,#f0d296,rgba(240,210,150,.22));box-shadow:0 0 14px rgba(240,210,150,.3)}
+.lab-pb .lab-pct{font-size:9px;color:#8d7f68;font-variant-numeric:tabular-nums}
+.lab-pb .lab-face{font-size:10px;color:#a4937a}
+.lab-six{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;min-height:76px}
+.lab-mini{display:flex;flex-direction:column;align-items:center;gap:3px;animation:lab-pop .32s cubic-bezier(.2,.9,.3,1.3) both;animation-delay:calc(var(--i) * 45ms)}
+.lab-mini .mini-face{width:52px;border-radius:14%}
+.lab-mini b{font-size:11px;font-weight:400;color:var(--gold-bright)}
+.lab-mini em{font-size:8.5px;font-style:normal;color:#6f6352}
+@keyframes lab-pop{from{opacity:0;transform:translateY(10px) scale(.7) rotate(-8deg)}to{opacity:1;transform:none}}
+.card{transition:transform .22s ease,border-color .22s ease}
+.card:hover{transform:translateY(-3px);border-color:rgba(217,180,106,.28)}
+.die-card{cursor:pointer}
+
 /* market / tables */
 .market{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-bottom:14px}
 .market-card{padding:16px;border:1px solid rgba(255,255,255,.06);background:linear-gradient(168deg,rgba(31,24,16,.7),rgba(9,7,5,.86))}
@@ -423,6 +489,9 @@ footer code{color:#93836b;font-family:Consolas,monospace;font-size:9.5px}
   .dice-grid,.barrel-grid,.item-grid,.sets{grid-template-columns:repeat(2,minmax(0,1fr))}
   .market{grid-template-columns:1fr}
   .notes{grid-template-columns:1fr}
+  .lab{grid-template-columns:1fr}
+  .lab-stage{justify-content:flex-start;flex-wrap:wrap;gap:18px}
+  .lab-actions{margin-left:0}
   h1{font-size:31px}
 }
 @media (max-width:560px){
@@ -432,7 +501,8 @@ footer code{color:#93836b;font-family:Consolas,monospace;font-size:9.5px}
   .sec-head .count{margin-left:0}
 }
 @media (prefers-reduced-motion:reduce){
-  .die-sheen{animation:none!important}
+  .die-sheen,.lab-die.is-rolling,.lab-mini{animation:none!important}
+  .lab-pb i,.card{transition:none!important}
 }
 </style>
 </head>
@@ -442,7 +512,7 @@ footer code{color:#93836b;font-family:Consolas,monospace;font-size:9.5px}
 <header class="hero">
   <p class="kicker">HEAVEN'S DICE · THE GAMBLER'S ARCHIVE</p>
   <h1>天国骰局 · 内容总览</h1>
-  <p class="lede">骰子 ${diceList.length} 枚（${SET_IDS.map((id) => `${DICE_SETS[id].name} ${diceBySet[id].length}`).join(' / ')} / 无套组 ${diceBySet.none.length} / 标准 1）、骰桶 ${BARRELS.length} 只、物品 ${ITEMS.length} 件（含一次性 ${ITEMS.filter((i) => i.consumable).length} 件）。骰面立绘取自游戏真实皮肤（材质渐变 + 刻纹 + 点数），骰桶与物品为仓库 <code>assets/</code> 内的原始矢量图；所有数值由 <code>src/data.js</code> 直接生成，不会与游戏脱节。</p>
+  <p class="lede">骰子 ${diceList.length} 枚（${SET_IDS.map((id) => `${DICE_SETS[id].name} ${diceBySet[id].length}`).join(' / ')} / 无套组 ${diceBySet.none.length} / 标准 1）、骰桶 ${BARRELS.length} 只、物品 ${ITEMS.length} 件（含一次性 ${ITEMS.filter((i) => i.consumable).length} 件）。骰面立绘取自游戏真实皮肤（材质渐变 + 刻纹 + 点数），骰桶与物品为仓库 <code>assets/</code> 内的原始矢量图；所有数值由 <code>src/content/</code> 与 <code>src/core/engine.ts</code> 直接生成，不会与游戏脱节。</p>
   <div class="legend">
     ${Object.values(RARITIES).map((r) => `<span style="--c:${r.color}"><i></i>${r.name}</span>`).join('')}
     <span style="--c:#8a6d3d"><i></i>普通 ${rarityCount.common || 0} · 稀有 ${rarityCount.rare || 0} · 史诗 ${rarityCount.epic || 0} · 传说 ${rarityCount.legendary || 0}</span>
@@ -451,6 +521,7 @@ footer code{color:#93836b;font-family:Consolas,monospace;font-size:9.5px}
   <nav>
     <a href="#sets"><b>01</b> 骰组</a>
     <a href="#dice"><b>02</b> 骰子 ${diceList.length}</a>
+    <a href="#lab"><b>▶</b> 试掷台</a>
     <a href="#barrels"><b>03</b> 骰桶 ${BARRELS.length}</a>
     <a href="#items"><b>04</b> 物品 ${ITEMS.length}</a>
     <a href="#market"><b>05</b> 数值速查</a>
@@ -459,11 +530,11 @@ footer code{color:#93836b;font-family:Consolas,monospace;font-size:9.5px}
 
 <section id="sets">
   <div class="sec-head"><span class="sec-no">01</span><h2>骰子套组</h2><span class="count">2 件 / 4 件触发</span></div>
-  <p class="sec-intro">两套的机制完全不同，互不叠加：<b>狼裔</b>围绕点数 3（概率倾斜 + 围绕 3 的计分加成），<b>恶魔</b>把掷出的 1 变成赖子去借用别人的点数。同名套组装备 <b>2 枚</b>与 <b>4 枚</b>各触发一档，4 件时两档同时生效。两套各只有 <b>5 枚</b>，另外 <b>10 枚无套组</b>——它们不参与套装，靠极端点数分布取胜，额外加分也只出现在史诗与传说骰上。</p>
+  <p class="sec-intro">两套的机制完全不同，互不叠加：<b>狼裔</b>围绕点数 3（概率倾斜 + 围绕 3 的计分加成），<b>恶魔</b>把掷出的 1 变成赖子去借用别人的点数。同名套组装备 <b>2 枚</b>与 <b>4 枚</b>各触发一档，4 件时两档同时生效。两套各只有 <b>5 枚</b>，另外 <b>${diceBySet.none.length} 枚无套组</b>——它们不参与套装，走极端点数、顺序互动或商店成长，普通骰也可能带一条明确的计分规则。</p>
   <div class="sets">${setCards}</div>
   <ul class="notes" style="margin-top:14px">
     <li><b>恶魔赖子规则</b>：掷出 1 时不算 100 分，而是变成赖子「魔」。</li>
-    <li>赖子<b>可补三连</b>：该点数必须已有至少一颗自然骰。</li>
+    <li>赖子<b>可补三条</b>：该点数必须已有至少一颗自然骰。</li>
     <li>赖子<b>可补顺子缺口</b>：每个顺子最多替 1 颗。</li>
     <li>赖子<b>不能单独计分</b>，也不能当作单颗 1/5 凑分；没用上的赖子会让整手不成立。</li>
   </ul>
@@ -491,15 +562,51 @@ footer code{color:#93836b;font-family:Consolas,monospace;font-size:9.5px}
   </div>
 </section>
 
+<section id="lab">
+  <div class="sec-head"><span class="sec-no">LIVE</span><h2>试掷台</h2><span class="count">真实权重 × 骰桶修正 · 只在浏览器里跑</span></div>
+  <p class="sec-intro">选一枚骰子和一只骰桶，用游戏里的真实概率掷一次。概率条会随骰桶的偏向实时改写；也可以一次掷六颗看落点。<b>点击任意骰子卡片</b>会直接把它装进试掷台。这里不会读写存档。</p>
+  <div class="lab">
+    <div class="lab-controls">
+      <label class="lab-field"><span>骰子</span><select id="lab-die">${labDieOptions}</select></label>
+      <label class="lab-field"><span>骰桶</span><select id="lab-barrel">${labBarrelOptions}</select></label>
+      <div class="lab-actions">
+        <button class="btn primary" id="lab-roll" type="button">掷一颗</button>
+        <button class="btn" id="lab-roll-six" type="button">掷六颗</button>
+      </div>
+    </div>
+    <div class="lab-stage">
+      <div class="lab-die art-die" id="lab-die-face" aria-live="polite"></div>
+      <div class="lab-readout">
+        <b id="lab-result">等待投掷</b>
+        <span id="lab-detail">按「掷一颗」或「掷六颗」</span>
+      </div>
+    </div>
+    <div class="lab-probs" id="lab-probs" aria-label="当前组合的六面概率"></div>
+    <div class="lab-six" id="lab-six"></div>
+  </div>
+</section>
+
 <section id="barrels">
   <div class="sec-head"><span class="sec-no">03</span><h2>骰桶 · ${BARRELS.length} 只</h2><span class="count">初始 1 + 概率 3 + 点数加成 1 + 赖子加成 1 + 仪式 2</span></div>
   <p class="sec-intro">概率桶改写六面权重（×1.35 表示该面权重提高 35%）；<b>点数加成桶</b>只在 3 真正计入本次计分时付款，<b>赖子加成桶</b>只在使用了恶魔赖子时付款；仪式桶需要先在桌上画出图案，画阵失败可重画，不消耗资源。</p>
+  <div class="toolbar">
+    <input id="q-barrels" type="search" placeholder="搜索骰桶 / 特性…" aria-label="搜索骰桶">
+    <button class="btn on" data-filter="barrelRarity" data-value="all">全部稀有度</button>
+    ${Object.values(RARITIES).map((r) => `<button class="btn" data-filter="barrelRarity" data-value="${r.id}">${r.name}</button>`).join('')}
+    <span class="count-note" id="barrelCount"></span>
+  </div>
   <div class="grid barrel-grid">${BARRELS.map(barrelCard).join('')}</div>
 </section>
 
 <section id="items">
   <div class="sec-head"><span class="sec-no">04</span><h2>物品 · ${ITEMS.length} 件</h2><span class="count">主动 ${activeItems.length} + 被动 ${passiveItems.length}</span></div>
   <p class="sec-intro">主动物品每关恢复 1 次，随身不限件数，不占骰袋；被动物品买入即永久生效。<b>一次性消耗品</b>用完即消失，但同价位下效果更直接——幸运币、猎人印记、烈酒、加注契约、幸运粉、盐、静默赦令。<b>三层骰架 / 双孔桶架 / 暗格货架</b>分别给市集某一区 +1 货位。<b>丰饶骰袋</b>与<b>裂痕骰袋</b>改变可用骰子数量，整局各只能获取一次。</p>
+  <div class="toolbar">
+    <input id="q-items" type="search" placeholder="搜索物品 / 效果…" aria-label="搜索物品">
+    <button class="btn on" data-filter="itemRarity" data-value="all">全部稀有度</button>
+    ${Object.values(RARITIES).map((r) => `<button class="btn" data-filter="itemRarity" data-value="${r.id}">${r.name}</button>`).join('')}
+    <span class="count-note" id="itemCount"></span>
+  </div>
   <h3 class="sub-head">主动物品 · 每关 1 次</h3>
   <div class="grid item-grid">${activeItems.map(itemCard).join('')}</div>
   <h3 class="sub-head">被动物品 · 永久生效</h3>
@@ -515,7 +622,7 @@ footer code{color:#93836b;font-family:Consolas,monospace;font-size:9.5px}
       <div class="m-line"><span>刷新费用</span><b>10 银币</b></div>
       <div class="m-line"><span>价格</span><b>${['common', 'rare', 'epic', 'legendary'].map((r) => DICE.find((d) => d.rarity === r)?.price).join(' / ')}</b></div>
       <table style="margin-top:10px"><thead><tr><th>等级</th><th>普通</th><th>稀有</th><th>史诗</th><th>传说</th></tr></thead><tbody>${shopTable}</tbody></table>
-      <p style="color:#8d7e66;font-size:10px;line-height:1.7;margin-top:8px">已拥有该套组的骰子额外 ×1.5 权重，方便凑 2 / 4 件。</p>
+      <p style="color:#8d7e66;font-size:10px;line-height:1.7;margin-top:8px">百分比是每枚骰子出货时按稀有度聚合的实际占比（骰池里各档数量不同，引擎会按档内数量均分权重）。已拥有该套组的骰子额外 ×1.5 权重，方便凑 2 / 4 件。</p>
     </div>
     <div class="market-card">
       <h4>市集价格与计分</h4>
@@ -527,12 +634,12 @@ footer code{color:#93836b;font-family:Consolas,monospace;font-size:9.5px}
       <table style="margin-top:10px">
         <tbody>
           <tr><td>单颗 1 / 5</td><td>100 / 50 分</td></tr>
-          <tr><td>三连 1</td><td>1000 分</td></tr>
-          <tr><td>三连 2–6</td><td>点数 ×100</td></tr>
-          <tr><td>四 / 五 / 六连</td><td>三连 ×2 / ×4 / ×8</td></tr>
+          <tr><td>三条 1</td><td>1000 分</td></tr>
+          <tr><td>三条 2–6</td><td>点数 ×100</td></tr>
+          <tr><td>四 / 五 / 六条</td><td>三条 ×2 / ×4 / ×8</td></tr>
           <tr><td>顺子 1–5 / 2–6</td><td>500 / 750 分</td></tr>
-          <tr><td>通天顺 1–6</td><td>1500 分</td></tr>
-          <tr><td>恶魔赖子</td><td>补三连 / 顺子缺口，不能单独计分</td></tr>
+          <tr><td>天地顺 1–6</td><td>1500 分</td></tr>
+          <tr><td>恶魔赖子</td><td>补三条 / 顺子缺口，不能单独计分</td></tr>
         </tbody>
       </table>
     </div>
@@ -607,6 +714,185 @@ footer code{color:#93836b;font-family:Consolas,monospace;font-size:9.5px}
     });
   });
   apply();
+})();
+
+/* Barrels and items share one search + rarity filter. */
+(function(){
+  function setup(sectionId, qId, countId, key, unit){
+    var section = document.getElementById(sectionId);
+    if (!section) return;
+    var cards = [].slice.call(section.querySelectorAll('.card'));
+    var q = document.getElementById(qId);
+    var count = document.getElementById(countId);
+    var rarity = 'all';
+
+    function apply(){
+      var needle = q ? q.value.trim().toLowerCase() : '';
+      var shown = 0;
+      cards.forEach(function(card){
+        var hay = ((card.dataset.name || '') + ' ' + card.textContent).toLowerCase();
+        var ok = (!needle || hay.indexOf(needle) >= 0)
+          && (rarity === 'all' || card.dataset.rarity === rarity);
+        card.style.display = ok ? '' : 'none';
+        if (ok) shown += 1;
+      });
+      if (count) count.textContent = '显示 ' + shown + ' / ' + cards.length + ' ' + unit;
+    }
+
+    if (q) q.addEventListener('input', apply);
+    [].forEach.call(section.querySelectorAll('[data-filter="' + key + '"]'), function(btn){
+      btn.addEventListener('click', function(){
+        [].forEach.call(section.querySelectorAll('[data-filter="' + key + '"]'), function(b){ b.classList.remove('on'); });
+        btn.classList.add('on');
+        rarity = btn.dataset.value;
+        apply();
+      });
+    });
+    apply();
+  }
+  setup('barrels', 'q-barrels', 'barrelCount', 'barrelRarity', '只');
+  setup('items', 'q-items', 'itemCount', 'itemRarity', '件');
+})();
+
+/* Live roller: weighted by the same effective probabilities the game uses. */
+(function(){
+  var LAB = ${labJson};
+  var BY_ID = {};
+  LAB.forEach(function(die){ BY_ID[die.id] = die; });
+
+  var ONE = document.getElementById('lab-die');
+  var CUP = document.getElementById('lab-barrel');
+  var STAGE = document.getElementById('lab-die-face');
+  var RESULT = document.getElementById('lab-result');
+  var DETAIL = document.getElementById('lab-detail');
+  var PROBS = document.getElementById('lab-probs');
+  var SIX = document.getElementById('lab-six');
+  var ROLL = document.getElementById('lab-roll');
+  var ROLL_SIX = document.getElementById('lab-roll-six');
+  var reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var rolling = false;
+
+  function die(){ return BY_ID[ONE.value] || LAB[0]; }
+  function probs(){
+    var table = die().probs;
+    return table[CUP.value] || table[Object.keys(table)[0]];
+  }
+  function isWild(d, face){ return d.setId === 'demon' && face === 1; }
+  function faceText(d, face){ return isWild(d, face) ? '恶魔赖子' : face + ' 点'; }
+  function faceLabel(d, face){ return isWild(d, face) ? '魔' : String(face); }
+  function peakOf(ps){
+    var best = 0;
+    for (var i = 1; i < 6; i += 1) if (ps[i] > ps[best]) best = i;
+    return best + 1;
+  }
+  function weighted(ps){
+    var r = Math.random();
+    for (var i = 0; i < 6; i += 1) { r -= ps[i]; if (r <= 0) return i + 1; }
+    return 6;
+  }
+
+  function drawFace(face){
+    var d = die();
+    var cls = 'lab-die art-die rarity-' + d.rarity + (d.setId === 'demon' ? ' is-demon' : '');
+    if (STAGE.classList.contains('is-rolling')) cls += ' is-rolling';
+    STAGE.className = cls;
+    STAGE.style.cssText = d.skin;
+    STAGE.innerHTML = d.faces[face];
+    STAGE.setAttribute('aria-label', d.name + ' · ' + faceText(d, face));
+  }
+
+  function drawProbs(){
+    var d = die();
+    var ps = probs();
+    var max = Math.max.apply(null, ps) || 1;
+    var cupName = CUP.options[CUP.selectedIndex].text;
+    PROBS.innerHTML = ps.map(function(p, i){
+      var face = i + 1;
+      var h = Math.max(6, Math.round(p / max * 80));
+      var cls = 'lab-pb' + (face === peakOf(ps) ? ' is-peak' : '');
+      return '<div class="' + cls + '">'
+        + '<span class="lab-pct">' + (Math.round(p * 1000) / 10) + '%</span>'
+        + '<i style="height:' + h + 'px"></i>'
+        + '<span class="lab-face">' + faceLabel(d, face) + '</span>'
+        + '</div>';
+    }).join('');
+    DETAIL.textContent = d.name + ' × ' + cupName + ' · 六面修正后的真实权重';
+  }
+
+  function settle(){
+    rolling = false;
+    ROLL.disabled = false;
+    ROLL_SIX.disabled = false;
+    STAGE.classList.remove('is-rolling');
+  }
+
+  function beginRoll(){
+    rolling = true;
+    ROLL.disabled = true;
+    ROLL_SIX.disabled = true;
+    SIX.innerHTML = '';
+    STAGE.classList.remove('is-rolling');
+    void STAGE.offsetWidth;
+    STAGE.classList.add('is-rolling');
+    drawFace(peakOf(probs()));
+  }
+
+  function rollOne(){
+    if (rolling) return;
+    var d = die();
+    var ps = probs();
+    var face = weighted(ps);
+    beginRoll();
+    RESULT.textContent = '掷出 ' + faceText(d, face);
+    DETAIL.textContent = d.name + ' · 该面概率 ' + (Math.round(ps[face - 1] * 1000) / 10) + '%';
+    setTimeout(function(){ drawFace(face); settle(); }, reduced ? 0 : 430);
+  }
+
+  function rollSix(){
+    if (rolling) return;
+    var d = die();
+    var ps = probs();
+    var faces = [];
+    for (var i = 0; i < 6; i += 1) faces.push(weighted(ps));
+    var wilds = faces.filter(function(face){ return isWild(d, face); }).length;
+    var total = faces.reduce(function(sum, face){ return sum + face; }, 0);
+    beginRoll();
+    RESULT.textContent = '六颗合计 ' + total + ' 点' + (wilds ? ' · ' + wilds + ' 颗赖子' : '');
+    DETAIL.textContent = d.name + ' · 六颗独立按同一组权重掷出';
+    SIX.innerHTML = faces.map(function(face, i){
+      return '<div class="lab-mini" style="--i:' + i + '">'
+        + '<span class="mini-face" style="' + d.skin + '">' + d.faces[face] + '</span>'
+        + '<b>' + faceLabel(d, face) + '</b><em>' + faceText(d, face) + '</em></div>';
+    }).join('');
+    setTimeout(function(){ drawFace(peakOf(ps)); settle(); }, reduced ? 0 : 470);
+  }
+
+  function reset(){
+    drawFace(peakOf(probs()));
+    drawProbs();
+    RESULT.textContent = '等待投掷';
+    SIX.innerHTML = '';
+  }
+
+  ONE.addEventListener('change', reset);
+  CUP.addEventListener('change', reset);
+  ROLL.addEventListener('click', rollOne);
+  ROLL_SIX.addEventListener('click', rollSix);
+
+  [].forEach.call(document.querySelectorAll('.die-card[data-die-id]'), function(card){
+    card.addEventListener('click', function(){
+      ONE.value = card.dataset.dieId;
+      drawFace(peakOf(probs()));
+      drawProbs();
+      document.getElementById('lab').scrollIntoView({ behavior: reduced ? 'auto' : 'smooth', block: 'start' });
+      rollOne();
+    });
+    card.addEventListener('keydown', function(event){
+      if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); card.click(); }
+    });
+  });
+
+  reset();
 })();
 </script>
 </body>

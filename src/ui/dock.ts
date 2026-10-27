@@ -14,7 +14,7 @@ export function renderComboPreview() {
   const preview = $('#combo-preview');
   if (!preview) return;
   if (run.phase === 'ready') {
-    preview.innerHTML = '<span class="combo-placeholder">1 与 5 总能计分 · 三连、四连与顺子会带来大分</span>';
+    preview.innerHTML = '<span class="combo-placeholder">1 与 5 总能计分 · 三条、四条与顺子会带来大分</span>';
     return;
   }
   if (run.phase === 'hot') {

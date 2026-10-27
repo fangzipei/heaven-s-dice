@@ -91,6 +91,16 @@ test('demon jokers complete triples and straights', () => {
   expect(analyzeSelection([2, 3, 4, 7, 7]).valid).toBe(false);
 });
 
+test('a joker may displace a natural face in a complete straight', () => {
+  // The displaced 1 stays in the hand as a single, so 1500 + 100.
+  expect(score([1, 2, 3, 4, 5, 6, 7])).toBe(1600);
+  expect(score([7, 2, 3, 4, 5, 6, 1])).toBe(1600);
+  // With two natural 1s the joker is worth more turning them into a triple.
+  expect(score([1, 1, 2, 3, 4, 5, 6, 7])).toBe(1750);
+  expect(analyzeSelection([1, 2, 3, 4, 5, 6, 7]).combos.map((c) => c.type))
+    .toEqual(['straight', 'single']);
+});
+
 test('bestSelection counts jokers coming from demon dice', () => {
   const dice = [
     { uid: 'a', value: 1, wild: true },

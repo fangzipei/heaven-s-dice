@@ -41,7 +41,23 @@ export type DieBonus =
   | { type: 'fiveAndSix'; value: number; label: string }
   | { type: 'dieMultiplier'; value: number; label: string }
   | { type: 'tripleFace'; face: number; value: number; label: string }
-  | { type: 'straightFlat'; value: number; label: string };
+  | { type: 'straightFlat'; value: number; label: string }
+  /* Flat points whenever this die is part of the scoring selection. */
+  | { type: 'flatScored'; value: number; label: string }
+  /* Scores one extra share when this die is part of a 条子 (3+ identical). */
+  | { type: 'retriggerKind'; label: string }
+  /* Coins paid each time this die is scored. */
+  | { type: 'coinsPerScore'; value: number; label: string }
+  /* Multiplier while the level has no rerolls left. */
+  | { type: 'noRerollMultiplier'; value: number; label: string }
+  /* Permanent multiplier growth when the shop is rerolled (once per shop). */
+  | { type: 'shopRerollMultiplier'; value: number; label: string }
+  /* Copies the first die on the table (does nothing when it is first). */
+  | { type: 'copyFirst'; label: string }
+  /* Chance to snap to the previous die's face ±1. */
+  | { type: 'adjacentChance'; chance: number; label: string }
+  /* Re-rolls its own six-face weights at the start of every level. */
+  | { type: 'randomFaces'; label: string };
 
 export interface DiceDef {
   id: string;
@@ -81,18 +97,52 @@ export type BarrelDef =
   | {
       id: string; name: string; rarity: RarityId; type: 'gesture'; art: string;
       price: number; gesture: string; desc: string; short: string;
+    }
+  | {
+      id: string; name: string; rarity: RarityId; type: 'gild'; art: string;
+      price: number; chance: number; coin: number; desc: string; short: string;
+    }
+  | {
+      id: string; name: string; rarity: RarityId; type: 'forceOne'; art: string;
+      price: number; chance: number; desc: string; short: string;
+    }
+  | {
+      id: string; name: string; rarity: RarityId; type: 'straightFix'; art: string;
+      price: number; desc: string; short: string;
+    }
+  | {
+      id: string; name: string; rarity: RarityId; type: 'extraDie'; art: string;
+      price: number; chance: number; desc: string; short: string;
+    }
+  | {
+      id: string; name: string; rarity: RarityId; type: 'singlesBonus'; art: string;
+      price: number; multiplier: number; desc: string; short: string;
     };
+
+export type HandTag =
+  | 'triple' | 'quad' | 'quint' | 'sext'
+  | 'straight' | 'straight16' | 'oneOrFive';
+
+export interface ItemScoreRule {
+  hand: HandTag;
+  multiplier: number;
+  label: string;
+}
 
 export type ItemDef =
   | {
       id: string; name: string; type: 'active'; icon: string; rarity: RarityId;
       price: number; charges: number; desc: string; flavor: string;
       consumable?: boolean; unique?: boolean;
+      /** Consumable dice-granting items: roll N dice of a rarity, choose one. */
+      grant?: { rarity: RarityId; count: number; choose: number };
     }
   | {
       id: string; name: string; type: 'passive'; icon: string; rarity: RarityId;
       price: number; charges: number; desc: string; flavor: string;
       consumable?: boolean; unique?: boolean;
+      /** Passive hand-type multipliers, applied to the whole score. */
+      scoreRule?: ItemScoreRule;
     };
 
 export interface TableDef {
@@ -188,6 +238,12 @@ export interface ChapterInfo {
 export interface BagEntry {
   uid: string;
   dieId: string;
+  /** Per-level face weights for dice that re-roll their own distribution. */
+  probs?: number[];
+  /** How many shop rerolls this die has witnessed (shopRerollMultiplier). */
+  shopRerolls?: number;
+  /** The shop level already counted, so a reroll only pays once per shop. */
+  lastShopRerollLevel?: number;
 }
 
 export interface BoardDie {
@@ -198,6 +254,12 @@ export interface BoardDie {
   blank: boolean;
   wild: boolean;
   scored: boolean;
+  /** Per-level face weights copied from the bag entry. */
+  probs?: number[];
+  /** Gilded by a cup: pays coins the next time it scores. */
+  gilded?: boolean;
+  /** Temporary extra die granted by a cup for this throw only. */
+  extra?: boolean;
 }
 
 export type HandType = 'single' | 'triple' | 'quad' | 'quint' | 'sext' | 'straight' | 'mixed';
@@ -220,6 +282,8 @@ export interface RunFlags {
   bossLastType?: HandType | null;
   bossLockedType?: HandType | null;
   bossDisabled?: boolean;
+  /** 独注桶：this round has only scored single-die combinations so far. */
+  roundSinglesOnly?: boolean;
 }
 
 export interface LogEntry {

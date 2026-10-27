@@ -4,8 +4,9 @@ import type { BossContentDef } from '../../core/types.ts';
 export default {
   id: 'rotfang', art: 'boss-rat',
   // 赏金系数：这一关的银币 = 曲线 × 系数（曲线本身逐关上涨，系数随
-  // 关卡缓慢收敛，否则后期赏金会指数爆炸）。
-  curve: { target: 1, reward: 1.65 },
+  // 关卡缓慢收敛，否则后期赏金会指数爆炸）。首个庄家的目标额外抬高 30%，
+  // 让第三关成为整局第一次真正的门槛，而不是普通小兵关的延长线。
+  curve: { target: 1.3, reward: 1.65 },
   name: '腐牙伯爵', title: '鼠群之主', accent: '#c25b5b',
   effectName: '鼠群噬点', effectKey: 'blankNinth',
   effectDesc: '每投出 8 颗骰子，接下来 1 颗会被啃成白骰：没有点数，不能计分。',

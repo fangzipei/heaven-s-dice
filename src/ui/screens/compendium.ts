@@ -25,13 +25,13 @@ export function openCompendium(tab: string = app.compendiumTab): void {
   }
   app.compendiumTab = tab;
   const tabs: [string, string][] = [
-    ['dice', '秘骰 20'], ['barrels', '骰桶 8'], ['items', `物品 ${ITEMS.length}`], ['tables', '赌桌 5'], ['bosses', '庄家与小兵'],
+    ['dice', `秘骰 ${DICE.length}`], ['barrels', `骰桶 ${BARRELS.length}`], ['items', `物品 ${ITEMS.length}`], ['tables', '赌桌 5'], ['bosses', '庄家与小兵'],
   ];
   openOverlay(`
     <div class="modal compendium-modal">
       <button class="modal-close" data-action="close-overlay" aria-label="关闭"><svg><use href="#i-close"></use></svg></button>
       <header class="compendium-head">
-        <div><p class="modal-kicker">THE GAMBLER'S ARCHIVE</p><h2>赌徒图鉴</h2><p>五张桌子，二十枚秘骰，六只骰桶，十件物品，以及坐在对面的那些东西。</p></div>
+        <div><p class="modal-kicker">THE GAMBLER'S ARCHIVE</p><h2>赌徒图鉴</h2><p>五张桌子，${DICE.length} 枚秘骰，${BARRELS.length} 只骰桶，${ITEMS.length} 件物品，以及坐在对面的那些东西。</p></div>
         <span class="rail-note">收录内容 · 可随时查阅</span>
       </header>
       <div class="compendium-tabs">${tabs.map(([id, label]) => `<button class="compendium-tab ${id === tab ? 'is-active' : ''}" data-action="switch-compendium-tab" data-tab="${id}">${h(label)}</button>`).join('')}</div>
@@ -62,7 +62,7 @@ function compendiumProgress(kind: DiscoveryKind, total: number): string {
 function compendiumBody(tab: string): string {
   if (tab === 'dice') {
     const dice = codexDice();
-    return `<p class="compendium-intro">每一枚秘骰都像一张有偏向的牌：点数概率不同。狼裔 5 枚把筹码押在 3 上，恶魔 5 枚把掷出的 1 变成赖子，同套组集齐 2 枚与 4 枚会解锁额外效果；另外 10 枚无套组，走的是极端骰型，不参与套装但随时能买卖。额外加分只出现在史诗与传说骰上。${compendiumProgress('dice', dice.length)}</p>
+    return `<p class="compendium-intro">每一枚秘骰都像一张有偏向的牌：点数概率不同。狼裔 5 枚把筹码押在 3 上，恶魔 5 枚把掷出的 1 变成赖子，同套组集齐 2 枚与 4 枚会解锁额外效果；其余 ${dice.filter((die) => !die.setId).length} 枚无套组，走极端骰型、顺序互动或商店成长。额外加分不再只属于史诗与传说，普通骰也可能带一条明确的计分规则。${compendiumProgress('dice', dice.length)}</p>
       <div class="compendium-grid">${dice.map((spec) => {
         if (!isDiscovered('dice', spec.id)) return compendiumLockedCard('这枚骰子');
         const rarity = rarityOf(spec);
@@ -80,7 +80,7 @@ function compendiumBody(tab: string): string {
       }).join('')}</div>`;
   }
   if (tab === 'barrels') {
-    return `<p class="compendium-intro">骰桶决定骰子怎样离手。三只偏向特定点数，两只奖励指定骰型，两只要求你先在桌上画出一个仪式。默认的旧橡木桶不偏不倚。${compendiumProgress('barrels', BARRELS.length)}</p>
+    return `<p class="compendium-intro">骰桶决定骰子怎样离手：概率桶改写六面权重，点数/赖子桶奖励指定结果，染金、定点、补顺、增殖与单骰桶在落骰时插手，仪式桶则需要你先在桌上画出一个图案。默认的旧橡木桶不偏不倚。${compendiumProgress('barrels', BARRELS.length)}</p>
       <div class="compendium-grid">${BARRELS.map((barrel) => {
         if (!isDiscovered('barrels', barrel.id)) return compendiumLockedCard('这只骰桶');
         const rarity = rarityOf(barrel);
@@ -94,7 +94,7 @@ function compendiumBody(tab: string): string {
       }).join('')}</div>`;
   }
   if (tab === 'items') {
-    return `<p class="compendium-intro">${ITEMS.filter((i) => i.type === 'active').length} 件主动物品、${ITEMS.filter((i) => i.type === 'passive').length} 件被动物品，其中 ${ITEMS.filter((i) => i.consumable).length} 件是一次性消耗品：幸运币、猎人印记、烈酒、加注契约、幸运粉、盐、静默赦令。主动物品每关恢复一次，被动物品永久生效；三种货架被动分别让市集某一区多摆 1 件。丰饶骰袋与裂痕骰袋整局各只能获取一次。${compendiumProgress('items', ITEMS.length)}</p>
+    return `<p class="compendium-intro">${ITEMS.filter((i) => i.type === 'active').length} 件主动物品、${ITEMS.filter((i) => i.type === 'passive').length} 件被动物品，其中 ${ITEMS.filter((i) => i.consumable).length} 件是一次性消耗品。主动物品每关恢复一次，被动物品永久生效；三种货架被动分别让市集某一区多摆 1 件。丰饶骰袋与裂痕骰袋整局各只能获取一次。${compendiumProgress('items', ITEMS.length)}</p>
       <div class="compendium-grid">${ITEMS.map((item) => {
         if (!isDiscovered('items', item.id)) return compendiumLockedCard('这件物品');
         const rarity = rarityOf(item);

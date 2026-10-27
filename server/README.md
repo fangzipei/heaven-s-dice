@@ -75,6 +75,7 @@ Nginx proxies `/heavens-dice/api/` to `127.0.0.1:8787` via
 | GET | `/me` | Bearer | current account |
 | POST | `/runs` | Bearer | upload one finished run |
 | POST | `/runs/batch` | Bearer | upload up to 10 finished runs |
+| GET | `/history?limit=50` | Bearer | own finished runs with final loadout |
 | GET | `/leaderboards?board=time\|luck` | — | speed / misfortune boards |
 | GET | `/stats/entities?kind=die\|barrel\|item` | — | loadout strength aggregates |
 | GET | `/stats/summary` | — | run/user totals |

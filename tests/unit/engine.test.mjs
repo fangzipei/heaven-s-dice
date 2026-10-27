@@ -11,7 +11,7 @@ import {
 } from '../../src/core/engine.ts';
 import { makeRng, cashOutValue } from '../../src/core/engine.ts';
 import {
-  REROLL_BONUS_RATE, OVERSHOOT_BONUS_RATE, LEVELS, getLevelConfig, ITEM_BY_ID,
+  REROLL_BONUS_RATE, OVERSHOOT_BONUS_RATE, LEVELS, getLevelConfig, ITEM_BY_ID, DICE_BY_ID,
 } from '../../src/content/index.ts';
 
 function fresh(seed = 42) {
@@ -230,8 +230,27 @@ test('barrel probabilities normalise and bias faces', () => {
   expect(lead[4] > lead[1]).toBeTruthy();
 });
 
-test('shop offers 2 dice, 1 barrel, 3 items and purchases deduct coins', () => {
-  const state = fresh();
+test('early shop dice follow the 80 / 18 / 2 / 0.01 rarity split', () => {
+  const state = fresh(11);
+  state.level = 1;
+  const rng = makeRng(20261027);
+  const counts = { common: 0, rare: 0, epic: 0, legendary: 0 };
+  for (let i = 0; i < 2000; i += 1) {
+    const shop = createShop(state, { rng });
+    for (const offer of shop.dice) counts[DICE_BY_ID[offer.id].rarity] += 1;
+  }
+  const total = Object.values(counts).reduce((sum, n) => sum + n, 0);
+  expect(total).toBe(4000);
+  expect(counts.common / total).toBeGreaterThan(0.78);
+  expect(counts.common / total).toBeLessThan(0.82);
+  expect(counts.rare / total).toBeGreaterThan(0.16);
+  expect(counts.rare / total).toBeLessThan(0.20);
+  expect(counts.epic / total).toBeGreaterThan(0.012);
+  expect(counts.epic / total).toBeLessThan(0.03);
+  expect(counts.legendary).toBeLessThanOrEqual(2);
+});
+
+test('shop offers 2 dice, 1 barrel, 3 items and purchases deduct coins', () => {  const state = fresh();
   state.level = 2;
   initLevel(state);
   state.score = state.target;
@@ -398,7 +417,7 @@ test('wolf four-piece adds the triple-three bonus', () => {
   state.selected = state.dice.filter((d) => d.value === 3).map((d) => d.uid);
   const score = buildScore(state, 'reroll');
   expect(score.breakdown.flats.some(
-    (flat) => flat.label === '狼裔 4 件 · 三连 3 加成' && flat.value === 600,
+    (flat) => flat.label === '狼裔 4 件 · 三条 3 加成' && flat.value === 600,
   )).toBeTruthy();
 });
 
@@ -415,6 +434,45 @@ test('a demon joker cannot score alone but completes a triple', () => {
   const score = buildScore(state, 'reroll');
   expect(score.valid).toBe(true);
   expect(score.breakdown.base).toBe(1000);
+});
+
+test('seven dice: 1-6 plus a spare 1 still scores, even when the 1 is a joker', () => {
+  const natural = fresh();
+  natural.passiveItems = ['dice_bag'];
+  syncBag(natural);
+  initLevel(natural);
+  forceRoll(natural, [1, 2, 3, 4, 5, 6, 1]);
+  natural.selected = natural.dice.map((d) => d.uid);
+  const plain = buildScore(natural, 'continue');
+  expect(plain.valid).toBe(true);
+  expect(plain.breakdown.base).toBe(1600);
+
+  const joker = fresh();
+  joker.passiveItems = ['dice_bag'];
+  syncBag(joker);
+  initLevel(joker);
+  forceRoll(joker, [1, 2, 3, 4, 5, 6, 1]);
+  joker.dice[0].wild = true;
+  joker.selected = joker.dice.map((d) => d.uid);
+  const wild = buildScore(joker, 'continue');
+  expect(wild.valid).toBe(true);
+  expect(wild.breakdown.base).toBe(1600);
+});
+
+test('a joker spent on the straight does not also pay an any-triple bonus', () => {
+  const state = fresh();
+  state.bag[0].dieId = 'jack';
+  state.bag[1].dieId = 'demon_imp';
+  state.passiveItems = ['dice_bag'];
+  syncBag(state);
+  initLevel(state);
+  forceRoll(state, [3, 1, 1, 1, 1, 2, 4]);
+  state.dice[1].wild = true;
+  state.selected = state.dice.map((d) => d.uid);
+  const score = buildScore(state, 'continue');
+  expect(score.valid).toBe(true);
+  expect(score.breakdown.base).toBe(700);
+  expect(score.breakdown.flats.some((flat) => flat.label.includes('骰王'))).toBe(false);
 });
 
 test('demon set bonus multiplies only when a joker is used', () => {
@@ -455,7 +513,7 @@ test('face-score barrel pays per scored face plus a triple bonus', () => {
   const score = buildScore(state, 'reroll');
   expect(score.breakdown.base).toBe(300);
   expect(score.breakdown.flats.some((f) => f.label.includes('狼图腾桶 · 3 颗 3') && f.value === 150)).toBeTruthy();
-  expect(score.breakdown.flats.some((f) => f.label.includes('狼图腾桶 · 三连 3') && f.value === 150)).toBeTruthy();
+  expect(score.breakdown.flats.some((f) => f.label.includes('狼图腾桶 · 三条 3') && f.value === 150)).toBeTruthy();
   expect(score.total).toBe(600);
 });
 
@@ -1029,7 +1087,7 @@ test('a bust under the suspensor scatters the whole table', () => {
   state.stats.levelScore = 250;
   state.roundScore = 250;
 
-  // 2 · 3 · 4 · 6 · 2 · 3：没有 1、没有 5、没有三连——必翻。
+  // 2 · 3 · 4 · 6 · 2 · 3：没有 1、没有 5、没有三条——必翻。
   const seq = [0.2, 0.35, 0.55, 0.9, 0.25, 0.4];
   let i = 0;
   state.phase = 'ready';

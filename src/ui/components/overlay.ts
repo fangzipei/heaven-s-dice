@@ -42,5 +42,6 @@ export function closeOverlay(): void {
     root.innerHTML = '';
     if (shop) shop.style.pointerEvents = '';
     app.pendingReplace = null;
+    app.pendingGrant = null;
   }, 220);
 }

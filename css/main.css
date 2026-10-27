@@ -348,7 +348,7 @@ svg { width: 1em; height: 1em; display: block; }
 .home-account svg { width: 14px; height: 14px; color: #b99459; }
 .home-resume { width: 100%; height: 44px; border: 1px solid rgba(217,180,106,.32); background: rgba(7,6,4,.55); color: #d9c39a; font-family: var(--serif); font-size: 11px; letter-spacing: .12em; transition: .2s; }
 .home-resume:hover { border-color: rgba(255,227,164,.7); color: #ffe0a0; background: rgba(35,25,14,.8); }
-.home-secondary-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; }
+.home-secondary-actions { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 9px; }
 .home-option { height: 46px; display: flex; align-items: center; justify-content: center; gap: 8px; border: 1px solid rgba(217,180,106,.22); background: rgba(7,6,4,.56); color: #b3a187; font-family: var(--serif); font-size: 12px; letter-spacing: .14em; backdrop-filter: blur(5px); transition: .2s; }
 .home-option svg { width: 14px; height: 14px; color: #b99459; }
 .home-option:hover { color: #f0d49a; border-color: rgba(217,180,106,.5); background: rgba(32,23,13,.72); }
@@ -407,6 +407,33 @@ svg { width: 1em; height: 1em; display: block; }
 @media (max-width: 720px) {
   .account-button span { display: none; }
   .account-modal { padding: 30px 22px; }
+}
+.history-modal { width: min(820px, 100%); padding: 34px 38px 30px; }
+.history-list { display: grid; gap: 10px; margin-top: 15px; max-height: min(62vh, 620px); overflow: auto; padding-right: 3px; }
+.history-empty { padding: 34px 10px; border: 1px dashed rgba(217,180,106,.16); color: #8d7c63; text-align: center; font-size: 10px; line-height: 1.8; }
+.history-card { border: 1px solid rgba(217,180,106,.16); background: rgba(5,4,3,.36); padding: 11px 13px 12px; }
+.history-card.is-win { border-left: 2px solid rgba(143,198,143,.7); }
+.history-card.is-loss { border-left: 2px solid rgba(184,95,76,.65); }
+.history-card.is-forfeit { border-left: 2px solid rgba(160,140,110,.6); }
+.history-head { display: flex; align-items: baseline; gap: 10px; }
+.history-result { padding: 2px 7px; border: 1px solid rgba(217,180,106,.28); color: #c8ad7a; font-size: 8px; letter-spacing: .12em; }
+.history-card.is-win .history-result { border-color: rgba(143,198,143,.42); color: #b9d6a0; }
+.history-card.is-loss .history-result { border-color: rgba(184,95,76,.45); color: #d6917e; }
+.history-when { color: #a89476; font-size: 9px; }
+.history-level { margin-left: auto; color: #6f6250; font-size: 8px; letter-spacing: .1em; }
+.history-stats { display: flex; gap: 26px; padding: 8px 0 7px; border-bottom: 1px solid rgba(217,180,106,.09); }
+.history-stats div { display: flex; align-items: baseline; gap: 5px; }
+.history-stats span { color: #756750; font-size: 8px; }
+.history-stats b { color: #e1c994; font-family: var(--serif); font-size: 13px; font-weight: 400; }
+.history-loadout { display: grid; grid-template-columns: 1.5fr 1fr 1.2fr 1.2fr; gap: 7px 13px; margin-top: 8px; }
+.history-loadout div { min-width: 0; display: flex; gap: 5px; font-size: 8px; line-height: 1.5; }
+.history-loadout span { flex: 0 0 auto; color: #756750; }
+.history-loadout b { color: #b9a789; font-weight: 400; overflow-wrap: anywhere; }
+@media (max-width: 720px) {
+  .history-modal { padding: 27px 18px 22px; }
+  .history-list { max-height: 64vh; }
+  .history-stats { gap: 14px; }
+  .history-loadout { grid-template-columns: 1fr 1fr; }
 }
 
 .game-layout { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) 332px; }
@@ -1097,6 +1124,19 @@ svg { width: 1em; height: 1em; display: block; }
 .die.is-rerolling::after { background: radial-gradient(ellipse, rgba(255,210,130,.3), rgba(0,0,0,.45) 70%); }
 .die.is-scored { opacity: .3; transform: scale(.88) translateY(4px); pointer-events: none; }
 .die.is-scored .die-face { filter: grayscale(.7) brightness(.72); }
+
+/* 鎏金桶 / 增殖桶：金痕与临时骰的可读标记 */
+.die.is-gilded .die-face {
+  border-color: rgba(255, 226, 150, .92);
+  box-shadow:
+    inset 1px 1px 0 rgba(255, 246, 208, .7),
+    inset -2px -2px 6px rgba(96, 60, 12, .45),
+    0 0 14px rgba(255, 198, 80, .8),
+    0 10px 18px rgba(0, 0, 0, .45);
+}
+.die.is-gilded .die-face::after { border-color: rgba(255, 236, 170, .8); }
+.die.is-extra { filter: drop-shadow(0 0 9px rgba(120, 220, 255, .4)); }
+.die.is-extra .die-mark { color: #9ad8e7; }
 .die.is-rerolling.is-scored { opacity: 1; transform: none; }
 .die.is-rerolling.is-scored .die-face { filter: none; }
 .die.is-scored .die-check { inset: 50% auto auto 50%; width: 27px; height: 27px; opacity: 1; color: #cfb888; background: rgba(25,18,10,.76); transform: translate(-50%,-50%); font-size: 11px; }

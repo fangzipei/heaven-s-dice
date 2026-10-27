@@ -7,7 +7,7 @@ import {
 } from '../content/index.ts';
 import {
   analyzeSelection, bestSelection, hasScoringSelection, WILD_VALUE,
-  type ScoringAnalysis, type Combo, type PlayableDie, type FaceCount,
+  type ScoringAnalysis, type Combo, type PlayableDie, type FaceCount, type NKindCombo,
 } from './scoring.ts';
 import type {
   RunState, BoardDie, BagEntry, DiceDef, PricedDie, BarrelDef, ItemDef, BossDef,
@@ -28,6 +28,8 @@ export interface RunScoreBreakdown {
 export const BASE_REROLLS = 3;
 export const STARTING_COINS = 0;
 export const DEBUG = false;
+/** 最近一次平衡调整：所有商店货品在标价基础上再上浮 25%。 */
+export const SHOP_PRICE_MULTIPLIER = 1.25;
 
 let uidCounter = 0;
 function uid(prefix = 'id'): string {
@@ -56,6 +58,34 @@ function pickMany<T>(list: T[], count: number, rng: () => number): T[] {
   return out;
 }
 
+function normalizeWeights(weights: number[]): number[] {
+  const sum = weights.reduce((a, b) => a + b, 0);
+  return sum > 0 ? weights.map((w) => w / sum) : [1 / 6, 1 / 6, 1 / 6, 1 / 6, 1 / 6, 1 / 6];
+}
+
+/** 浮面骰：每关重新抽一副可读的六面权重（不会出现极端 0%）。 */
+function randomFaceWeights(rng: () => number): number[] {
+  return normalizeWeights(Array.from({ length: 6 }, () => 0.05 + rng() * 0.30));
+}
+
+function shuffleInPlace<T>(list: T[], rng: () => number): T[] {
+  for (let i = list.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(rng() * (i + 1));
+    [list[i], list[j]] = [list[j]!, list[i]!];
+  }
+  return list;
+}
+
+function dieBonus(dieId: string): DiceDef['bonus'] {
+  return getDieSpec(dieId).bonus;
+}
+
+function prepareRandomFaces(entry: BagEntry, rng: () => number): void {
+  if (dieBonus(entry.dieId)?.type === 'randomFaces') {
+    entry.probs = randomFaceWeights(rng);
+  }
+}
+
 function standardEntry(): BagEntry {
   return { uid: uid('bag'), dieId: 'standard' };
 }
@@ -81,13 +111,13 @@ export function getBarrel(state: RunState): BarrelDef {
   return BARREL_BY_ID[state.barrelId] || BARRELS[0]!;
 }
 
-export function effectiveProbs(dieId: string, barrelId: string): number[] {
+export function effectiveProbs(dieId: string, barrelId: string, override?: number[]): number[] {
   const die = getDieSpec(dieId);
   const barrel = BARREL_BY_ID[barrelId] || BARRELS[0]!;
   const bias = 'bias' in barrel && barrel.bias ? barrel.bias : [1, 1, 1, 1, 1, 1];
-  const weights = die.probs.map((probability, index) => probability * (bias[index] ?? 1));
-  const sum = weights.reduce((a, b) => a + b, 0);
-  return weights.map((w) => w / sum);
+  const base = override && override.length === 6 ? override : die.probs;
+  const weights = base.map((probability, index) => probability * (bias[index] ?? 1));
+  return normalizeWeights(weights);
 }
 
 function rollValue(probs: number[], rng: () => number): number {
@@ -108,6 +138,7 @@ function makeBoard(bag: BagEntry[]): BoardDie[] {
     blank: false,
     wild: false,
     scored: false,
+    probs: entry.probs ? [...entry.probs] : undefined,
   }));
 }
 
@@ -150,6 +181,7 @@ function resetLevelFlags(state: RunState) {
     bossLastType: null,
     bossLockedType: null,
     bossDisabled: false,
+    roundSinglesOnly: true,
   };
 }
 
@@ -184,10 +216,10 @@ function scorableDice(state: RunState): BoardDie[] {
 
 const HAND_TYPE_NAMES: Record<string, string> = {
   single: '单骰',
-  triple: '三连',
-  quad: '四连',
-  quint: '五连',
-  sext: '六连',
+  triple: '三条',
+  quad: '四条',
+  quint: '五条',
+  sext: '六条',
   straight: '顺子',
   mixed: '混合',
 };
@@ -253,6 +285,7 @@ export function bossStatusText(state: RunState): string {
 
 export function initLevel(state: RunState): RunState {
   syncBag(state);
+  for (const entry of state.bag) prepareRandomFaces(entry, getRng(state));
   const config = getLevelConfig(state.level);
   state.targetBase = targetForLevel(state);
   state.target = state.targetBase;
@@ -444,6 +477,9 @@ export function buildScore(state: RunState, action = 'reroll'): BuildScoreResult
   const dieSpecs = selected.map((d) => getDieSpec(d.dieId));
   const counts = analysis.counts as FaceCount;
   const selectedIds = selected.map((d) => d.dieId);
+  // A "triple" bonus pays for a triple in the scoring partition, not for three
+  // dice of a face that were split between a straight and single changes.
+  const hasTriple = analysis.combos.some((combo) => combo.type === 'nkind' && combo.count >= 3);
 
   // Per-die bonuses.
   for (let i = 0; i < selected.length; i += 1) {
@@ -457,10 +493,11 @@ export function buildScore(state: RunState, action = 'reroll'): BuildScoreResult
     } else if (bonus.type === 'wildFlat' && die.wild) {
       flatAdd += bonus.value;
       flats.push({ label: `${spec.name} · ${bonus.label}`, value: bonus.value });
-    } else if (bonus.type === 'tripleFace' && counts[bonus.face]! >= 3) {
+    } else if (bonus.type === 'tripleFace'
+      && analysis.combos.some((combo) => combo.type === 'nkind' && combo.face === bonus.face && combo.count >= 3)) {
       flatAdd += bonus.value;
       flats.push({ label: `${spec.name} · ${bonus.label}`, value: bonus.value });
-    } else if (bonus.type === 'anyTriple' && Object.values(counts).some((n) => n >= 3)) {
+    } else if (bonus.type === 'anyTriple' && hasTriple) {
       flatAdd += bonus.value;
       flats.push({ label: `${spec.name} · ${bonus.label}`, value: bonus.value });
     } else if (bonus.type === 'hasFace' && counts[bonus.face]! >= 1) {
@@ -475,6 +512,29 @@ export function buildScore(state: RunState, action = 'reroll'): BuildScoreResult
     } else if (bonus.type === 'dieMultiplier') {
       multiplier *= bonus.value;
       multipliers.push({ label: `${spec.name} · ${bonus.label}`, value: bonus.value });
+    } else if (bonus.type === 'flatScored') {
+      flatAdd += bonus.value;
+      flats.push({ label: `${spec.name} · ${bonus.label}`, value: bonus.value });
+    } else if (bonus.type === 'retriggerKind') {
+      const kind = analysis.combos.find(
+        (combo): combo is NKindCombo => combo.type === 'nkind' && combo.face === die.value && combo.count >= 3,
+      );
+      if (kind) {
+        const value = Math.round(kind.points / kind.count);
+        flatAdd += value;
+        flats.push({ label: `${spec.name} · ${bonus.label}`, value });
+      }
+    } else if (bonus.type === 'noRerollMultiplier' && state.rerolls <= 0) {
+      multiplier *= bonus.value;
+      multipliers.push({ label: `${spec.name} · ${bonus.label}`, value: bonus.value });
+    } else if (bonus.type === 'shopRerollMultiplier') {
+      const entry = state.bag.find((item) => item.uid === die.bagUid);
+      const stacks = entry?.shopRerolls || 0;
+      if (stacks > 0) {
+        const value = 1 + stacks * bonus.value;
+        multiplier *= value;
+        multipliers.push({ label: `${spec.name} · ${bonus.label} ×${stacks}`, value });
+      }
     }
   }
 
@@ -489,7 +549,7 @@ export function buildScore(state: RunState, action = 'reroll'): BuildScoreResult
   }
   if (wolfCount >= 4 && counts[3]! >= 3) {
     flatAdd += 600;
-    flats.push({ label: '狼裔 4 件 · 三连 3 加成', value: 600 });
+    flats.push({ label: '狼裔 4 件 · 三条 3 加成', value: 600 });
   }
   if (demonCount >= 4 && wildDice > 0) {
     multiplier *= 1.22;
@@ -511,7 +571,7 @@ export function buildScore(state: RunState, action = 'reroll'): BuildScoreResult
     }
     if (n >= 3 && barrel.tripleValue) {
       flatAdd += barrel.tripleValue;
-      flats.push({ label: `${barrel.name} · 三连 ${barrel.face}`, value: barrel.tripleValue });
+      flats.push({ label: `${barrel.name} · 三条 ${barrel.face}`, value: barrel.tripleValue });
     }
   }
   if (barrel.type === 'wildScore' && wildDice > 0) {
@@ -522,6 +582,41 @@ export function buildScore(state: RunState, action = 'reroll'): BuildScoreResult
   if (state.passiveItems.includes('cracked_pouch')) {
     multiplier *= 1.25;
     multipliers.push({ label: '裂痕骰袋 · 孤注一掷', value: 1.25 });
+  }
+
+  // Passive hand-type items: one multiplier per matching 条子/顺子/单点 rule.
+  const kind = (size: number) => analysis.combos.some(
+    (combo) => combo.type === 'nkind' && combo.count === size,
+  );
+  const hasStraight = analysis.combos.some((combo) => combo.type === 'straight');
+  const hasFullStraight = analysis.combos.some(
+    (combo) => combo.type === 'straight' && combo.faces.length === 6,
+  );
+  const hasOneOrFive = selected.some(
+    (die) => !die.wild && (die.value === 1 || die.value === 5),
+  );
+  for (const item of ITEMS) {
+    if (!('scoreRule' in item)) continue;
+    const rule = item.scoreRule;
+    if (!rule || !state.passiveItems.includes(item.id)) continue;
+    const matches = rule.hand === 'triple' ? kind(3)
+      : rule.hand === 'quad' ? kind(4)
+        : rule.hand === 'quint' ? kind(5)
+          : rule.hand === 'sext' ? kind(6)
+            : rule.hand === 'straight' ? hasStraight
+              : rule.hand === 'straight16' ? hasFullStraight
+                : hasOneOrFive;
+    if (!matches) continue;
+    multiplier *= rule.multiplier;
+    multipliers.push({ label: `${item.name} · ${rule.label}`, value: rule.multiplier });
+  }
+
+  if (barrel.type === 'singlesBonus'
+    && state.flags.roundSinglesOnly !== false
+    && analysis.combos.length > 0
+    && analysis.combos.every((combo) => combo.type === 'single')) {
+    multiplier *= barrel.multiplier;
+    multipliers.push({ label: `${barrel.name} · 全单骰`, value: barrel.multiplier });
   }
 
   // Pact die: carrying it is a boon when it scores, a penalty when it sits out.
@@ -641,6 +736,7 @@ function bustRound(state: RunState): number {
   state.roundScore = 0;
   state.targetReached = state.score >= state.target;
   state.lastBust = { lost, floating };
+  state.flags.roundSinglesOnly = true;
   pushLog(state, floating
     ? `秤翻了：整桌 ${lost} 分漂浮分全部消散。`
     : `本轮 ${lost} 分作废。`, 'bad');
@@ -864,8 +960,92 @@ export function resolveSaltOffer(state: RunState, use: boolean): { ok: boolean; 
   return { ok: true, saved };
 }
 
-export function rollDice(state: RunState, { free = false, rng = getRng(state) }: { free?: boolean; rng?: () => number } = {}): RollResult {
-  if (state.phase === 'won' || state.phase === 'run-won' || state.phase === 'lost') {
+function completeStraight(dice: BoardDie[], rng: () => number): { die: BoardDie; face: number } | null {
+  const usable = dice.filter((die) => !die.blank && (die.value ?? 0) >= 1 && (die.value ?? 0) <= 6);
+  if (usable.length < 5) return null;
+  const counts = new Map<number, number>();
+  for (const die of usable) counts.set(die.value!, (counts.get(die.value!) || 0) + 1);
+  const targets = [
+    [1, 2, 3, 4, 5, 6],
+    [2, 3, 4, 5, 6],
+    [1, 2, 3, 4, 5],
+  ];
+  for (const faces of targets) {
+    const missing = faces.filter((face) => !counts.has(face));
+    if (missing.length !== 1) continue;
+    const candidates = usable.filter(
+      (die) => (counts.get(die.value!) || 0) > 1 && die.value !== missing[0],
+    );
+    if (!candidates.length) continue;
+    const die = candidates[Math.floor(rng() * candidates.length)]!;
+    return { die, face: missing[0]! };
+  }
+  return null;
+}
+
+function applyBarrelRollEffects(
+  state: RunState,
+  rolled: BoardDie[],
+  barrel: BarrelDef,
+  rng: () => number,
+): void {
+  if (!rolled.length) return;
+  if (barrel.type === 'forceOne' && rng() < barrel.chance) {
+    const die = rolled[Math.floor(rng() * rolled.length)]!;
+    die.value = 1;
+    die.wild = getDieSpec(die.dieId).setId === 'demon';
+    pushLog(state, `${barrel.name}：一颗骰子被指定为 1。`, 'roll');
+  }
+  if (barrel.type === 'gild' && rng() < barrel.chance) {
+    const die = rolled[Math.floor(rng() * rolled.length)]!;
+    die.gilded = true;
+    pushLog(state, `${barrel.name}：一颗骰子染上金痕；它计分时额外 +${barrel.coin} 银币。`, 'roll');
+  }
+  if (barrel.type === 'straightFix') {
+    const fix = completeStraight(rolled, rng);
+    if (fix) {
+      fix.die.value = fix.face;
+      fix.die.wild = false;
+      pushLog(state, `${barrel.name}：一颗骰子转到 ${fix.face} 点，补成顺子。`, 'roll');
+    }
+  }
+}
+
+function applyOrderedDieEffects(state: RunState, rng: () => number): void {
+  // The copy die reads the first slot after the table order is shuffled.
+  const first = state.dice[0];
+  if (first && !first.blank && first.value != null) {
+    for (let index = 1; index < state.dice.length; index += 1) {
+      const die = state.dice[index]!;
+      if (die.scored) continue;
+      const bonus = getDieSpec(die.dieId).bonus;
+      if (bonus?.type !== 'copyFirst' || die.blank) continue;
+      die.value = first.value;
+      die.wild = getDieSpec(die.dieId).setId === 'demon' && die.value === 1;
+    }
+  }
+  for (let index = 1; index < state.dice.length; index += 1) {
+    const die = state.dice[index]!;
+    if (die.scored) continue;
+    const prev = state.dice[index - 1]!;
+    const bonus = getDieSpec(die.dieId).bonus;
+    if (bonus?.type !== 'adjacentChance' || die.blank) continue;
+    if (!prev.value || prev.blank || prev.value < 1 || prev.value > 6) continue;
+    if (rng() >= bonus.chance) continue;
+    const options = [prev.value - 1, prev.value + 1].filter((face) => face >= 1 && face <= 6);
+    if (!options.length) continue;
+    die.value = options[Math.floor(rng() * options.length)]!;
+    die.wild = getDieSpec(die.dieId).setId === 'demon' && die.value === 1;
+  }
+}
+
+function shuffleUnscored(state: RunState, rng: () => number): void {
+  const slots = state.dice.map((die, index) => (die.scored ? -1 : index)).filter((index) => index >= 0);
+  const shuffled = shuffleInPlace(slots.map((index) => state.dice[index]!), rng);
+  slots.forEach((slot, index) => { state.dice[slot] = shuffled[index]!; });
+}
+
+export function rollDice(state: RunState, { free = false, rng = getRng(state) }: { free?: boolean; rng?: () => number } = {}): RollResult {  if (state.phase === 'won' || state.phase === 'run-won' || state.phase === 'lost') {
     return { ok: false, error: '本关已结束。' };
   }
   if (state.phase === 'shop') return { ok: false, error: '商店阶段不能投掷。' };
@@ -904,34 +1084,63 @@ export function rollDice(state: RunState, { free = false, rng = getRng(state) }:
     state.flags.rerollAll = false;
   }
 
+  // Temporary dice from a previous cup throw never survive the next shake.
+  state.dice = state.dice.filter((die) => !die.extra);
+
   const toRoll = availableDice(state).filter((d) => d.value == null || !free || wasHot || rerollAll);
   const targets = toRoll.length ? toRoll : availableDice(state);
   const barrel = getBarrel(state);
   const blankNinth = bossEffectKey(state) === 'blankNinth';
+  const rolledNow: BoardDie[] = [];
   const rollOne = (die: BoardDie) => {
     die.scored = false;
     die.blank = false;
     die.wild = false;
+    die.gilded = false;
     state.bossDiceRolled = (state.bossDiceRolled || 0) + 1;
     if (blankNinth && state.bossDiceRolled % 9 === 0) {
       die.value = 0;
       die.blank = true;
+      rolledNow.push(die);
       return;
     }
-    die.value = rollValue(effectiveProbs(die.dieId, barrel.id), rng);
+    die.value = rollValue(effectiveProbs(die.dieId, barrel.id, die.probs), rng);
     // Demon dice turn their 1 face into a joker, never a plain 100 points.
     die.wild = getDieSpec(die.dieId).setId === 'demon' && die.value === 1;
+    rolledNow.push(die);
   };
   for (const die of targets) rollOne(die);
   for (const die of state.dice) {
     if (die.value == null) rollOne(die);
   }
+
+  if (barrel.type === 'extraDie' && rng() < barrel.chance) {
+    const extra: BoardDie = {
+      uid: `extra-${uid('die')}`,
+      bagUid: 'extra',
+      dieId: 'standard',
+      value: null,
+      blank: false,
+      wild: false,
+      scored: false,
+      extra: true,
+      probs: [...STANDARD_DIE.probs],
+    };
+    state.dice.push(extra);
+    rollOne(extra);
+    pushLog(state, `${barrel.name}：多滚出一颗骰子。`, 'roll');
+  }
+
+  applyBarrelRollEffects(state, rolledNow, barrel, rng);
+  shuffleUnscored(state, rng);
+  applyOrderedDieEffects(state, rng);
+
   state.selected = [];
   state.phase = 'selecting';
   state.throwNumber = (state.throwNumber || 0) + 1;
   state.stats.rolls += 1;
   state.stats.levelRolls += 1;
-  state.lastRoll = targets.map((d) => (d.blank ? 0 : d.wild ? '魔' : d.value ?? 0));
+  state.lastRoll = rolledNow.map((d) => (d.blank ? 0 : d.wild ? '魔' : d.value ?? 0));
 
   const scoring = bestSelection(scorableDice(state));
   let bust = 0;
@@ -1021,6 +1230,28 @@ export function applyScore(state: RunState, action: ScoreAction): ApplyScoreResu
     critical: Boolean(state.flags.hunterMark),
   };
 
+  // 独注桶：track whether this round has only ever scored single-die combos.
+  const allSingles = chosen.analysis.combos.length > 0
+    && chosen.analysis.combos.every((combo) => combo.type === 'single');
+  state.flags.roundSinglesOnly = state.flags.roundSinglesOnly !== false && allSingles;
+
+  // Coins paid by dice that were actually scored this hand.
+  let coinGain = 0;
+  const activeBarrel = getBarrel(state);
+  const gildCoin = activeBarrel.type === 'gild' ? activeBarrel.coin : 100;
+  for (const die of scoringDice) {
+    const bonus = getDieSpec(die.dieId).bonus;
+    if (bonus?.type === 'coinsPerScore') coinGain += bonus.value;
+    if (die.gilded) {
+      coinGain += gildCoin;
+      die.gilded = false;
+    }
+  }
+  if (coinGain > 0) {
+    state.coins += coinGain;
+    pushLog(state, `骰子结算：+${coinGain} 银币。`, 'reward');
+  }
+
   // Die-specific trigger effects.
   const specs = scoringDice.map((d) => getDieSpec(d.dieId));
   if (specs.some((s) => s.bonus?.type === 'demon')) {
@@ -1074,6 +1305,7 @@ export function applyScore(state: RunState, action: ScoreAction): ApplyScoreResu
   if (action === 'reroll' && !isFloatingScore(state)) state.roundScore = 0;
   state.phase = 'reroll-pending';
   state.flags.rerollAll = action === 'reroll';
+  if (action === 'reroll') state.flags.roundSinglesOnly = true;
   return {
     ok: true, total, action, won: false, hot: false, targetReached: reachedTarget,
     reroll: true, rerollAll: action === 'reroll', breakdown: chosen.breakdown,
@@ -1153,6 +1385,7 @@ export interface ItemResult {
   error?: string;
   item?: ItemDef;
   rerollFree?: boolean;
+  grant?: { candidates: PricedDie[]; choose: number; itemId: string };
 }
 
 export function canUseItem(state: RunState, itemId: string): ItemResult {
@@ -1187,6 +1420,15 @@ export function useItem(state: RunState, itemId: string): ItemResult {
   const check = canUseItem(state, itemId);
   if (!check.ok) return check;
   const item = ITEM_BY_ID[itemId]!;
+
+  if ('grant' in item && item.grant) {
+    const grant = item.grant;
+    const all = DICE.filter((die) => die.rarity === grant.rarity);
+    const owned = new Set(state.bag.map((entry) => entry.dieId));
+    const fresh = all.filter((die) => !owned.has(die.id));
+    const candidates = pickMany(fresh.length >= grant.count ? fresh : all, grant.count, getRng(state));
+    return { ok: true, item, grant: { candidates, choose: grant.choose, itemId } };
+  }
 
   if (itemId === 'boss_ward') {
     if (getLevelConfig(state.level).boss) {
@@ -1261,6 +1503,52 @@ export function useItem(state: RunState, itemId: string): ItemResult {
   return { ok: true, item };
 }
 
+export function applyItemGrant(
+  state: RunState,
+  itemId: string,
+  dieId: string,
+): { ok: boolean; error?: string; die?: PricedDie; replaced?: PricedDie } {
+  const item = ITEM_BY_ID[itemId];
+  const die = DICE_BY_ID[dieId];
+  if (!item || item.type !== 'active' || !item.grant) return { ok: false, error: '这不是骰子礼包。' };
+  if (!state.activeItems.includes(itemId) || (state.itemCharges[itemId] || 0) <= 0) {
+    return { ok: false, error: '这件物品已经用过了。' };
+  }
+  if (!die || die.rarity !== item.grant.rarity) return { ok: false, error: '这枚骰子不在礼包范围内。' };
+
+  const capacity = getDiceCapacity(state);
+  let replaced: PricedDie | undefined;
+  if (state.bag.length >= capacity) {
+    const target = state.bag.find((entry) => entry.dieId === 'standard')
+      || [...state.bag].sort((a, b) => (DICE_BY_ID[a.dieId]?.price || 0) - (DICE_BY_ID[b.dieId]?.price || 0))[0];
+    if (!target) return { ok: false, error: '骰袋已满，无法放入新骰子。' };
+    const oldId = target.dieId;
+    target.dieId = die.id;
+    delete target.probs;
+    delete target.shopRerolls;
+    delete target.lastShopRerollLevel;
+    prepareRandomFaces(target, getRng(state));
+    replaced = oldId === 'standard'
+      ? ({ ...STANDARD_DIE, price: 0 } as PricedDie)
+      : DICE_BY_ID[oldId];
+  } else {
+    const entry: BagEntry = { uid: uid('bag'), dieId: die.id };
+    prepareRandomFaces(entry, getRng(state));
+    state.bag.push(entry);
+  }
+
+  if (item.consumable) {
+    state.activeItems = state.activeItems.filter((id) => id !== itemId);
+    delete state.itemCharges[itemId];
+  } else {
+    state.itemCharges[itemId] = 0;
+  }
+  pushLog(state, replaced
+    ? `「${item.name}」开出「${die.name}」，替换了「${replaced.name}」。`
+    : `「${item.name}」开出「${die.name}」，加入骰袋。`, 'item');
+  return { ok: true, die, replaced };
+}
+
 export function rerollDeadThrow(state: RunState, { free = false }: { free?: boolean } = {}): RollResult {
   if (state.rerolls <= 0 && !free) return { ok: false, error: '没有剩余重投次数。' };
   state.selected = [];
@@ -1288,7 +1576,7 @@ export function retryLevel(state: RunState): { ok: boolean; error?: string } {
 // ── Shop ───────────────────────────────────────────────────────────────────
 
 export function shopPrice(state: RunState, base: number): number {
-  return Math.max(1, Math.round(base));
+  return Math.max(1, Math.round(base * SHOP_PRICE_MULTIPLIER));
 }
 
 export function refreshCost(state: RunState, section: string): number {
@@ -1351,16 +1639,24 @@ function diceOffers(state: RunState, count: number, rng: () => number): ShopOffe
   );
   const chosen: DiceDef[] = [];
   const remaining = () => pool.filter((die) => !chosen.some((pick) => pick.id === die.id));
-  const weightFor = (die: DiceDef) => {
-    const base = rarityShopWeight(die.rarity, state.level || 1);
-    if (!base) return 0;
+  const weightFor = (die: DiceDef, tierSize: Map<string, number>) => {
+    const band = rarityShopWeight(die.rarity, state.level || 1);
+    if (!band) return 0;
+    // Weights describe the tier's share of the shelf, so split that share
+    // across the dice still available in the tier. Without this the pool's
+    // composition silently reweights the bands (7 rare dice would outdraw
+    // 3 common ones even at 80/18).
+    const share = band / (tierSize.get(die.rarity) || 1);
     // Nudge stock toward sets the player already owns so 2/4-piece bonuses
     // stay reachable without removing shop randomness.
-    return die.setId != null && ownedSets.has(die.setId) ? base * 1.5 : base;
+    return die.setId != null && ownedSets.has(die.setId) ? share * 1.5 : share;
   };
   while (chosen.length < count) {
-    const candidates = remaining()
-      .map((die) => ({ die, weight: weightFor(die) }))
+    const left = remaining();
+    const tierSize = new Map<string, number>();
+    for (const die of left) tierSize.set(die.rarity, (tierSize.get(die.rarity) || 0) + 1);
+    const candidates = left
+      .map((die) => ({ die, weight: weightFor(die, tierSize) }))
       .filter((entry) => entry.weight > 0);
     if (!candidates.length) break;
     const total = candidates.reduce((sum, entry) => sum + entry.weight, 0);
@@ -1465,6 +1761,14 @@ export function refreshSection(state: RunState, section: string, { rng = getRng(
     return { ok: false, error: '未知的商店区域。' };
   }
   state.shop.refreshes[section] = (state.shop.refreshes[section] ?? 0) + 1;
+  for (const entry of state.bag) {
+    const bonus = dieBonus(entry.dieId);
+    if (bonus?.type === 'shopRerollMultiplier' && entry.lastShopRerollLevel !== state.level) {
+      entry.shopRerolls = (entry.shopRerolls || 0) + 1;
+      entry.lastShopRerollLevel = state.level;
+      pushLog(state, `「${getDieSpec(entry.dieId).name}」记住了这次重随：计分加成 +${Math.round(bonus.value * 100)}%。`, 'shop');
+    }
+  }
   pushLog(state, `刷新${sectionLabel(section)}，花费 ${cost} 银币。`, 'shop');
   return { ok: true, cost };
 }
@@ -1497,8 +1801,12 @@ export function buyDie(state: RunState, index: number, replaceBagUid: string | n
     const target = state.bag.find((b) => b.uid === replaceBagUid);
     if (!target) return { ok: false, error: '请选择要替换的骰子。' };
     target.dieId = die.id;
+    delete target.probs;
+    prepareRandomFaces(target, getRng(state));
   } else {
-    state.bag.push({ uid: uid('bag'), dieId: die.id });
+    const added: BagEntry = { uid: uid('bag'), dieId: die.id };
+    prepareRandomFaces(added, getRng(state));
+    state.bag.push(added);
   }
   state.coins -= price;
   entry.sold = true;
