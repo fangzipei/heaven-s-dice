@@ -49,7 +49,7 @@ export function renderGame(): void {
   renderDangerStrip();
   renderOpponentPlate();
   const canManuallyThrow = !app.busy && !app.introOpen
-    && (run.phase === 'ready' || run.phase === 'hot' || run.phase === 'reroll-pending'
+    && (run.phase === 'ready' || run.phase === 'hot' || run.phase === 'selecting' || run.phase === 'reroll-pending'
       || (run.phase === 'dead' && run.rerolls > 0));
   $('#cup')?.classList.toggle('is-breathing', canManuallyThrow);
   saveGame(run, getRunRecord());
@@ -549,9 +549,8 @@ export function answerSaltOffer(use: boolean): void {
 export function beginRoll({ free = false }: { free?: boolean } = {}): void {
   if (!app.run || app.busy || app.introOpen) return;
   const run = app.run;
-  const allowedNormal = ['ready', 'dead', 'hot', 'reroll-pending'].includes(run.phase);
+  const allowedNormal = ['ready', 'dead', 'hot', 'selecting', 'reroll-pending'].includes(run.phase);
   if (!allowedNormal && !free) return;
-  if (run.phase === 'selecting' && !free) return;
   const freeContinuation = run.phase === 'reroll-pending' && !run.flags.rerollAll;
   if (run.rerolls <= 0 && run.phase !== 'hot' && run.phase !== 'ready' && !free && !freeContinuation) {
     showToast('没有剩余重投次数。', 'error');
@@ -943,7 +942,7 @@ export function bindCupDrag(): void {
   let dragMaxY = 138;
 
   const canDrag = () => app.run && !app.busy && !app.introOpen
-    && (app.run.phase === 'ready' || app.run.phase === 'hot' || app.run.phase === 'reroll-pending'
+    && (app.run.phase === 'ready' || app.run.phase === 'hot' || app.run.phase === 'selecting' || app.run.phase === 'reroll-pending'
       || (app.run.phase === 'dead' && app.run.rerolls > 0));
 
   cup.addEventListener('pointerdown', (event) => {
