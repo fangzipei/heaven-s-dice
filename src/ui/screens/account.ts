@@ -4,7 +4,7 @@ import { $ } from '../dom.ts';
 import { h } from '../../core/util.ts';
 import { showToast } from '../components/toast.ts';
 import { loadProfile, normalizeUserId, saveProfile, validUserId, type PlayerProfile } from '../../platform/profile.ts';
-import { loginAccount, registerAccount } from '../../platform/api.ts';
+import { accessAccount } from '../../platform/api.ts';
 import { syncEverything } from '../../platform/sync.ts';
 import { setRecordUser } from '../../platform/run-record.ts';
 
@@ -93,12 +93,7 @@ export async function syncAccount(): Promise<void> {
   if (!password) { showToast('请输入密码；留空请使用「以本地用户开始」。', 'error'); return; }
   if (password.length < 4) { showToast('密码至少 4 位。', 'error'); return; }
   try {
-    let auth;
-    try {
-      auth = await loginAccount(id, password);
-    } catch {
-      auth = await registerAccount(id, password);
-    }
+    const auth = await accessAccount(id, password);
     saveProfile({ id: auth.user.id, mode: 'synced', token: auth.token, createdAt: Date.now() });
     setRecordUser(auth.user.id);
     refreshAccountButton();
@@ -116,12 +111,7 @@ export async function setPasswordAndSync(): Promise<void> {
   if (!profile) return;
   if (password.length < 4) { showToast('密码至少 4 位。', 'error'); return; }
   try {
-    let auth;
-    try {
-      auth = await registerAccount(profile.id, password);
-    } catch {
-      auth = await loginAccount(profile.id, password);
-    }
+    const auth = await accessAccount(profile.id, password);
     saveProfile({ id: auth.user.id, mode: 'synced', token: auth.token, createdAt: profile.createdAt });
     setRecordUser(auth.user.id);
     refreshAccountButton();

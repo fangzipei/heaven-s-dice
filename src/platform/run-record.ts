@@ -15,10 +15,17 @@ export interface RecordedLoadout {
   passiveItems: string[];
 }
 
+export interface RecordedDiceChoice {
+  uid: string;
+  dieId: string;
+  value: RecordedValue;
+}
+
 export interface RecordedThrow {
   at: number;
   values: RecordedValue[];
   selected: RecordedValue[];
+  selectedDice: RecordedDiceChoice[];
   combos: string[];
   points: number;
   action: string | null;
@@ -212,6 +219,7 @@ export function recordThrow(run: RunState, data: {
     at: Date.now(),
     values: [...data.values],
     selected: [],
+    selectedDice: [],
     combos: [],
     points: 0,
     action: null,
@@ -226,7 +234,11 @@ export function recordThrow(run: RunState, data: {
 }
 
 export function recordScore(run: RunState, data: {
-  selectedValues: RecordedValue[]; combos: string[]; points: number; action: string;
+  selectedValues: RecordedValue[];
+  selectedDice: RecordedDiceChoice[];
+  combos: string[];
+  points: number;
+  action: string;
 }): void {
   const level = currentLevel(run);
   if (!level) return;
@@ -234,6 +246,7 @@ export function recordScore(run: RunState, data: {
     || level.throws[level.throws.length - 1];
   if (target) {
     target.selected = [...data.selectedValues];
+    target.selectedDice = [...data.selectedDice];
     target.combos = [...data.combos];
     target.points = data.points;
     target.action = data.action;

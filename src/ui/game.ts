@@ -621,6 +621,11 @@ export function handleScore(action: ScoreAction): void {
   if (!result.ok) { showToast(result.error!, 'error'); return; }
   recordScore(run, {
     selectedValues,
+    selectedDice: selected.map((die) => ({
+      uid: die.uid,
+      dieId: die.dieId,
+      value: die.wild ? 'wild' : (die.value ?? 'blank'),
+    })),
     combos,
     points: result.total || 0,
     action,

@@ -72,6 +72,11 @@ export async function loginAccount(id: string, password: string): Promise<AuthRe
   return request<AuthResult>('login', { method: 'POST', body: { id, password } });
 }
 
+/** 一次请求完成“已有账号就登录，没有就注册”，避免新用户先吃一个 401。 */
+export async function accessAccount(id: string, password: string): Promise<AuthResult> {
+  return request<AuthResult>('account', { method: 'POST', body: { id, password } });
+}
+
 export async function fetchMe(token: string): Promise<ApiAccount> {
   const result = await request<{ user: ApiAccount }>('me', { token });
   return result.user;

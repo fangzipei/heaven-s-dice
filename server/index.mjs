@@ -128,6 +128,40 @@ async function login(req, res) {
   });
 }
 
+async function access(req, res) {
+  const body = await readBody(req);
+  const id = String(body.id || '').trim();
+  const password = String(body.password || '');
+  if (!validId(id)) return fail(res, 400, '玩家 ID 需要 2–24 位，只能包含文字、数字、下划线或短横线。');
+  if (password.length < 4 || password.length > 128) return fail(res, 400, '密码需要 4–128 位。');
+  const [rows] = await pool.query(
+    'SELECT id, public_id, password_hash, created_at FROM hd_users WHERE public_id = ? LIMIT 1', [id],
+  );
+  if (rows.length) {
+    const user = rows[0];
+    if (!verifyPassword(password, user.password_hash)) return fail(res, 401, 'ID 或密码不正确。');
+    const token = await createSession(user.id);
+    return json(res, 200, {
+      token, created: false,
+      user: { id: user.public_id, hasPassword: true, createdAt: user.created_at },
+    });
+  }
+  let result;
+  try {
+    [result] = await pool.query(
+      'INSERT INTO hd_users (public_id, password_hash) VALUES (?, ?)', [id, hashPassword(password)],
+    );
+  } catch (error) {
+    if (error?.code === 'ER_DUP_ENTRY') return fail(res, 409, '这个 ID 已经被注册，请换一个名字或使用密码登录。');
+    throw error;
+  }
+  const token = await createSession(result.insertId);
+  return json(res, 201, {
+    token, created: true,
+    user: { id, hasPassword: true, createdAt: new Date().toISOString() },
+  });
+}
+
 async function me(req, res) {
   const user = await accountFromRequest(req);
   if (!user) return fail(res, 401, '登录已过期，请重新登录。');
@@ -306,6 +340,7 @@ const server = http.createServer(async (req, res) => {
       await pool.query('SELECT 1');
       return json(res, 200, { ok: true });
     }
+    if (req.method === 'POST' && path === '/account') return await access(req, res);
     if (req.method === 'POST' && path === '/register') return await register(req, res);
     if (req.method === 'POST' && path === '/login') return await login(req, res);
     if (req.method === 'GET' && path === '/me') return await me(req, res);
