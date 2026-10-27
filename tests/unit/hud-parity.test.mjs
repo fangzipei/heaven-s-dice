@@ -72,7 +72,7 @@ describe('HUD 渲染器搬到 ui/hud.ts 之后仍然写同样的文案', () => {
     expect(html('#passive-items')).toBe(
       '<span class="passive-empty">还没有被动物品 · <button data-action="open-compendium" data-tab="items">查看物品</button></span>',
     );
-    expect(text('#item-slot-note')).toBe('1 / 4');
+    expect(text('#item-slot-note')).toBe('1 件');
     expect(html('#active-items')).toContain('data-item-tip="lucky_coin"');
   });
 

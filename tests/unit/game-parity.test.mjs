@@ -36,7 +36,10 @@ vi.mock('../../src/render/motion.ts', () => ({
 }));
 
 import { app } from '../../src/ui/state.ts';
-import { beginRoll, handleScore, forfeitRun, renderGame, useItem, setSpeech } from '../../src/ui/game.ts';
+import {
+  beginRoll, handleScore, forfeitRun, renderGame, useItem, setSpeech,
+  requestUseItem, confirmUseItem,
+} from '../../src/ui/game.ts';
 import { createRun } from '../../src/core/engine.ts';
 import { installDomStub } from '../helpers/stub-dom.mjs';
 import { assemblySource, legacyAppSource } from '../helpers/legacy-app.mjs';
@@ -125,6 +128,42 @@ describe('系统摇骰与手动摇桶等价：免费继续 vs 消耗重投', () 
     app.run.dice.forEach((die) => { die.value = null; die.scored = false; });
     beginRoll();
     expect(app.run.rerolls).toBe(2);
+  });
+});
+
+describe('主动物品先问再用', () => {
+  const readyWithCoin = () => {
+    app.run.phase = 'selecting';
+    app.run.activeItems = ['lucky_coin'];
+    app.run.itemCharges = { lucky_coin: 1 };
+    app.run.score = 100;
+    app.run.target = 1000;
+  };
+
+  test('点物品只弹出确认框，效果还没生效', () => {
+    readyWithCoin();
+    requestUseItem('lucky_coin');
+    expect(dom.html('#overlay-root')).toContain('使用「幸运币」？');
+    expect(dom.html('#overlay-root')).toContain('data-action="confirm-use-item"');
+    expect(app.run.score).toBe(100);
+    expect(app.run.activeItems).toContain('lucky_coin');
+  });
+
+  test('确认之后才扣物品、加分数', () => {
+    readyWithCoin();
+    requestUseItem('lucky_coin');
+    confirmUseItem('lucky_coin');
+    expect(app.run.score).toBe(250);
+    expect(app.run.activeItems).not.toContain('lucky_coin');
+  });
+
+  test('盐不走确认框，只提示掷空时会问', () => {
+    app.run.phase = 'selecting';
+    app.run.activeItems = ['salt'];
+    app.run.itemCharges = { salt: 1 };
+    requestUseItem('salt');
+    expect(toast()).toBe('盐会在掷空时自动询问是否使用。');
+    expect(dom.html('#overlay-root')).toBe('');
   });
 });
 

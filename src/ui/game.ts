@@ -15,6 +15,8 @@ import { clamp, h, num, sleep } from '../core/util.ts';
 import { motion, type MotionPoint } from '../render/motion.ts';
 import { sound } from '../platform/sound.ts';
 import { discoverLoadout } from '../platform/storage.ts';
+import { recordScore, recordThrow, getRunRecord } from '../platform/run-record.ts';
+import { saveGame } from '../platform/save.ts';
 import { closeOverlay, openOverlay } from './components/overlay.ts';
 import { showToast } from './components/toast.ts';
 import { renderActionDock, renderComboPreview, renderDangerStrip } from './dock.ts';
@@ -46,6 +48,7 @@ export function renderGame(): void {
     && (run.phase === 'ready' || run.phase === 'hot' || run.phase === 'reroll-pending'
       || (run.phase === 'dead' && run.rerolls > 0));
   $('#cup')?.classList.toggle('is-breathing', canManuallyThrow);
+  saveGame(run, getRunRecord());
 }
 
 /* ═══════════════════════════════════════════════════════════════════
@@ -415,6 +418,11 @@ async function performCupRoll({ free = false, prepared = false, from = null }: {
       showToast(result.error!, 'error');
       return;
     }
+    recordThrow(run, {
+      values: run.lastRoll ? [...run.lastRoll] : [],
+      hot: Boolean(result.hot),
+      bust: Number(result.bust) || 0,
+    });
     app.rolling = true;
     // Counters and dock repaint now; the tray keeps the old faces until the
     // pour so the throw still reads as a throw.
@@ -606,8 +614,17 @@ export function handleScore(action: ScoreAction): void {
   if (action === 'reroll' && run.rerolls <= 0) { showToast('没有剩余重投次数。', 'error'); return; }
   const rect = selected[0] ? $(`[data-die-uid="${CSS.escape(selected[0].uid)}"]`)?.getBoundingClientRect() : null;
   const wasReached = run.score >= run.target;
+  const chosen = action === 'continue' ? preview.continue : action === 'bank' ? preview.bank : preview.reroll;
+  const selectedValues = selected.map((die) => die.wild ? 'wild' : (die.value ?? 'blank'));
+  const combos = chosen.analysis.combos.map((combo) => combo.label);
   const result = applyScore(run, action);
   if (!result.ok) { showToast(result.error!, 'error'); return; }
+  recordScore(run, {
+    selectedValues,
+    combos,
+    points: result.total || 0,
+    action,
+  });
   app.busy = true;
   sound.score(result.total!);
   showScoreFloat(result.total!, rect);
@@ -703,6 +720,33 @@ export function setSpeech(text: string): void {
 /* ═══════════════════════════════════════════════════════════════════
    Items
    ═══════════════════════════════════════════════════════════════════ */
+/* Active items always ask first: a one-shot has no undo. */
+export function requestUseItem(itemId: string): void {
+  const run = app.run;
+  if (!run || app.busy || app.introOpen) return;
+  const check = canUseItem(run, itemId);
+  if (!check.ok) {
+    showToast(check.error!, 'error');
+    return;
+  }
+  const item = ITEM_BY_ID[itemId]!;
+  openOverlay(`
+    <div class="modal result-modal" style="width:min(440px,100%);padding:34px">
+      <p class="modal-kicker">USE AN ITEM</p>
+      <h2 style="font-size:26px;margin-top:6px">使用「${h(item.name)}」？</h2>
+      <p class="result-sub">${h(item.desc)}</p>
+      <div class="modal-actions" style="margin-top:22px">
+        <button class="secondary-button" data-action="close-overlay">再想想</button>
+        <button class="primary-button" data-action="confirm-use-item" data-item-id="${h(itemId)}">使用</button>
+      </div>
+    </div>`);
+}
+
+export function confirmUseItem(itemId: string): void {
+  closeOverlay();
+  useItem(itemId);
+}
+
 export function useItem(itemId: string): void {
   if (!app.run || app.busy || app.introOpen) return;
   const wasReached = app.run.score >= app.run.target;

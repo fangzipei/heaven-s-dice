@@ -7,7 +7,7 @@ import {
   DICE_SETS, ITEM_BY_ID, LEVEL_COUNT, LEVELS, getLevelConfig, getOpponent, getTable,
 } from '../content/index.ts';
 import {
-  ACTIVE_ITEM_SLOTS, bossStatusText, canUseItem, getBarrel, isFloatingScore, setCounts,
+  bossStatusText, canUseItem, getBarrel, isFloatingScore, setCounts,
 } from '../core/engine.ts';
 import type { BossDef } from '../core/types.ts';
 import { clamp, h, num } from '../core/util.ts';
@@ -188,26 +188,21 @@ export function renderItems() {
   const run = app.run!;
   const active = run.activeItems;
   const container = $('#active-items')!;
-  const slots: string[] = [];
-  for (let i = 0; i < ACTIVE_ITEM_SLOTS; i += 1) {
-    const id = active[i];
-    if (!id) {
-      slots.push('<div class="item-slot is-empty" aria-hidden="true"></div>');
-      continue;
-    }
+  const slots = active.map((id) => {
     const item = ITEM_BY_ID[id]!;
     const charges = run.itemCharges[id] || 0;
     const check = canUseItem(run, id);
-    slots.push(`
+    return `
       <button class="item-slot" data-action="use-item" data-item-id="${h(id)}" data-item-tip="${h(id)}"
         aria-disabled="${check.ok ? 'false' : 'true'}" title="${h(item.name)}" aria-label="使用${h(item.name)}">
         <img src="assets/items/${item.icon}.svg" alt="">
         <span class="charge">${charges > 0 ? charges : '×'}</span>
         <span class="item-name">${h(item.name)}</span>
-      </button>`);
-  }
-  container.innerHTML = slots.join('');
-  $('#item-slot-note')!.textContent = `${active.length} / ${ACTIVE_ITEM_SLOTS}`;
+      </button>`;
+  });
+  container.innerHTML = slots.join('')
+    || '<span class="passive-empty">还没有主动物品 · <button data-action="open-compendium" data-tab="items">查看物品</button></span>';
+  $('#item-slot-note')!.textContent = `${active.length} 件`;
   const passives = run.passiveItems;
   const passiveEl = $('#passive-items')!;
   if (!passives.length) {

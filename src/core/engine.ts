@@ -27,7 +27,6 @@ export interface RunScoreBreakdown {
 
 export const BASE_REROLLS = 3;
 export const STARTING_COINS = 0;
-export const ACTIVE_ITEM_SLOTS = 4;
 export const DEBUG = false;
 
 let uidCounter = 0;
@@ -1530,9 +1529,6 @@ export function buyItem(state: RunState, index: number): BuyResult {
     return { ok: false, error: '这件物品整局只能获取一次。' };
   }
   const entry = state.shop!.item[index]!;
-  if (item.type === 'active' && state.activeItems.length >= ACTIVE_ITEM_SLOTS) {
-    return { ok: false, error: `主动物品栏已满（${ACTIVE_ITEM_SLOTS}）。` };
-  }
   const price = shopPrice(state, item.price);
   if (state.coins < price) return { ok: false, error: `需要 ${price} 银币。` };
   state.coins -= price;

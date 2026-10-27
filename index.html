@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#0b0805">
   <meta name="description" content="天国骰局 — 一款以《天国：拯救 2》骰子规则为核心的肉鸽网页游戏。摇骰、留骰、画阵，挑战八位庄家。">
   <title>天国骰局 · Heaven's Dice</title>
-  <link rel="stylesheet" href="css/main.css?v=20261027-econ02">
+  <link rel="stylesheet" href="css/main.css?v=20261027-account02">
   <link rel="icon" href="assets/items/coin.svg" type="image/svg+xml">
   <!-- Animation + 3D stack, served locally from /vendor so the game runs offline. -->
   <script src="vendor/gsap.min.js?v=3.15.0"></script>
@@ -33,6 +33,7 @@
     <symbol id="i-shop" viewBox="0 0 24 24"><path d="M4 9l2-4h12l2 4M4 9v10h16V9M4 9c0 1.7 1.3 3 3 3s3-1.3 3-3c0 1.7 1.3 3 3 3s3-1.3 3-3c0 1.7 1.3 3 3 3s3-1.3 3-3" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M9 19v-5h6v5" fill="none" stroke="currentColor" stroke-width="1.5"/></symbol>
     <symbol id="i-lock" viewBox="0 0 24 24"><rect x="5" y="10" width="14" height="10" rx="2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M8 10V7a4 4 0 018 0v3" fill="none" stroke="currentColor" stroke-width="1.6"/></symbol>
     <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 7h16M4 12h11M4 17h16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></symbol>
+    <symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8.3" r="3.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M4.8 20c.7-3.7 3.4-5.6 7.2-5.6s6.5 1.9 7.2 5.6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></symbol>
   </svg>
 
   <div id="app">
@@ -81,6 +82,7 @@
             <span>开始游戏</span>
             <svg><use href="#i-arrow"></use></svg>
           </button>
+          <button class="home-resume" id="resume-run" data-action="resume-run" hidden>继续上局</button>
           <div class="home-secondary-actions">
             <button class="home-option" data-action="open-compendium"><svg><use href="#i-book"></use></svg><span>查看图鉴</span></button>
             <button class="home-option" data-action="open-tutorial"><svg><use href="#i-help"></use></svg><span>查看规则</span></button>
@@ -109,6 +111,7 @@
             <svg><use href="#i-coin"></use></svg><strong id="coin-value">0</strong>
             <div class="coin-gain" id="coin-gain" hidden></div>
           </div>
+          <button class="icon-button account-button" id="account-button" data-action="open-account" aria-label="玩家档案" title="玩家档案"><svg><use href="#i-user"></use></svg><span id="account-name">旅人</span></button>
           <button class="icon-button" data-action="open-compendium" aria-label="赌徒图鉴" title="赌徒图鉴"><svg><use href="#i-book"></use></svg></button>
           <button class="icon-button help-button" data-action="open-rules" aria-label="规则" title="规则"><svg><use href="#i-help"></use></svg></button>
           <button class="icon-button sound-toggle" data-action="toggle-sound" aria-label="开关声音"><svg><use href="#i-volume"></use></svg></button>
@@ -249,7 +252,7 @@
           </section>
 
           <section class="rail-card items-card">
-            <header class="rail-card-head"><span>随身物品</span><span class="rail-note" id="item-slot-note">0 / 4</span></header>
+            <header class="rail-card-head"><span>随身物品</span><span class="rail-note" id="item-slot-note">0 件</span></header>
             <div class="active-items" id="active-items"></div>
             <div class="passive-items" id="passive-items"></div>
           </section>
@@ -284,6 +287,6 @@
     </article>
   </template>
 
-  <script type="module" src="src/ui/app.ts?v=20261027-econ02"></script>
+  <script type="module" src="src/ui/app.ts?v=20261027-account02"></script>
 </body>
 </html>

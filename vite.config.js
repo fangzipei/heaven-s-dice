@@ -31,6 +31,16 @@ export default defineConfig({
       three: fileURLToPath(new URL('./src/vendor/three.module.js', import.meta.url)),
     },
   },
+  server: {
+    proxy: {
+      '/api': { target: 'http://127.0.0.1:8787', changeOrigin: true },
+    },
+  },
+  preview: {
+    proxy: {
+      '/api': { target: 'http://127.0.0.1:8787', changeOrigin: true },
+    },
+  },
   build: {
     outDir: 'dist',
     target: 'es2022',

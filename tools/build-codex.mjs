@@ -15,7 +15,7 @@ import { dirname, join } from 'node:path';
 
 import {
   DICE, STANDARD_DIE, DICE_SETS, BARRELS, ITEMS, LEVELS,
-  RARITIES, SHOP_RARITY_WEIGHTS, REROLL_REFUND, OVERSHOOT_TIERS,
+  RARITIES, SHOP_RARITY_WEIGHTS, REROLL_BONUS_RATE, OVERSHOOT_RATIO, OVERSHOOT_BONUS_RATE,
   BOSSES, LEVEL_CURVE,
 } from '../src/content/index.ts';
 import { dieSkinStyle, dieMotifSvg } from '../src/render/dice-skins.ts';
@@ -499,7 +499,7 @@ footer code{color:#93836b;font-family:Consolas,monospace;font-size:9.5px}
 
 <section id="items">
   <div class="sec-head"><span class="sec-no">04</span><h2>物品 · ${ITEMS.length} 件</h2><span class="count">主动 ${activeItems.length} + 被动 ${passiveItems.length}</span></div>
-  <p class="sec-intro">主动物品每关恢复 1 次，随身最多携带 4 件，不占骰袋；被动物品买入即永久生效。<b>一次性消耗品</b>用完即消失，但同价位下效果更直接——幸运币、猎人印记、烈酒、加注契约、幸运粉、盐、静默赦令。<b>三层骰架 / 双孔桶架 / 暗格货架</b>分别给市集某一区 +1 货位。<b>丰饶骰袋</b>与<b>裂痕骰袋</b>改变可用骰子数量，整局各只能获取一次。</p>
+  <p class="sec-intro">主动物品每关恢复 1 次，随身不限件数，不占骰袋；被动物品买入即永久生效。<b>一次性消耗品</b>用完即消失，但同价位下效果更直接——幸运币、猎人印记、烈酒、加注契约、幸运粉、盐、静默赦令。<b>三层骰架 / 双孔桶架 / 暗格货架</b>分别给市集某一区 +1 货位。<b>丰饶骰袋</b>与<b>裂痕骰袋</b>改变可用骰子数量，整局各只能获取一次。</p>
   <h3 class="sub-head">主动物品 · 每关 1 次</h3>
   <div class="grid item-grid">${activeItems.map(itemCard).join('')}</div>
   <h3 class="sub-head">被动物品 · 永久生效</h3>
@@ -539,10 +539,10 @@ footer code{color:#93836b;font-family:Consolas,monospace;font-size:9.5px}
     <div class="market-card">
       <h4>过关奖金 · 收手换钱</h4>
       <div class="m-line"><span>基础奖励</span><b>${Math.min(...LEVELS.map((l) => l.reward))} – ${Math.max(...LEVELS.map((l) => l.reward))} 银币</b></div>
-      <div class="m-line"><span>剩余重投</span><b>每次 +${REROLL_REFUND} 银币</b></div>
-      ${OVERSHOOT_TIERS.slice().reverse().map((t) => `<div class="m-line"><span>得分 ≥ 目标 ${t.ratio} 倍</span><b>+${t.value} 银币</b></div>`).join('')}
+      <div class="m-line"><span>剩余重投</span><b>每次折基础奖励 ${pct(REROLL_BONUS_RATE)}</b></div>
+      <div class="m-line"><span>得分 &gt; 目标 ${OVERSHOOT_RATIO} 倍</span><b>+基础奖励 ${pct(OVERSHOOT_BONUS_RATE)}</b></div>
       <div class="m-line"><span>镀金袖扣</span><b>+15 银币</b></div>
-      <p style="color:#8d7e66;font-size:10px;line-height:1.7;margin-top:8px">超额赏金只取达到的最高一档，不叠加。左上角「胜利奖励」实时等于此刻收手的总收入。</p>
+      <p style="color:#8d7e66;font-size:10px;line-height:1.7;margin-top:8px">超额赏金与剩余重投按基础奖励折算，可同时拿到。左上角「胜利奖励」实时等于此刻收手的总收入。</p>
     </div>
     <div class="market-card">
       <h4>关卡目标与基础奖励（★ 庄家关）</h4>
@@ -554,7 +554,7 @@ footer code{color:#93836b;font-family:Consolas,monospace;font-size:9.5px}
   </div>
   <ul class="notes">
     <li>骰袋满 6 枚（丰饶骰袋后 7 枚）时购入新骰，会弹出替换选择。</li>
-    <li>物品不重复出售，随身栏最多 4 件主动物品；一次性消耗品用掉后会重新出现在市集。</li>
+    <li>物品不重复出售，随身主动物品不限件数；一次性消耗品用掉后会重新出现在市集。</li>
     <li>三种「货架」被动各自只影响对应分区的上架数量，可叠加使用。</li>
     <li><b>镀金袖扣</b>让刷新费用 −20%，并让每关胜利 +15 银币。</li>
     <li>失败后「卷土重来」保留骰袋、骰桶与物品，失去一半银币。</li>

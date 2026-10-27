@@ -7,7 +7,7 @@
 - **服务器**：`221.228.10.210`（Rocky Linux 8.10）
 - **Web 服务器**：Nginx，监听 `9999`
 - **静态目录**：`/var/www/heavens-dice/current`
-- **当前 release**：`/var/www/heavens-dice/releases/20261027-1215`
+- **当前 release**：`/var/www/heavens-dice/releases/20261027-1430`
 
 ## 发布模型（Vite 构建）
 
@@ -20,6 +20,26 @@
 - `dist/` 是构建产物，不提交到 Git。
 
 **不要**再把根目录的 `index.html`、`src/`、`css/` 打进 release；它们只是开发源码。
+
+## 账号与统计 API
+
+- 服务：`/opt/heavens-dice-api`，systemd 单元 `heavens-dice-api`，监听 `127.0.0.1:8787`
+- Nginx：`/heavens-dice/api/` 反向代理到该端口；配置片段在 `deploy/nginx-api-location.conf`
+- MySQL：复用现有 `wanjie` 数据库，表名统一 `hd_` 前缀；建表文件 `server/schema.sql`
+- 前端静态包与 API 同源，前端使用相对地址 `./api/...`
+
+首次部署/升级 API：
+
+```bash
+tar -xzf /tmp/hd-api.tar.gz -C /opt/heavens-dice-api
+cd /opt/heavens-dice-api && npm install --omit=dev
+mysql -uwanjie -p wanjie < schema.sql   # 仅首次或迁移时
+systemctl restart heavens-dice-api
+curl -fsS http://127.0.0.1:9999/heavens-dice/api/health
+```
+
+API 的密码使用 scrypt，session 只保存 token 的 SHA-256；完整说明见
+`server/README.md`。本地存档与历史仍先写 localStorage，设置密码后才上传。
 
 ## 为什么不是 80 端口
 

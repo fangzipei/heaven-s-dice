@@ -45,7 +45,7 @@ describe('市集页搬到 ui/screens/shop.ts 之后仍然写同样的文案', ()
     expect(html).toContain('“看一看，摸一摸，别问来路。”');
     expect(html).toContain('货架 2 枚 · 购入后替换骰袋中的骰子');
     expect(html).toContain('货架 1 只 · 立即替换当前骰桶');
-    expect(html).toContain('货架 3 件 · 主动物品栏上限 4');
+    expect(html).toContain('货架 3 件 · 随身物品不限件数');
     for (const section of ['dice', 'barrel', 'item']) {
       expect(html).toContain(`data-action="refresh-shop" data-section="${section}"`);
       expect(html).toContain(`<div class="shop-grid ${section}">`);

@@ -536,6 +536,18 @@ test('cracked pouch trades a die for a permanent score multiplier', () => {
   expect(second.ok).toBe(false);
 });
 
+test('active items have no carry limit', () => {
+  const state = fresh();
+  initLevel(state);
+  state.coins = 9999;
+  createShop(state);
+  for (let i = 0; i < 6; i += 1) {
+    state.shop.item[0] = { id: 'glove', sold: false };
+    expect(buyItem(state, 0).ok).toBe(true);
+  }
+  expect(state.activeItems.filter((id) => id === 'glove').length).toBe(6);
+});
+
 test('owned items can be sold for half price only in the shop', () => {
   const state = fresh();
   state.phase = 'shop';

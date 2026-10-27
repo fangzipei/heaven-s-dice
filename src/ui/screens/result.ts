@@ -7,6 +7,9 @@ import { runSummary } from '../../core/engine.ts';
 import type { LevelRewardInfo } from '../../core/types.ts';
 import { h, num } from '../../core/util.ts';
 import { sound } from '../../platform/sound.ts';
+import { finishRunRecord } from '../../platform/run-record.ts';
+import { clearGameSave } from '../../platform/save.ts';
+import { storeFinishedRun } from '../../platform/sync.ts';
 import { openOverlay } from '../components/overlay.ts';
 import { projectedReward } from '../reward.ts';
 import { app } from '../state.ts';
@@ -21,6 +24,9 @@ export function showVictory(): void {
   const reward = (run.levelReward || { total: projectedReward(), bonuses: [] }) as LevelRewardInfo;
   sound.win();
   if (isFinal) {
+    const finished = finishRunRecord(run, 'win');
+    if (finished) storeFinishedRun(finished);
+    clearGameSave();
     const summary = runSummary(run);
     openOverlay(`
       <div class="modal result-modal">
@@ -78,6 +84,9 @@ export function showDefeat(): void {
   app.resultShown = true;
   const run = app.run;
   const opponent = getOpponent(run.level)!;
+  const finished = finishRunRecord(run, 'loss');
+  if (finished) storeFinishedRun(finished);
+  clearGameSave();
   sound.lose();
   openOverlay(`
     <div class="modal result-modal loss">

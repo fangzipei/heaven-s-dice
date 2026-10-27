@@ -8,7 +8,7 @@ import {
   getTable, rarityOf,
 } from '../../content/index.ts';
 import {
-  ACTIVE_ITEM_SLOTS, buyBarrel as engineBuyBarrel, buyDie as engineBuyDie,
+  buyBarrel as engineBuyBarrel, buyDie as engineBuyDie,
   buyItem as engineBuyItem, canSellItem, effectiveProbs,
   getBarrel, getDiceCapacity, getDieSpec, getOwnedItemIds, itemSellPrice,
   refreshCost, refreshSection, sectionLabel, sellItem, shopPrice, shopSlots,
@@ -23,6 +23,7 @@ import { showToast } from '../components/toast.ts';
 import { barrelTypeLabel } from '../components/tooltip.ts';
 import { $ } from '../dom.ts';
 import { sound } from '../../platform/sound.ts';
+import { recordShop } from '../../platform/run-record.ts';
 import { discoverLoadout, discoverShop } from '../../platform/storage.ts';
 import { projectedReward } from '../reward.ts';
 import { app } from '../state.ts';
@@ -85,7 +86,7 @@ export function renderShopScreen(): void {
       <div class="shop-zones">
         ${shopZone('dice', '骰子', slotNote(slots.dice, '枚', 2, '购入后替换骰袋中的骰子'), shop.dice, renderDiceShopCard)}
         ${shopZone('barrel', '骰桶', slotNote(slots.barrel, '只', 1, '立即替换当前骰桶'), shop.barrel, renderBarrelShopCard)}
-        ${shopZone('item', '物品', slotNote(slots.item, '件', 3, '主动物品栏上限 4'), shop.item, renderItemShopCard)}
+        ${shopZone('item', '物品', slotNote(slots.item, '件', 3, '随身物品不限件数'), shop.item, renderItemShopCard)}
       </div>
       ${renderSellShelf(run)}
     </div>
@@ -215,7 +216,6 @@ function renderItemShopCard(entry: ShopOffer, index: number): string {
   const rarity = rarityOf(item);
   const price = shopPrice(app.run!, item.price);
   const affordable = app.run!.coins >= price;
-  const full = item.type === 'active' && app.run!.activeItems.length >= ACTIVE_ITEM_SLOTS;
   return `
     <article class="shop-card ${entry.sold ? 'is-sold' : ''}" style="--rarity:${rarity.color};--glow:${rarity.glow};min-height:306px" data-item-tip="${h(item.id)}">
       <div class="card-topline"><span class="rarity-tag">${rarity.name}</span><span class="set-tag">${item.type === 'active' ? '主动' : '被动'}</span></div>
@@ -225,7 +225,7 @@ function renderItemShopCard(entry: ShopOffer, index: number): string {
       <div class="card-desc">${h(item.desc)}</div>
       <div class="card-foot">
         <span class="price-tag"><svg><use href="#i-coin"></use></svg>${num(price)}<small>购入</small></span>
-        <button class="buy-button" data-action="buy-item" data-index="${index}" ${entry.sold || !affordable || full ? 'disabled' : ''}>${full ? '栏位已满' : affordable ? '购入' : '银币不足'}</button>
+        <button class="buy-button" data-action="buy-item" data-index="${index}" ${entry.sold || !affordable ? 'disabled' : ''}>${affordable ? '购入' : '银币不足'}</button>
       </div>
       ${entry.sold ? '<span class="sold-stamp">SOLD</span>' : ''}
     </article>`;
@@ -239,6 +239,7 @@ export function refreshShop(section: string): void {
   if (!app.run) return;
   const result = refreshSection(app.run, section);
   if (!result.ok) { showToast(result.error!, 'error'); return; }
+  recordShop(app.run, { action: 'refresh', kind: section, price: result.cost });
   sound.click();
   renderShopScreen();
   showToast(`刷新${sectionLabel(section)}，花费 ${result.cost} 银币。`);
@@ -256,6 +257,7 @@ export function buyDie(index: number): void {
     }
     return;
   }
+  recordShop(app.run, { action: 'buy', kind: 'die', id: result.die!.id, name: result.die!.name, price: result.price });
   sound.item();
   renderShopScreen();
   showToast(`购入「${result.die!.name}」，花费 ${result.price} 银币。`, 'good');
@@ -265,6 +267,7 @@ export function buyBarrel(index: number): void {
   if (!app.run) return;
   const result = engineBuyBarrel(app.run, index);
   if (!result.ok) { showToast(result.error!, 'error'); return; }
+  recordShop(app.run, { action: 'buy', kind: 'barrel', id: result.barrel!.id, name: result.barrel!.name, price: result.price });
   sound.item();
   renderShopScreen();
   showToast(`换上「${result.barrel!.name}」。`, 'good');
@@ -274,6 +277,7 @@ export function buyItem(index: number): void {
   if (!app.run) return;
   const result = engineBuyItem(app.run, index);
   if (!result.ok) { showToast(result.error!, 'error'); return; }
+  recordShop(app.run, { action: 'buy', kind: 'item', id: result.item!.id, name: result.item!.name, price: result.price });
   sound.item();
   renderShopScreen();
   showToast(`购入「${result.item!.name}」，花费 ${result.price} 银币。`, 'good');
@@ -283,6 +287,7 @@ export function sellShopItem(itemId: string): void {
   if (!app.run) return;
   const result = sellItem(app.run, itemId);
   if (!result.ok) { showToast(result.error!, 'error'); return; }
+  recordShop(app.run, { action: 'sell', kind: 'item', id: result.item!.id, name: result.item!.name, price: result.price });
   sound.item();
   renderShopScreen();
   showToast(`出售「${result.item!.name}」，获得 ${result.price} 银币（半价）。`, 'good');
@@ -316,6 +321,7 @@ export function confirmReplace(bagUid: string): void {
   const { index } = app.pendingReplace;
   const result = engineBuyDie(app.run, index, bagUid);
   if (!result.ok) { showToast(result.error!, 'error'); return; }
+  recordShop(app.run, { action: 'buy-replace', kind: 'die', id: result.die!.id, name: result.die!.name, price: result.price });
   app.pendingReplace = null;
   closeOverlay();
   sound.item();

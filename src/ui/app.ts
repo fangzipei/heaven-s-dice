@@ -16,13 +16,24 @@ import {
   loadDiscovery, readSoundPref, saveSoundPref,
 } from '../platform/storage.ts';
 import { installDebugBridge } from '../platform/debug-bridge.ts';
+import { loadProfile, saveProfile } from '../platform/profile.ts';
+import {
+  beginLevelRecord, beginRunRecord, endLevelRecord, getRunRecord, pauseRunRecord,
+  recordShop, restoreRunRecord, resumeRunRecord, setRecordUser,
+} from '../platform/run-record.ts';
+import { clearGameSave, loadGame, saveGame } from '../platform/save.ts';
+import { syncEverything } from '../platform/sync.ts';
+import {
+  logoutAccount, openAccount, refreshAccountButton, saveLocalAccount,
+  setPasswordAndSync, switchAccount, syncAccount, syncNow,
+} from './screens/account.ts';
 import { closeOverlay, openOverlay } from './components/overlay.ts';
 import { clearToasts, showToast } from './components/toast.ts';
 import { bindTooltip, hideTooltip } from './components/tooltip.ts';
 import { $, $$, setCss } from './dom.ts';
 import {
-  advanceCurrentLevel, answerSaltOffer, beginRoll, bindCupDrag, forfeitRun, handleScore,
-  pulseCup, renderGame, setSpeech, useItem,
+  advanceCurrentLevel, answerSaltOffer, beginRoll, bindCupDrag, confirmUseItem, forfeitRun,
+  handleScore, pulseCup, renderGame, requestUseItem, setSpeech,
 } from './game.ts';
 import { renderTopbar } from './hud.ts';
 import { baseReward } from './reward.ts';
@@ -55,7 +66,77 @@ document.addEventListener('DOMContentLoaded', () => {
   setTrayRepaint(renderGame);
   bindSceneParallax();
   renderStartDecor();
+  refreshAccountButton();
+  refreshResumeButton();
+  const profile = loadProfile();
+  if (profile?.mode === 'synced') void syncEverything();
+  window.addEventListener('beforeunload', () => { pauseRunRecord(); persistGame(); });
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') {
+      pauseRunRecord();
+      persistGame();
+    } else {
+      resumeRunRecord();
+    }
+  });
 });
+
+function persistGame(): void {
+  if (app.run) saveGame(app.run, getRunRecord());
+}
+
+function ensureProfile() {
+  const existing = loadProfile();
+  if (existing) return existing;
+  const created = { id: '旅人', mode: 'local' as const, createdAt: Date.now() };
+  saveProfile(created);
+  refreshAccountButton();
+  return created;
+}
+
+export function refreshResumeButton(): void {
+  const button = $('#resume-run');
+  if (!button) return;
+  const saved = loadGame();
+  button.hidden = !saved;
+  if (saved) {
+    const level = saved.run.level;
+    const when = saved.savedAt ? new Date(saved.savedAt).toLocaleString('zh-CN', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
+    button.textContent = `继续上局 · 第 ${level} 关${when ? ` · ${when}` : ''}`;
+  }
+}
+
+export function resumeRun(): void {
+  const saved = loadGame();
+  if (!saved) { showToast('没有可继续的存档。'); refreshResumeButton(); return; }
+  closeOverlay();
+  closeShopScreen();
+  app.run = saved.run;
+  if (saved.record) {
+    restoreRunRecord(saved.record);
+    resumeRunRecord();
+  } else beginRunRecord(saved.run, ensureProfile().id);
+  setRecordUser(ensureProfile().id);
+  app.screen = 'game';
+  app.busy = false;
+  app.rolling = false;
+  app.introOpen = false;
+  app.resultShown = false;
+  $('#start-screen')!.hidden = true;
+  $('#game-screen')!.hidden = false;
+  setupLevelScene(true);
+  renderGame();
+  if (saved.run.phase === 'shop' && saved.run.shop) openShopScreen();
+  else if (saved.run.phase === 'won') showVictory();
+  ensureDiceTable().then((table) => {
+    if (!table || !app.run) return;
+    table.resize();
+    renderDiceTray();
+    motion.markDirty();
+  });
+  sound.unlock();
+  showToast(`已恢复第 ${saved.run.level} 关的存档。`, 'good');
+}
 
 function mountCupZone(): void {
   const cupZone = $('#cup-zone');
@@ -164,8 +245,33 @@ function bindGlobalEvents(): void {
 
 async function handleAction(action: string, target: HTMLElement, _event?: MouseEvent): Promise<void> {
   switch (action) {
+    case 'resume-run':
+      resumeRun();
+      break;
     case 'start-run':
       showStartPrompt();
+      break;
+    case 'open-account':
+      openAccount();
+      break;
+    case 'account-save-local':
+      saveLocalAccount();
+      setRecordUser(loadProfile()?.id || '旅人');
+      break;
+    case 'account-sync':
+      void syncAccount();
+      break;
+    case 'account-set-password':
+      void setPasswordAndSync();
+      break;
+    case 'account-sync-now':
+      void syncNow();
+      break;
+    case 'account-logout':
+      logoutAccount();
+      break;
+    case 'account-switch':
+      switchAccount();
       break;
     case 'start-direct':
       startRun();
@@ -231,7 +337,10 @@ async function handleAction(action: string, target: HTMLElement, _event?: MouseE
       answerSaltOffer(false);
       break;
     case 'use-item':
-      useItem(target.dataset.itemId!);
+      requestUseItem(target.dataset.itemId!);
+      break;
+    case 'confirm-use-item':
+      confirmUseItem(target.dataset.itemId!);
       break;
     case 'open-gesture':
       openGesture();
@@ -311,7 +420,10 @@ function updateSoundButtons(): void {
 export function startRun(): void {
   closeOverlay();
   closeShopScreen();
+  const profile = ensureProfile();
+  clearGameSave();
   app.run = Engine.createRun();
+  beginRunRecord(app.run, profile.id);
   discoverLoadout(app.run);
   app.screen = 'game';
   app.busy = false;
@@ -330,6 +442,7 @@ export function startRun(): void {
     motion.markDirty();
   });
   sound.unlock();
+  refreshResumeButton();
   showLevelIntro();
 }
 
@@ -344,6 +457,8 @@ export function resetToStart(): void {
   $('#start-screen')!.hidden = false;
   $('#game-screen')!.hidden = true;
   window.scrollTo({ top: 0, behavior: 'instant' });
+  refreshResumeButton();
+  refreshAccountButton();
 }
 
 function requestHome(): void {
@@ -487,8 +602,11 @@ function showCoinGainNotice(): void {
 function leaveShop(): void {
   if (!app.run) return;
   const next = app.run.level + 1;
+  recordShop(app.run, { action: 'leave' });
+  endLevelRecord(app.run);
   const result = Engine.leaveShop(app.run);
   if (!result.ok) { showToast(result.error!, 'error'); return; }
+  beginLevelRecord(app.run);
   closeShopScreen();
   setupLevelScene(true);
   renderGame();
@@ -499,6 +617,7 @@ function retryLevel(): void {
   if (!app.run) return;
   const result = Engine.retryLevel(app.run);
   if (!result.ok) { showToast(result.error!, 'error'); return; }
+  beginRunRecord(app.run, ensureProfile().id);
   closeOverlay();
   closeShopScreen();
   app.busy = false;
