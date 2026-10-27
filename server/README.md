@@ -65,6 +65,7 @@ Nginx proxies `/heavens-dice/api/` to `127.0.0.1:8787` via
 | Method | Path | Auth | Purpose |
 |---|---|---|---|
 | GET | `/health` | — | DB ping |
+| POST | `/account` | — | `{id,password}` login existing or create unique account |
 | POST | `/register` | — | `{id,password}` create unique sync account |
 | POST | `/login` | — | `{id,password}` issue token |
 | GET | `/me` | Bearer | current account |
