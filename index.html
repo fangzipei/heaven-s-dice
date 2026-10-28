@@ -3,10 +3,14 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#0b0805">
-  <meta name="description" content="天国骰局 — 一款以《天国：拯救 2》骰子规则为核心的肉鸽网页游戏。摇骰、留骰、画阵，挑战八位庄家。">
+  <meta name="theme-color" content="#f4ecd9">
+  <meta name="description" content="天国骰局 — 堕入地狱的赌徒用六颗骰子挑战所有庄家，只为换一张进入天堂的门票。">
   <title>天国骰局 · Heaven's Dice</title>
-  <link rel="stylesheet" href="css/main.css?v=20261027-identity02">
+  <link rel="stylesheet" href="css/main.css?v=20261028-paperworld03">
+  <link rel="stylesheet" href="css/paper-overrides.css?v=20261028-paperworld01">
+  <link rel="stylesheet" href="css/paper-scene.css?v=20261028-paperworld05">
+  <link rel="stylesheet" href="css/paper-world.css?v=20261028-paperworld06">
+  <link rel="stylesheet" href="css/paper-shop.css?v=20261028-shop01">
   <link rel="icon" href="assets/items/coin.svg" type="image/svg+xml">
   <!-- Animation + 3D stack, served locally from /vendor so the game runs offline. -->
   <script src="vendor/gsap.min.js?v=3.15.0"></script>
@@ -35,6 +39,11 @@
     <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 7h16M4 12h11M4 17h16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></symbol>
     <symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8.3" r="3.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M4.8 20c.7-3.7 3.4-5.6 7.2-5.6s6.5 1.9 7.2 5.6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></symbol>
     <symbol id="i-history" viewBox="0 0 24 24"><path d="M4 12a8 8 0 1 0 2.3-5.6M4 4v5h5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M12 8v4l2.7 1.7" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></symbol>
+    <!-- Roughens the big pencil-drawn title so it does not look typeset. -->
+    <filter id="pencil-rough" x="-12%" y="-12%" width="124%" height="124%">
+      <feTurbulence type="fractalNoise" baseFrequency=".045" numOctaves="2" seed="9" result="noise"/>
+      <feDisplacementMap in="SourceGraphic" in2="noise" scale="2.6" xChannelSelector="R" yChannelSelector="G"/>
+    </filter>
   </svg>
 
   <div id="app">
@@ -43,33 +52,15 @@
         <svg><use href="#i-user"></use></svg><span id="home-account-name">登录</span>
       </button>
       <div class="home-art" aria-hidden="true">
-        <img class="home-table" src="assets/tables/diamond.svg" alt="">
+        <img class="home-table" src="assets/art/tables/wood.svg" alt="">
         <div class="home-shade"></div>
         <div class="home-halo"></div>
-        <img class="home-cup" src="assets/cups/astral.svg" alt="">
-        <!-- Three real cubes resting on the table: aged bone, oak-stained, gilt. -->
+        <img class="home-cup" src="assets/art/barrels/astral-cup.svg" alt="">
+        <!-- Three paper dice resting on the table, cut from the same sheet as the tray art. -->
         <div class="home-dice">
-          <span class="home-die is-bone" style="--rx:-15deg;--ry:26deg;--rz:-3deg">
-            <span class="home-cube">
-              <span class="home-face hf-front"><i style="grid-row:1;grid-column:1"></i><i style="grid-row:1;grid-column:3"></i><i style="grid-row:2;grid-column:2"></i><i style="grid-row:3;grid-column:1"></i><i style="grid-row:3;grid-column:3"></i></span>
-              <span class="home-face hf-top"><i style="grid-row:1;grid-column:1"></i><i style="grid-row:2;grid-column:2"></i><i style="grid-row:3;grid-column:3"></i></span>
-              <span class="home-face hf-right"><i style="grid-row:2;grid-column:2"></i></span>
-            </span>
-          </span>
-          <span class="home-die is-oak" style="--rx:-13deg;--ry:-24deg;--rz:5deg">
-            <span class="home-cube">
-              <span class="home-face hf-front"><i style="grid-row:1;grid-column:1"></i><i style="grid-row:2;grid-column:2"></i><i style="grid-row:3;grid-column:3"></i></span>
-              <span class="home-face hf-top"><i style="grid-row:1;grid-column:1"></i><i style="grid-row:3;grid-column:3"></i></span>
-              <span class="home-face hf-right"><i style="grid-row:1;grid-column:1"></i><i style="grid-row:1;grid-column:3"></i><i style="grid-row:2;grid-column:2"></i><i style="grid-row:3;grid-column:1"></i><i style="grid-row:3;grid-column:3"></i></span>
-            </span>
-          </span>
-          <span class="home-die is-gilt" style="--rx:-17deg;--ry:18deg;--rz:-7deg">
-            <span class="home-cube">
-              <span class="home-face hf-front"><i style="grid-row:1;grid-column:1"></i><i style="grid-row:1;grid-column:3"></i><i style="grid-row:2;grid-column:1"></i><i style="grid-row:2;grid-column:3"></i><i style="grid-row:3;grid-column:1"></i><i style="grid-row:3;grid-column:3"></i></span>
-              <span class="home-face hf-top"><i style="grid-row:1;grid-column:1"></i><i style="grid-row:1;grid-column:3"></i><i style="grid-row:3;grid-column:1"></i><i style="grid-row:3;grid-column:3"></i></span>
-              <span class="home-face hf-right"><i style="grid-row:1;grid-column:1"></i><i style="grid-row:3;grid-column:3"></i></span>
-            </span>
-          </span>
+          <img class="home-die-img is-bone" src="assets/art/dice/bias_six-full-cut.svg" alt="">
+          <img class="home-die-img is-oak" src="assets/art/dice/wolf_hunter-full-cut.svg" alt="">
+          <img class="home-die-img is-gilt" src="assets/art/dice/gilded_trace-full-cut.svg" alt="">
         </div>
       </div>
       <div class="start-grain" aria-hidden="true"></div>
@@ -78,7 +69,8 @@
         <div class="home-logo">
           <div class="home-crest"><svg><use href="#i-die"></use></svg></div>
           <span class="home-logo-en">HEAVEN'S DICE</span>
-          <h1>天国骰局</h1>
+          <h1 class="pencil-title" aria-label="天国骰局"><span style="--i:0">天</span><span style="--i:1">国</span><span style="--i:2">骰</span><span style="--i:3">局</span></h1>
+          <p class="home-lore">你输光了最后一把，醒来时已经站在地狱门口。<br>守门人推来一张白纸和六颗骰子：<b>“赢过这条路上所有的庄家，就让你进天堂。”</b></p>
         </div>
 
         <div class="home-actions">
@@ -181,10 +173,15 @@
             </div>
           </div>
 
+          <aside class="score-history" id="score-history" hidden>
+            <header class="score-history-top"><span>已计骰型</span><span id="score-history-note">本局</span></header>
+            <div class="score-history-list" id="score-history-list"></div>
+          </aside>
+
           <div class="opponent" id="opponent">
             <div class="opponent-chair" aria-hidden="true"></div>
             <div class="opponent-aura"></div>
-            <div class="opponent-image-wrap"><img id="opponent-image" src="assets/portraits/minion-rat.svg" alt="对手画像"></div>
+            <div class="opponent-image-wrap"><img id="opponent-image" src="assets/portraits/paper/minion-rat.svg" alt="对手画像"></div>
             <div class="opponent-shadow"></div>
             <div class="speech-bubble" id="speech-bubble"><span id="speech-text">吱……伯爵说，今天您会留下点比银币更香的东西。</span></div>
             <div class="opponent-plate" id="opponent-plate">
@@ -201,7 +198,7 @@
             <div class="cup-drag" id="cup" role="button" tabindex="0" aria-label="握住骰桶拖动，倒计时结束后落骰">
               <div class="cup-vessel" id="cup-vessel">
                 <div class="cup-glow"></div>
-                <img id="cup-image" src="assets/cups/oak.svg" alt="骰桶">
+                <img id="cup-image" src="assets/art/barrels/oak-cup.svg" alt="骰桶">
               </div>
               <div class="cup-hint"><svg><use href="#i-hand"></use></svg><span>按住拖动 · 2 秒后落骰</span></div>
               <div class="cup-badge" id="cup-badge">旧橡木桶</div>
@@ -213,7 +210,6 @@
               <span id="throw-label">等待落骰</span>
               <span class="dice-count" id="dice-count">6 颗骰子</span>
             </div>
-            <div class="scored-panel" id="scored-panel" hidden></div>
             <!-- Dice now render in WebGL; the DOM keeps a canvas plus a
                  hidden button row so screen readers and taps still work. -->
             <div class="dice-tray" id="dice-tray" aria-live="polite">
@@ -250,7 +246,7 @@
             <header class="rail-card-head"><span>重投与骰桶</span><span class="rail-note" id="reroll-note">剩余 5 次</span></header>
             <div class="reroll-row" id="reroll-row"></div>
             <div class="barrel-row">
-              <div class="barrel-thumb"><img id="barrel-thumb" src="assets/cups/oak.svg" alt=""></div>
+              <div class="barrel-thumb"><img id="barrel-thumb" src="assets/art/barrels/oak-cup.svg" alt=""></div>
               <div class="barrel-copy"><b id="barrel-name">旧橡木桶</b><span id="barrel-short">没有额外效果</span></div>
               <button class="mini-button" id="gesture-button" data-action="open-gesture" hidden><svg><use href="#i-gesture"></use></svg>仪式</button>
             </div>
@@ -268,6 +264,11 @@
             <div class="passive-items" id="passive-items"></div>
           </section>
 
+          <section class="rail-card patterns-card">
+            <header class="rail-card-head"><span>骰型规则</span><span class="rail-note" id="pattern-note">取最高分</span></header>
+            <div class="patterns" id="patterns"></div>
+          </section>
+
           <section class="rail-card sets-card">
             <header class="rail-card-head"><span>骰子套组</span><button class="rail-link" data-action="open-compendium">图鉴</button></header>
             <div class="set-list" id="set-list"></div>
@@ -277,6 +278,7 @@
             <header class="rail-card-head"><span>赌桌记录</span><span class="rail-note">LIVE</span></header>
             <div class="game-log" id="game-log"></div>
           </section>
+          <div class="rail-grip" id="rail-grip" title="拖动调整侧栏宽度" aria-hidden="true"></div>
         </aside>
       </div>
     </section>

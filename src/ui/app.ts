@@ -10,6 +10,7 @@ import * as Engine from '../core/engine.ts';
 import type { BossDef, Opponent } from '../core/types.ts';
 import { clamp, h, num } from '../core/util.ts';
 import { motion } from '../render/motion.ts';
+import { barrelCupArt, paperTableArt, portraitArt } from '../render/art.ts';
 import { sound } from '../platform/sound.ts';
 import {
   bindDiscovery, discoverLoadout,
@@ -31,6 +32,7 @@ import { closeOverlay, openOverlay } from './components/overlay.ts';
 import { clearToasts, showToast } from './components/toast.ts';
 import { bindTooltip, hideTooltip } from './components/tooltip.ts';
 import { $, $$, setCss } from './dom.ts';
+import { paperSwap } from './paper-transition.ts';
 import {
   advanceCurrentLevel, answerSaltOffer, beginRoll, bindCupDrag, cancelGrant, cancelGrantReplace,
   chooseGrantDie, confirmGrantReplace, confirmUseItem, forfeitRun, handleScore, pulseCup, renderGame,
@@ -65,6 +67,7 @@ document.addEventListener('DOMContentLoaded', () => {
   mountCupZone();
   bindGlobalEvents();
   bindCupDrag();
+  bindRailResize();
   bindTooltip();
   // 点骰子是 tray 里发生的事，但重画整张牌桌归组装层管。
   setTrayRepaint(renderGame);
@@ -74,18 +77,21 @@ document.addEventListener('DOMContentLoaded', () => {
   refreshResumeButton();
   const profile = loadProfile();
   if (profile?.token) void syncEverything();
-  window.addEventListener('beforeunload', () => { pauseRunRecord(); persistGame(); });
+  $('#start-screen')!.hidden = true;
+  $('#game-screen')!.hidden = false;
+  window.addEventListener('beforeunload', () => { pauseRunRecord(); });
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'hidden') {
       pauseRunRecord();
-      persistGame();
     } else {
       resumeRunRecord();
     }
   });
 });
 
-function persistGame(): void {
+/* Checkpoints are written only when a level or shop is finished, so continuing
+   always drops the player at a clean level start instead of a half-played hand. */
+function saveCheckpoint(): void {
   if (app.run) saveGame(app.run, getRunRecord());
 }
 
@@ -106,30 +112,30 @@ export function resumeRun(): void {
   if (!saved) { showToast('没有可继续的存档。'); refreshResumeButton(); return; }
   const profile = loadProfile();
   if (!profile) { openIdentity(resumeRun); return; }
-  closeOverlay();
-  closeShopScreen();
-  app.run = saved.run;
-  if (saved.record) {
-    restoreRunRecord(saved.record);
-    resumeRunRecord();
-  } else beginRunRecord(saved.run, profile.id);
-  setRecordUser(profile.id);
-  app.screen = 'game';
-  app.busy = false;
-  app.rolling = false;
-  app.introOpen = false;
-  app.resultShown = false;
-  $('#start-screen')!.hidden = true;
-  $('#game-screen')!.hidden = false;
-  setupLevelScene(true);
-  renderGame();
-  if (saved.run.phase === 'shop' && saved.run.shop) openShopScreen();
-  else if (saved.run.phase === 'won') showVictory();
-  ensureDiceTable().then((table) => {
-    if (!table || !app.run) return;
-    table.resize();
-    renderDiceTray();
-    motion.markDirty();
+  paperSwap(() => {
+    closeOverlay();
+    closeShopScreen();
+    app.run = saved.run;
+    // Old saves could sit in the middle of a hand. Checkpoints are level-start
+    // snapshots, so rebuild the level rather than resuming half a throw.
+    if (saved.run.phase !== 'won' && saved.run.phase !== 'shop') Engine.initLevel(saved.run);
+    if (saved.record) {
+      restoreRunRecord(saved.record);
+      resumeRunRecord();
+    } else beginRunRecord(saved.run, profile.id);
+    setRecordUser(profile.id);
+    app.screen = 'game';
+    app.busy = false;
+    app.rolling = false;
+    app.introOpen = false;
+    app.resultShown = false;
+    $('#start-screen')!.hidden = true;
+    $('#game-screen')!.hidden = false;
+    setupLevelScene(true);
+    renderGame();
+    if (saved.run.phase === 'shop' && saved.run.shop) openShopScreen();
+  }, () => {
+    if (saved.run.phase === 'won') showVictory();
   });
   sound.unlock();
   showToast(`已恢复第 ${saved.run.level} 关的存档。`, 'good');
@@ -186,13 +192,38 @@ function bindSceneParallax(): void {
 }
 
 function renderStartDecor(): void {
-  const cup = $<HTMLImageElement>('.hero-cup img');
-  if (cup) cup.src = 'assets/cups/astral.svg';
+  const cup = $<HTMLImageElement>('.home-cup');
+  if (cup) cup.src = barrelCupArt('astral');
 }
 
 /* ═══════════════════════════════════════════════════════════════════
    Global events
    ═══════════════════════════════════════════════════════════════════ */
+function bindRailResize(): void {
+  const grip = $('#rail-grip');
+  if (!grip) return;
+  let dragging = false;
+  const root = document.documentElement;
+  grip.addEventListener('pointerdown', (event) => {
+    if (window.innerWidth <= 1050) return;
+    dragging = true;
+    event.preventDefault();
+    grip.setPointerCapture(event.pointerId);
+    document.body.classList.add('is-resizing-rail');
+  });
+  const finish = () => {
+    dragging = false;
+    document.body.classList.remove('is-resizing-rail');
+  };
+  window.addEventListener('pointermove', (event) => {
+    if (!dragging) return;
+    const width = clamp(window.innerWidth - event.clientX, 280, Math.min(520, window.innerWidth * 0.46));
+    root.style.setProperty('--rail-width', `${Math.round(width)}px`);
+  });
+  window.addEventListener('pointerup', finish);
+  window.addEventListener('pointercancel', finish);
+}
+
 function bindGlobalEvents(): void {
   document.addEventListener('click', (event: MouseEvent) => {
     hideTooltip();
@@ -324,7 +355,7 @@ async function handleAction(action: string, target: HTMLElement, _event?: MouseE
       break;
     case 'cue-cup':
       pulseCup();
-      showToast('按住左侧骰桶拖动，2 秒倒计时后落骰；仪式桶要沿桌面轨迹描画。');
+      showToast('按住右侧骰桶拖动，2 秒倒计时后落骰；仪式桶要沿桌面轨迹描画。');
       break;
     case 'score-continue':
       handleScore('continue');
@@ -444,31 +475,25 @@ export async function startRun(): Promise<void> {
     return;
   }
   await loadGameConfig();
-  closeOverlay();
-  closeShopScreen();
-  clearGameSave();
-  app.run = Engine.createRun();
-  beginRunRecord(app.run, profile.id);
-  discoverLoadout(app.run);
-  app.screen = 'game';
-  app.busy = false;
-  app.rolling = false;
-  app.resultShown = false;
-  $('#start-screen')!.hidden = true;
-  $('#game-screen')!.hidden = false;
-  setupLevelScene(true);
-  renderGame();
-  // Bring the WebGL table up once the game screen has a real size, then
-  // repaint so the first roll already animates in 3D.
-  ensureDiceTable().then((table) => {
-    if (!table || !app.run) return;
-    diceTable!.resize();
-    renderDiceTray();
-    motion.markDirty();
-  });
+  paperSwap(() => {
+    closeOverlay();
+    closeShopScreen();
+    clearGameSave();
+    app.run = Engine.createRun();
+    beginRunRecord(app.run!, profile.id);
+    discoverLoadout(app.run!);
+    app.screen = 'game';
+    app.busy = false;
+    app.rolling = false;
+    app.resultShown = false;
+    $('#start-screen')!.hidden = true;
+    $('#game-screen')!.hidden = false;
+    setupLevelScene(true);
+    renderGame();
+    saveCheckpoint();
+  }, () => showLevelIntro());
   sound.unlock();
   refreshResumeButton();
-  showLevelIntro();
 }
 
 export function resetToStart(): void {
@@ -517,13 +542,15 @@ export function setupLevelScene(force = false): void {
   const scene = $('#scene')!;
   scene.dataset.table = table.id;
   setCss(scene, '--table-accent', table.accent);
-  $('#room-back')!.style.backgroundImage = `url("assets/rooms/${table.art}.svg")`;
+  $('#room-back')!.style.backgroundImage = `url("${paperTableArt(table.art)}")`;
   $('#chapter-tag')!.innerHTML = `<span>${h(table.subtitle.split(' · ')[0])}</span><b>${h(table.subtitle.split(' · ')[1] || '')}</b>`;
   const opponentEl = $('#opponent')!;
   opponentEl.classList.toggle('is-boss', isBoss);
+  opponentEl.classList.toggle('is-minion', !isBoss);
+  opponentEl.dataset.paperArt = opponent.art;
   opponentEl.style.setProperty('--boss-accent', opponent.accent || '#c25b5b');
   const image = $<HTMLImageElement>('#opponent-image')!;
-  image.src = `assets/portraits/${opponent.art}.svg`;
+  image.src = portraitArt(opponent.art);
   image.alt = opponent.name;
   $('#opponent-name')!.textContent = opponent.name;
   $('#opponent-kicker')!.textContent = isBoss ? `第 ${app.run.level} 关 · 庄家` : opponent.title;
@@ -537,10 +564,10 @@ export function setupLevelScene(force = false): void {
     $('#boss-effect-desc')!.textContent = `${boss!.effectDesc}${status ? ` · ${status}` : ''}`;
   }
   const cup = Engine.getBarrel(app.run);
-  $<HTMLImageElement>('#cup-image')!.src = `assets/cups/${cup.art}.svg`;
+  $<HTMLImageElement>('#cup-image')!.src = barrelCupArt(cup.art);
   $('#cup-badge')!.textContent = cup.name;
   $('#cup')!.dataset.barrelTip = cup.id;
-  $<HTMLImageElement>('#barrel-thumb')!.src = `assets/cups/${cup.art}.svg`;
+  $<HTMLImageElement>('#barrel-thumb')!.src = barrelCupArt(cup.art);
   $('#barrel-thumb')!.dataset.barrelTip = cup.id;
   setSpeech(introLine(opponent, app.run.level, isBoss));
   renderTopbar();
@@ -571,7 +598,7 @@ export function showLevelIntro(): void {
   openOverlay(`
     <div class="modal intro-modal ${isBoss ? 'is-boss-intro' : ''}" role="dialog" aria-modal="true" aria-label="第 ${run.level} 关">
       <div class="intro-portrait">
-        <img src="assets/portraits/${opponent.art}.svg" alt="${h(opponent.name)}">
+        <img src="${portraitArt(opponent.art)}" alt="${h(opponent.name)}">
       </div>
       <div class="intro-body">
         <div class="intro-eyebrow"><i></i>${isBoss ? 'DEALER’S TABLE' : 'A CHALLENGER APPEARS'} · ${isBoss ? '庄家' : '小兵'}<i></i></div>
@@ -581,16 +608,16 @@ export function showLevelIntro(): void {
         ${effect}
         <div class="intro-stats">
           <div class="intro-stat"><span>目标分数</span><b>${num(run.target)}</b></div>
-          <div class="intro-stat"><span>胜利奖励</span><b>${num(reward)} <small style="font-size:10px;color:#8d7c62">银币起</small></b></div>
+          <div class="intro-stat"><span>胜利奖励</span><b>${num(reward)} <small style="font-size:10px;color:var(--muted)">银币起</small></b></div>
           <div class="intro-stat ${isBoss ? 'boss' : ''}"><span>重投次数</span><b>${run.rerolls}</b></div>
           <div class="intro-stat"><span>章节</span><b>${roman}</b></div>
         </div>
-        <p class="intro-role" style="margin-top:-12px;margin-bottom:18px;font-size:10px;color:#a08c6c">收手奖金：每次未用重投 +${Math.round(REROLL_BONUS_RATE * 100)}% 基础赏金；得分超过目标 2 倍再 +${Math.round(OVERSHOOT_BONUS_RATE * 100)}%。</p>
+        <p class="intro-role" style="margin-top:-12px;margin-bottom:18px;font-size:11px;color:var(--muted)">收手奖金：每次未用重投 +${Math.round(REROLL_BONUS_RATE * 100)}% 基础赏金；得分超过目标 2 倍再 +${Math.round(OVERSHOOT_BONUS_RATE * 100)}%。</p>
         <div class="intro-actions">
           <button class="primary-button" data-action="close-intro">入座应战 <svg><use href="#i-arrow"></use></svg></button>
           <button class="text-button" data-action="open-rules">查看计分规则 <span>↗</span></button>
         </div>
-        ${run.level === 1 ? '<p class="intro-role" style="margin-top:15px;font-size:10px;color:#8f7d63">门房赠礼：一枚「幸运币」，立即 +150 分，用完即消失。</p>' : ''}
+        ${run.level === 1 ? '<p class="intro-role" style="margin-top:15px;font-size:11px;color:var(--muted)">门房赠礼：一枚「幸运币」，立即 +150 分，用完即消失。</p>' : ''}
         <div class="intro-tableline"></div>
       </div>
     </div>
@@ -600,10 +627,13 @@ export function showLevelIntro(): void {
 function goToShop(): void {
   if (!app.run) return;
   if (app.run.phase !== 'won') return;
-  closeOverlay();
   const shop = Engine.openShop(app.run);
   if (!shop) { showToast('市集没有开门。', 'error'); return; }
-  openShopScreen();
+  paperSwap(() => {
+    closeOverlay();
+    openShopScreen();
+    saveCheckpoint();
+  });
 }
 
 function showCoinGainNotice(): void {
@@ -632,10 +662,14 @@ function leaveShop(): void {
   const result = Engine.leaveShop(app.run);
   if (!result.ok) { showToast(result.error!, 'error'); return; }
   beginLevelRecord(app.run);
-  closeShopScreen();
-  setupLevelScene(true);
-  renderGame();
-  if (next <= LEVEL_COUNT) showLevelIntro();
+  paperSwap(() => {
+    closeShopScreen();
+    setupLevelScene(true);
+    renderGame();
+    saveCheckpoint();
+  }, () => {
+    if (next <= LEVEL_COUNT) showLevelIntro();
+  });
 }
 
 function retryLevel(): void {
@@ -648,11 +682,14 @@ function retryLevel(): void {
   setRecordUser(profile.id);
   closeOverlay();
   closeShopScreen();
-  app.busy = false;
-  app.rolling = false;
-  app.resultShown = false;
-  setupLevelScene(true);
-  renderGame();
+  paperSwap(() => {
+    app.busy = false;
+    app.rolling = false;
+    app.resultShown = false;
+    setupLevelScene(true);
+    renderGame();
+    saveCheckpoint();
+  });
   showToast('你重新坐回桌前。半数银币留在了上一局。', 'good');
 }
 
