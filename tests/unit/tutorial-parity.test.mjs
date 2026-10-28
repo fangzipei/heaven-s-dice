@@ -45,9 +45,10 @@ describe('图解教程搬到 ui/screens/tutorial.ts 之后仍然写同样的正�
     expect(html).toContain('<b>四个 3（四条）</b><strong>600<small>分</small></strong>');
     expect(html).toContain('300 × 2 = 600');
     expect(html).toContain('三个 1 = 1000 分，所以四个 1 = 2000、五个 1 = 4000、六个 1 = 8000');
-    // 三颗 3 的骰面：每颗 3 个点，共 9 个 tut-pip。
+    // 三颗 3 的骰面：纸片骰从标准骰六面图集里取点。
     expect((html.match(/aria-label="3 点"/g) || []).length).toBeGreaterThan(0);
-    expect((html.match(/class="tut-pip"/g) || []).length).toBeGreaterThan(30);
+    expect((html.match(/class="tut-die"/g) || []).length).toBeGreaterThan(30);
+    expect((html.match(/standard-faces-cut\.svg/g) || []).length).toBeGreaterThan(30);
   });
 
   test('目标与装备页引用真实内容数量', () => {

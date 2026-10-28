@@ -4,11 +4,11 @@
 // 计分示例与规则表是截图脚本与新手体验的验收对象，这里只改 import、类型标注。
 import {
   BARRELS, BOSSES, DICE, ITEMS, LEVEL_COUNT, LEVEL_CURVE, MINION_GAPS,
-  RARITIES, REROLL_BONUS_RATE, OVERSHOOT_BONUS_RATE, TABLES,
+  RARITIES, REROLL_BONUS_RATE, OVERSHOOT_BONUS_RATE, STANDARD_DIE, TABLES,
 } from '../../content/index.ts';
 import { SCORING_ROWS } from '../../core/scoring.ts';
 import { h, num } from '../../core/util.ts';
-import { pipIndexes } from '../../render/pip-layout.ts';
+import { paperDieFaceHtml } from '../../render/dice-dom.ts';
 import { openOverlay } from '../components/overlay.ts';
 import { $, $$ } from '../dom.ts';
 import { app } from '../state.ts';
@@ -20,9 +20,7 @@ import { app } from '../state.ts';
    Tutorial / first-run briefing
    ═══════════════════════════════════════════════════════════════════ */
 function tutorialDieHtml(value: number): string {
-  const positions = pipIndexes(value);
-  return `<span class="tut-die" role="img" aria-label="${value} 点">${Array.from({ length: 9 }, (_, i) => positions.includes(i)
-    ? `<i class="tut-pip" style="grid-row:${Math.floor(i / 3) + 1};grid-column:${(i % 3) + 1}"></i>` : '').join('')}</span>`;
+  return `<span class="tut-die" role="img" aria-label="${value} 点">${paperDieFaceHtml(value, STANDARD_DIE)}</span>`;
 }
 
 function tutorialDice(values: number[]): string {
@@ -153,11 +151,11 @@ function tutorialHtml(): string {
           <div class="tut-card"><b>计分并继续</b><p>本轮挂账继续累积，仍处于风险中。继续多少次都可以，直到你决定结束本轮。</p></div>
           <div class="tut-card"><b>计分并重投</b><p>结束本轮：本轮累计分全部落袋，再重新投六颗骰子，开始新的一轮。</p></div>
           <div class="tut-card"><b>掷空</b><p>投掷后没有任何可计分组合时，本轮累计分全部作废；已经落袋的分数保留。</p></div>
-          <div class="tut-card is-gold"><b>收手换钱</b><p>过关结算时，每次未使用的重投奖励<b style="display:inline;font-size:10px;color:#e5c278">基础赏金的 ${Math.round(REROLL_BONUS_RATE * 100)}%</b>。得分超过目标 2 倍，再奖励基础赏金的 ${Math.round(OVERSHOOT_BONUS_RATE * 100)}%。</p></div>
+          <div class="tut-card is-gold"><b>收手换钱</b><p>过关结算时，每次未使用的重投奖励<b style="display:inline;font-size:10px;color:var(--gold-bright)">基础赏金的 ${Math.round(REROLL_BONUS_RATE * 100)}%</b>。得分超过目标 2 倍，再奖励基础赏金的 ${Math.round(OVERSHOOT_BONUS_RATE * 100)}%。</p></div>
         </div>
         <h4 class="tut-subtitle">超额赏金 · 只有甩过目标 2 倍才加钱</h4>
         <div class="tut-cards three">
-          <div class="tut-card is-gold"><b>超过 2 倍目标</b><p>本关得分严格超过目标分的 2 倍，结算额外奖励<b style="display:inline;font-size:10px;color:#e5c278">基础赏金的 ${Math.round(OVERSHOOT_BONUS_RATE * 100)}%</b>。刚好 2 倍不算。</p></div>
+          <div class="tut-card is-gold"><b>超过 2 倍目标</b><p>本关得分严格超过目标分的 2 倍，结算额外奖励<b style="display:inline;font-size:10px;color:var(--gold-bright)">基础赏金的 ${Math.round(OVERSHOOT_BONUS_RATE * 100)}%</b>。刚好 2 倍不算。</p></div>
         </div>
         <div class="tut-callout is-key"><b>收手还是加注？</b><p>达标那一刻，左上角「胜利奖励」会实时变成你现在收手能拿到的数目（含未用重投奖励与 2 倍超额奖励），悬停可看明细。再赌一把可能跨过 2 倍目标，也可能一次掷空把本轮挂账全丢掉——已得分数不会丢。</p></div>
         <div class="tut-callout">
@@ -242,7 +240,7 @@ export function scrollTutorial(targetId: string): void {
 
 export function openRules(): void {
   if (app.introOpen) app.introOpen = false;
-  const rows = SCORING_ROWS.map((row) => `<tr><td>${h(row.label)}<br><span style="font-size:8px;color:#6f6352">${h(row.detail)}</span></td><td>${h(row.points)}</td></tr>`).join('');
+  const rows = SCORING_ROWS.map((row) => `<tr><td>${h(row.label)}<br><span style="font-size:8px;color:var(--muted)">${h(row.detail)}</span></td><td>${h(row.points)}</td></tr>`).join('');
   openOverlay(`
     <div class="modal rules-modal">
       <button class="modal-close" data-action="close-overlay" aria-label="关闭"><svg><use href="#i-close"></use></svg></button>
@@ -264,7 +262,7 @@ export function openRules(): void {
           <div class="rules-note">轮次：可以连续「计分并继续」累积本轮挂账；「计分并重投」结束本轮并把累计分全部落袋，再开始新一轮。若某次投掷没有任何可计分组合，本轮累计分全部清零，已落袋分保留；**下一次重投会把全部骰子放回桌上**（包括本轮先前已计分的骰子）。计分面板右下角的大号「本关重投」显示剩余 / 上限，低于 2 次变橙，耗尽变红。</div>
           <div class="rules-note">每关基础 3 次重投；击败庄家不会累积上限。烈酒、时间沙漏、加注契约和旋涡桶仪式可以临时增加重投次数。门房还会送你一枚开局就能用的幸运币（一次性）。</div>
           <h3 style="margin-top:18px">收手换钱与超额赏金</h3>
-          <p>过关结算时，每次<b style="color:#e5c278">未使用的重投奖励基础赏金的 ${Math.round(REROLL_BONUS_RATE * 100)}%</b>。此外，本关得分严格超过目标分的 <b style="color:#e5c278">2 倍</b>，再奖励基础赏金的 ${Math.round(OVERSHOOT_BONUS_RATE * 100)}%。</p>
+          <p>过关结算时，每次<b style="color:var(--gold-bright)">未使用的重投奖励基础赏金的 ${Math.round(REROLL_BONUS_RATE * 100)}%</b>。此外，本关得分严格超过目标分的 <b style="color:var(--gold-bright)">2 倍</b>，再奖励基础赏金的 ${Math.round(OVERSHOOT_BONUS_RATE * 100)}%。</p>
           <div class="rules-note">达标后左上角「胜利奖励」会实时变成你现在收手能拿到的数目，悬停可看明细：继续加注可以追更高的倍数，也可能一次掷空把本轮挂账全部丢掉。</div>
         </div>
         <div class="rules-section">

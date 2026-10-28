@@ -4,13 +4,14 @@
 // 因为 tools/ 的 CDP 截图和 boss-test 都在比对这里渲染出的文本；任何一处
 // 改动都会让 docs/screenshots 基线失效。
 import {
-  DICE_BY_ID, DICE_SETS, ITEM_BY_ID, LEVEL_COUNT, LEVELS, getLevelConfig, getOpponent, getTable,
+  DICE_SETS, ITEM_BY_ID, LEVEL_COUNT, LEVELS, getLevelConfig, getOpponent, getTable,
 } from '../content/index.ts';
 import {
-  bossStatusText, canUseItem, getBarrel, isFloatingScore, setCounts,
+  bossStatusText, canUseItem, getBarrel, getDieSpec, isFloatingScore, setCounts,
 } from '../core/engine.ts';
 import type { BossDef } from '../core/types.ts';
 import { clamp, h, num } from '../core/util.ts';
+import { renderRules, renderScoreHistory } from './combo-notes.ts';
 import { showToast } from './components/toast.ts';
 import { $ } from './dom.ts';
 import { cashOutHint, projectedReward } from './reward.ts';
@@ -125,7 +126,7 @@ export function renderRail() {
   const taunt = $('#objective-taunt')!;
   if (isBoss) {
     const boss = opponent as BossDef;
-    taunt.innerHTML = `<b style="color:#d29b8c;font-weight:400">${h(boss.effectName)}</b> · ${h(boss.effectDesc)}`;
+    taunt.innerHTML = `<b style="color:var(--blood);font-weight:700">${h(boss.effectName)}</b> · ${h(boss.effectDesc)}`;
   } else {
     taunt.textContent = `“${opponent.taunts[0]}”`;
   }
@@ -135,12 +136,12 @@ export function renderRail() {
     const active = index < run.rerolls;
     const extra = index >= 5;
     return `<span class="reroll-token ${active ? '' : 'is-spent'} ${extra ? 'is-extra' : ''}" title="${active ? '可用重投' : '已消耗'}"></span>`;
-  }).join('') + `<span class="reroll-count">${run.rerolls}<small style="color:#6f6352;font-size:8px"> / ${run.maxRerolls}</small></span>`;
+  }).join('') + `<span class="reroll-count">${run.rerolls}<small style="color:var(--muted);font-size:9px"> / ${run.maxRerolls}</small></span>`;
 
   const barrel = getBarrel(run);
   $('#barrel-name')!.textContent = barrel.name;
   $('#barrel-short')!.textContent = barrel.short;
-  $<HTMLImageElement>('#barrel-thumb')!.src = `assets/cups/${barrel.art}.svg`;
+  $<HTMLImageElement>('#barrel-thumb')!.src = `assets/art/barrels/${barrel.art}-cup.svg`;
   $('#barrel-thumb')!.dataset.barrelTip = barrel.id;
   $('#cup')!.dataset.barrelTip = barrel.id;
   const gestureButton = $<HTMLButtonElement>('#gesture-button')!;
@@ -157,6 +158,8 @@ export function renderRail() {
   renderRollHint();
   renderDiceEffects();
   renderItems();
+  renderRules();
+  renderScoreHistory();
   renderSets();
   renderLog();
 }
@@ -168,13 +171,14 @@ export function renderDiceEffects() {
   if (!list) return;
   $('#dice-effect-note')!.textContent = `${run.bag.length} 颗`;
   const counts = setCounts(run);
-  const rows = run.bag.map((entry) => {
-    const spec = DICE_BY_ID[entry.dieId];
-    if (!spec) return '';
+  const grouped = new Map<string, number>();
+  for (const entry of run.bag) grouped.set(entry.dieId, (grouped.get(entry.dieId) || 0) + 1);
+  const rows = [...grouped.entries()].map(([dieId, count]) => {
+    const spec = getDieSpec(dieId);
     const set = spec.setId ? DICE_SETS[spec.setId] : null;
     const effect = spec.bonus?.label || '无额外骰面特性';
     return `<div class="dice-effect-row" data-die-tip="${h(spec.id)}">
-      <b>${h(spec.name)}</b><span>${h(effect)}</span><em>${set ? h(set.name) : '无套组'}</em>
+      <b>${h(spec.name)}${count > 1 ? ` ×${count}` : ''}</b><span>${h(effect)}</span><em>${set ? h(set.name) : '无套组'}</em>
     </div>`;
   }).join('');
   const sets = Object.values(DICE_SETS).map((set) => {
@@ -220,10 +224,9 @@ export function renderItems() {
     const check = canUseItem(run, id);
     return `
       <button class="item-slot" data-action="use-item" data-item-id="${h(id)}" data-item-tip="${h(id)}"
-        aria-disabled="${check.ok ? 'false' : 'true'}" title="${h(item.name)}" aria-label="使用${h(item.name)}">
-        <img src="assets/items/${item.icon}.svg" alt="">
+        aria-disabled="${check.ok ? 'false' : 'true'}" aria-label="使用${h(item.name)}">
+        <img src="assets/art/items/${item.id}-cut.svg" alt="">
         <span class="charge">${charges > 0 ? charges : '×'}</span>
-        <span class="item-name">${h(item.name)}</span>
       </button>`;
   });
   container.innerHTML = slots.join('')
@@ -236,7 +239,7 @@ export function renderItems() {
   } else {
     passiveEl.innerHTML = passives.map((id) => {
       const item = ITEM_BY_ID[id]!;
-      return `<span class="passive-chip" data-item-tip="${h(id)}"><img src="assets/items/${item.icon}.svg" alt="">${h(item.name)}</span>`;
+      return `<span class="passive-chip" data-item-tip="${h(id)}"><img src="assets/art/items/${item.id}-cut.svg" alt="">${h(item.name)}</span>`;
     }).join('');
   }
 }
@@ -257,7 +260,7 @@ export function renderSets() {
            style="color:${set.color}" data-set-tip="${set.id}">
         <span class="set-icon">${h(set.name[0])}</span>
         <div class="set-copy"><b>${h(set.name)}</b><span>${h(text)}</span></div>
-        <span class="set-pips" title="${count} / 4">${pips}</span>
+        <span class="set-pips" aria-label="${count} / 4">${pips}</span>
       </div>`;
   }).join('');
 }

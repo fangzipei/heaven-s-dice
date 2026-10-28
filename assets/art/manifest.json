@@ -1,0 +1,379 @@
+{
+  "dice": [
+    {
+      "id": "ace",
+      "rarity": "legendary",
+      "peak": 1
+    },
+    {
+      "id": "balance",
+      "rarity": "common",
+      "peak": 1
+    },
+    {
+      "id": "bias_five",
+      "rarity": "common",
+      "peak": 5
+    },
+    {
+      "id": "bias_four",
+      "rarity": "common",
+      "peak": 4
+    },
+    {
+      "id": "bias_one",
+      "rarity": "common",
+      "peak": 1
+    },
+    {
+      "id": "bias_six",
+      "rarity": "common",
+      "peak": 6
+    },
+    {
+      "id": "bias_three",
+      "rarity": "common",
+      "peak": 3
+    },
+    {
+      "id": "bias_two",
+      "rarity": "common",
+      "peak": 2
+    },
+    {
+      "id": "cliff",
+      "rarity": "common",
+      "peak": 2
+    },
+    {
+      "id": "demon_devourer",
+      "rarity": "legendary",
+      "peak": 1
+    },
+    {
+      "id": "demon_imp",
+      "rarity": "rare",
+      "peak": 3
+    },
+    {
+      "id": "demon_queen",
+      "rarity": "legendary",
+      "peak": 2
+    },
+    {
+      "id": "demon_seal",
+      "rarity": "epic",
+      "peak": 5
+    },
+    {
+      "id": "demon_taxman",
+      "rarity": "epic",
+      "peak": 5
+    },
+    {
+      "id": "echo",
+      "rarity": "epic",
+      "peak": 1
+    },
+    {
+      "id": "even_twin",
+      "rarity": "epic",
+      "peak": 6
+    },
+    {
+      "id": "five_fold",
+      "rarity": "epic",
+      "peak": 5
+    },
+    {
+      "id": "gilded_trace",
+      "rarity": "common",
+      "peak": 1
+    },
+    {
+      "id": "hex",
+      "rarity": "epic",
+      "peak": 6
+    },
+    {
+      "id": "jack",
+      "rarity": "legendary",
+      "peak": 1
+    },
+    {
+      "id": "ladder",
+      "rarity": "common",
+      "peak": 5
+    },
+    {
+      "id": "last_road",
+      "rarity": "common",
+      "peak": 1
+    },
+    {
+      "id": "merchant",
+      "rarity": "legendary",
+      "peak": 1
+    },
+    {
+      "id": "mirror",
+      "rarity": "rare",
+      "peak": 1
+    },
+    {
+      "id": "neighbor",
+      "rarity": "epic",
+      "peak": 1
+    },
+    {
+      "id": "odd_eye",
+      "rarity": "rare",
+      "peak": 1
+    },
+    {
+      "id": "polar",
+      "rarity": "rare",
+      "peak": 6
+    },
+    {
+      "id": "refrain",
+      "rarity": "rare",
+      "peak": 1
+    },
+    {
+      "id": "shadow",
+      "rarity": "epic",
+      "peak": 1
+    },
+    {
+      "id": "shifting",
+      "rarity": "common",
+      "peak": 1
+    },
+    {
+      "id": "wolf_alpha",
+      "rarity": "epic",
+      "peak": 3
+    },
+    {
+      "id": "wolf_ancestor",
+      "rarity": "legendary",
+      "peak": 3
+    },
+    {
+      "id": "wolf_bloodmoon",
+      "rarity": "rare",
+      "peak": 3
+    },
+    {
+      "id": "wolf_hunter",
+      "rarity": "rare",
+      "peak": 3
+    },
+    {
+      "id": "wolf_whelp",
+      "rarity": "common",
+      "peak": 1
+    },
+    {
+      "id": "standard",
+      "rarity": "common",
+      "peak": 1
+    }
+  ],
+  "barrels": [
+    "oak",
+    "lead",
+    "serpent",
+    "astral",
+    "wolf-totem",
+    "demon-totem",
+    "pentagram",
+    "vortex",
+    "gilded",
+    "marker",
+    "guide",
+    "brood",
+    "singles"
+  ],
+  "items": [
+    {
+      "id": "blood_contract",
+      "icon": "dagger",
+      "rarity": "legendary",
+      "type": "active"
+    },
+    {
+      "id": "boss_ward",
+      "icon": "edict",
+      "rarity": "legendary",
+      "type": "active"
+    },
+    {
+      "id": "charm",
+      "icon": "amulet",
+      "rarity": "epic",
+      "type": "active"
+    },
+    {
+      "id": "courage",
+      "icon": "bottle",
+      "rarity": "common",
+      "type": "active"
+    },
+    {
+      "id": "cracked_pouch",
+      "icon": "cracked-pouch",
+      "rarity": "epic",
+      "type": "passive"
+    },
+    {
+      "id": "dice_bag",
+      "icon": "pouch",
+      "rarity": "epic",
+      "type": "passive"
+    },
+    {
+      "id": "epic_chest",
+      "icon": "pouch",
+      "rarity": "epic",
+      "type": "active"
+    },
+    {
+      "id": "glove",
+      "icon": "glove",
+      "rarity": "common",
+      "type": "active"
+    },
+    {
+      "id": "gold_cuff",
+      "icon": "cuff",
+      "rarity": "common",
+      "type": "passive"
+    },
+    {
+      "id": "heaven_plate",
+      "icon": "hourglass",
+      "rarity": "legendary",
+      "type": "passive"
+    },
+    {
+      "id": "hourglass",
+      "icon": "hourglass",
+      "rarity": "epic",
+      "type": "active"
+    },
+    {
+      "id": "hunter_mark",
+      "icon": "eye",
+      "rarity": "rare",
+      "type": "active"
+    },
+    {
+      "id": "lucky_coin",
+      "icon": "coin",
+      "rarity": "common",
+      "type": "active"
+    },
+    {
+      "id": "pip_ward",
+      "icon": "eye",
+      "rarity": "epic",
+      "type": "passive"
+    },
+    {
+      "id": "powder",
+      "icon": "powder",
+      "rarity": "common",
+      "type": "active"
+    },
+    {
+      "id": "quad_seal",
+      "icon": "edict",
+      "rarity": "epic",
+      "type": "passive"
+    },
+    {
+      "id": "quint_clasp",
+      "icon": "cuff",
+      "rarity": "epic",
+      "type": "passive"
+    },
+    {
+      "id": "rare_pair",
+      "icon": "scroll",
+      "rarity": "rare",
+      "type": "active"
+    },
+    {
+      "id": "salt",
+      "icon": "salt",
+      "rarity": "epic",
+      "type": "active"
+    },
+    {
+      "id": "sext_crown",
+      "icon": "amulet",
+      "rarity": "legendary",
+      "type": "passive"
+    },
+    {
+      "id": "shelf_barrel",
+      "icon": "shelf-barrel",
+      "rarity": "rare",
+      "type": "passive"
+    },
+    {
+      "id": "shelf_dice",
+      "icon": "shelf-dice",
+      "rarity": "epic",
+      "type": "passive"
+    },
+    {
+      "id": "shelf_item",
+      "icon": "shelf-item",
+      "rarity": "epic",
+      "type": "passive"
+    },
+    {
+      "id": "smoke",
+      "icon": "smoke",
+      "rarity": "epic",
+      "type": "active"
+    },
+    {
+      "id": "straight_bell",
+      "icon": "scroll",
+      "rarity": "epic",
+      "type": "passive"
+    },
+    {
+      "id": "triple_charm",
+      "icon": "amulet",
+      "rarity": "rare",
+      "type": "passive"
+    },
+    {
+      "id": "wager",
+      "icon": "scroll",
+      "rarity": "rare",
+      "type": "active"
+    }
+  ],
+  "portraits": [
+    "boss-ash",
+    "boss-diamond",
+    "boss-gold",
+    "boss-iron",
+    "boss-rat",
+    "boss-scale",
+    "boss-seraph",
+    "boss-stone",
+    "boss-tax",
+    "minion-crystal",
+    "minion-forge",
+    "minion-gargoyle",
+    "minion-gilt",
+    "minion-rat"
+  ]
+}

@@ -3,6 +3,7 @@
 import http from 'node:http';
 import crypto from 'node:crypto';
 import mysql from 'mysql2/promise';
+import { calculateLuckIndex } from './luck-index.mjs';
 
 const PORT = Number(process.env.PORT || 8787);
 const DB_HOST = process.env.DB_HOST || '127.0.0.1';
@@ -240,11 +241,7 @@ async function saveRun(conn, userId, run) {
   const started = asDate(run.startedAt, new Date(ended.getTime() - durationMs));
   const summary = run.summary && typeof run.summary === 'object' ? run.summary : {};
   const levelReached = Math.max(1, Math.min(Number(run.levelReached) || 1, 33));
-  const luckIndex = Math.max(0,
-    (Number(summary.busts) || 0) * 15
-    + Math.max(0, 33 - levelReached) * 2
-    + (result === 'win' ? 0 : 20)
-    + Math.max(0, 33 - (Number(run.finalScore) || 0) / 100));
+  const luckIndex = calculateLuckIndex({ ...run, result, levelReached, summary });
   const [inserted] = await conn.query(
     `INSERT INTO hd_runs
       (user_id, client_run_id, started_at, ended_at, duration_ms, result, level_reached,

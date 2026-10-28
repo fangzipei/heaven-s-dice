@@ -331,6 +331,14 @@ export function hasScoringSelection(dice: PlayableDie[]): boolean {
   return bestSelection(dice) !== null;
 }
 
+/** Stable key for per-run combo usage. Singles ignore batch size on purpose:
+ *  "单 1" is one pattern whether the player scores one or three of them. */
+export function comboKey(combo: Combo): string {
+  if (combo.type === 'single') return `single:${combo.face}`;
+  if (combo.type === 'nkind') return `nkind:${combo.face}:${combo.count}`;
+  return `straight:${combo.faces.join('-')}`;
+}
+
 export function describeCombo(combo: Combo): string {
   return `${combo.label} +${combo.points}`;
 }

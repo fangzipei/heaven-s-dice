@@ -11,6 +11,7 @@
   <link rel="stylesheet" href="css/paper-scene.css?v=20261028-paperworld05">
   <link rel="stylesheet" href="css/paper-world.css?v=20261028-paperworld06">
   <link rel="stylesheet" href="css/paper-shop.css?v=20261028-shop01">
+  <link rel="stylesheet" href="css/readability.css?v=20261028-read05">
   <link rel="icon" href="assets/items/coin.svg" type="image/svg+xml">
   <!-- Animation + 3D stack, served locally from /vendor so the game runs offline. -->
   <script src="vendor/gsap.min.js?v=3.15.0"></script>
@@ -279,7 +280,9 @@
             <div class="game-log" id="game-log"></div>
           </section>
           <div class="rail-grip" id="rail-grip" title="拖动调整侧栏宽度" aria-hidden="true"></div>
+          <button class="rail-collapse" data-action="close-rail" aria-label="收起情报" title="收起情报"><img src="assets/paper/close-x.svg" alt=""></button>
         </aside>
+        <button class="rail-paper-ball" data-action="toggle-rail" aria-label="展开当前情报" title="展开当前情报"><img src="assets/paper/intel-ball.svg" alt=""><span>当前情报</span></button>
       </div>
     </section>
   </div>

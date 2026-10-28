@@ -2,6 +2,10 @@
 import type { RunRecord } from './run-record.ts';
 
 const API_BASE = './api';
+// Vite development runs are deliberately offline-first. Production keeps the
+// same API surface for deployed accounts and cloud history.
+type ViteMeta = ImportMeta & { env?: { DEV?: boolean; PROD?: boolean } };
+export const API_ENABLED = (import.meta as ViteMeta).env?.PROD !== false;
 
 export interface ApiAccount {
   id: string;
@@ -58,6 +62,7 @@ interface ApiErrorBody { error?: string }
 async function request<T>(path: string, options: {
   method?: string; body?: unknown; token?: string; timeoutMs?: number;
 } = {}): Promise<T> {
+  if (!API_ENABLED) throw new Error('本地开发模式已禁用后端接口。');
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), options.timeoutMs ?? 8000);
   try {

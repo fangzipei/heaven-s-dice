@@ -286,6 +286,8 @@ export interface RunFlags {
   bossDisabled?: boolean;
   /** 独注桶：this round has only scored single-die combinations so far. */
   roundSinglesOnly?: boolean;
+  /** 本局赖子骰参与计分的次数，用于骰型规则的悬停提示。 */
+  wildScored?: number;
 }
 
 export interface LogEntry {
@@ -328,6 +330,16 @@ export interface LastScoreInfo {
   combos: ScoringAnalysis['combos'];
   breakdown: RunScoreBreakdown | null;
   critical: boolean;
+}
+
+/** One scored combo, kept so the table can show what each hand was worth. */
+export interface ScoredComboEntry {
+  key: string;
+  label: string;
+  faces: (number | 'wild')[];
+  points: number;
+  level: number;
+  throw: number;
 }
 
 export type RunPhase =
@@ -375,6 +387,10 @@ export interface RunState {
   log: LogEntry[];
   rngState?: number;
   stats: RunStats;
+  /** How many scoring actions used each combo shape this run. */
+  comboUsage?: Record<string, number>;
+  /** Scored combos this run, newest last, with their faces and points. */
+  scoreHistory?: ScoredComboEntry[];
   rng: () => number;
   throwNumber?: number;
   bossDiceRolled?: number;

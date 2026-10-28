@@ -68,7 +68,7 @@ describe('HUD 渲染器搬到 ui/hud.ts 之后仍然写同样的文案', () => {
       '<strong>首掷免费。</strong>按住骰桶摇动，2 秒倒计时后落骰；仪式桶沿桌面轨迹描画。也可点下方「自动投掷」。',
     );
     expect(nodes.get('#gesture-button').hidden).toBe(true);
-    expect(nodes.get('#barrel-thumb').src).toBe('assets/cups/oak.svg');
+    expect(nodes.get('#barrel-thumb').src).toBe('assets/art/barrels/oak-cup.svg');
     expect(html('#passive-items')).toBe(
       '<span class="passive-empty">还没有被动物品 · <button data-action="open-compendium" data-tab="items">查看物品</button></span>',
     );

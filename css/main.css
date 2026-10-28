@@ -2308,3 +2308,61 @@ body.is-resizing-rail { cursor: col-resize; user-select: none; }
     linear-gradient(180deg, rgba(0,0,0,.38), transparent 20%, transparent 70%, rgba(0,0,0,.4)),
     repeating-linear-gradient(105deg, rgba(255,220,160,.025) 0 1px, transparent 1px 180px);
 }
+
+/* ── Readability + desktop rail collapse + wider table ───────────────── */
+:root {
+  --ink: #2d2720;
+  --ink-dim: #4f4437;
+  --muted: #6c5c49;
+  --pencil: #5f513f;
+  --sans: "Microsoft YaHei", "PingFang SC", "Segoe UI", sans-serif;
+  --serif: "Microsoft YaHei", "PingFang SC", "Segoe UI", sans-serif;
+  --hand: "Microsoft YaHei", "PingFang SC", "Segoe UI", sans-serif;
+}
+body, button, input, textarea, .rail, .score-panel, .action-dock, .shop-card, .modal {
+  font-family: "Microsoft YaHei", "PingFang SC", "Segoe UI", sans-serif !important;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+body { font-size: 16px; }
+.rail-card-head { font-size: 15px !important; letter-spacing: .06em !important; }
+.rail-note { font-size: 12px !important; }
+.rail-link { font-size: 12px !important; }
+.dice-effect-row b { font-size: 14px !important; }
+.dice-effect-row span { font-size: 13px !important; }
+.dice-effect-row em { font-size: 11px !important; }
+.dice-effect-set { font-size: 12px !important; }
+.item-slot .item-name { font-size: 13px !important; }
+.passive-chip { font-size: 13px !important; }
+.passive-empty { font-size: 13px !important; }
+.score-panel-top { font-size: 13px !important; }
+.score-number strong { font-size: 38px !important; }
+.score-number .score-target { font-size: 14px !important; }
+.score-breakdown { font-size: 12px !important; }
+.score-breakdown b { font-size: 13px !important; }
+.dice-tray-head { font-size: 12px !important; }
+.combo-placeholder, .combo-label { font-size: 13px !important; }
+.action-hint { font-size: 11px !important; }
+.score-action b { font-size: 15px !important; }
+.score-action em { font-size: 10px !important; }
+.log-line { font-size: 12px !important; line-height: 1.7 !important; }
+.opponent-plate strong { font-size: 21px !important; }
+.opponent-kicker { font-size: 10px !important; }
+.chapter-tag b { font-size: 15px !important; }
+.chapter-tag span { font-size: 10px !important; }
+.floating-tooltip, .floating-tooltip p, .floating-tooltip .tip-sub { font-size: 11px; }
+.overlay { backdrop-filter: none !important; }
+.rail, .score-panel, .action-dock, .shop-card, .modal { color: var(--ink); }
+
+/* Visible collapse affordance on desktop too. */
+.topbar-actions .rail-toggle { display: inline-flex !important; }
+.rail-collapse { position: absolute; z-index: 9; top: 7px; right: 8px; width: 26px; height: 26px; display: grid; place-items: center; border: 1px solid rgba(95,81,63,.45); border-radius: 3px; background: rgba(248,240,221,.9); color: var(--ink); font-size: 20px; line-height: 1; cursor: pointer; }
+.rail-collapse:hover { background: #fffaf0; border-color: var(--pencil); }
+body.rail-collapsed .game-layout { grid-template-columns: minmax(0, 1fr) 0 !important; }
+body.rail-collapsed .rail { width: 0 !important; min-width: 0 !important; padding: 0 !important; border: 0 !important; overflow: hidden !important; opacity: 0; pointer-events: none; }
+body.rail-collapsed .cup-zone { right: 4.2% !important; }
+@media (max-width: 1050px) { .rail-collapse { top: 6px; right: 6px; } }
+
+/* Let the table span the scene again, while still leaving room for the dice row. */
+.table-3d { width: 132% !important; height: 180% !important; bottom: -3% !important; }
+.scene-art, .opponent, .room-3d { filter: none !important; }

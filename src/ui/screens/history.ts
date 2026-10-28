@@ -1,7 +1,7 @@
 // ui/screens/history.ts — 首页历史骰局：本机记录 + 已同步账号的云端记录。
 import { BARREL_BY_ID, DICE_BY_ID, ITEM_BY_ID, STANDARD_DIE } from '../../content/index.ts';
 import { h, num } from '../../core/util.ts';
-import { fetchRunHistory, type HistoryEntry } from '../../platform/api.ts';
+import { API_ENABLED, fetchRunHistory, type HistoryEntry } from '../../platform/api.ts';
 import { loadProfile } from '../../platform/profile.ts';
 import { readHistory } from '../../platform/save.ts';
 import type { RunRecord } from '../../platform/run-record.ts';
@@ -82,7 +82,7 @@ export async function openHistory(): Promise<void> {
   const profile = loadProfile();
   let entries = readHistory().map(localEntry);
   let source = '本机记录';
-  if (profile?.mode === 'synced' && profile.token) {
+  if (API_ENABLED && profile?.mode === 'synced' && profile.token) {
     try {
       const server = await fetchRunHistory(profile.token, 100);
       const map = new Map<string, HistoryEntry>();

@@ -13,8 +13,7 @@ import type { ScoreAction } from '../core/engine.ts';
 import type { PricedDie, RunState } from '../core/types.ts';
 import { clamp, h, num, sleep } from '../core/util.ts';
 import { motion, type MotionPoint } from '../render/motion.ts';
-import { artDieHtml } from '../render/dice-dom.ts';
-import { pipIndexes } from '../render/pip-layout.ts';
+import { artDieImageHtml } from '../render/dice-dom.ts';
 import { sound } from '../platform/sound.ts';
 import { discoverLoadout } from '../platform/storage.ts';
 import { recordScore, recordThrow, getRunRecord } from '../platform/run-record.ts';
@@ -43,7 +42,6 @@ export function renderGame(): void {
   renderScorePanel();
   renderRail();
   renderDiceTray();
-  renderScoredPanel(run);
   renderComboPreview();
   renderActionDock();
   renderDangerStrip();
@@ -52,7 +50,6 @@ export function renderGame(): void {
     && (run.phase === 'ready' || run.phase === 'hot' || run.phase === 'selecting' || run.phase === 'reroll-pending'
       || (run.phase === 'dead' && run.rerolls > 0));
   $('#cup')?.classList.toggle('is-breathing', canManuallyThrow);
-  saveGame(run, getRunRecord());
 }
 
 /* ═══════════════════════════════════════════════════════════════════
@@ -68,34 +65,6 @@ function cupDiceToGather(run: RunState) {
   if (run.phase === 'dead') return run.dice.slice();
   if (run.flags.rerollAll || run.flags.hotDice) return run.dice.slice();
   return run.dice.filter((die) => !die.scored);
-}
-
-function scoredMini(value: number): string {
-  const positions = pipIndexes(value);
-  const pips = positions.map((index) => {
-    const left = [20, 50, 80][index % 3];
-    const top = [20, 50, 80][Math.floor(index / 3)];
-    return `<i style="left:${left}%;top:${top}%"></i>`;
-  }).join('');
-  return `<span class="scored-mini" aria-label="${value} 点">${pips}</span>`;
-}
-
-function renderScoredPanel(run: RunState): void {
-  const panel = $('#scored-panel');
-  if (!panel) return;
-  const scored = run.dice.filter((die) => die.scored);
-  if (!scored.length) {
-    panel.hidden = true;
-    panel.innerHTML = '';
-    return;
-  }
-  const rows: string[] = [];
-  for (const die of scored) {
-    if (die.value == null) continue;
-    rows.push(`<div class="scored-row"><span class="scored-dice">${scoredMini(die.value)}</span><b>${die.wild ? '恶魔赖子' : '本轮已计分'}</b><em>${die.value} 点</em></div>`);
-  }
-  panel.innerHTML = rows.join('');
-  panel.hidden = rows.length === 0;
 }
 
 function dieElement(uid: string) {
@@ -139,6 +108,14 @@ async function slowSpinTableDice(run: RunState) {
   });
 }
 
+/** The middle of the cup art: where dice disappear into / spill out of it. */
+function cupMouthPoint(): { x: number; y: number } {
+  const cupImage = $('#cup-image') || $('#cup');
+  if (!cupImage) return { x: window.innerWidth / 2, y: window.innerHeight / 2 };
+  const rect = cupImage.getBoundingClientRect();
+  return { x: rect.left + rect.width / 2, y: rect.top + rect.height * .55 };
+}
+
 async function gatherDiceToCup(uids: string[]) {
   if (prefersReducedMotion()) return;
   if (!uids.length) return;
@@ -148,28 +125,72 @@ async function gatherDiceToCup(uids: string[]) {
     return;
   }
   // ── DOM fallback ──
-  const cupImage = $('#cup-image');
-  if (!cupImage) return;
-  const cupRect = cupImage.getBoundingClientRect();
-  const mouthX = cupRect.left + cupRect.width / 2;
-  const mouthY = cupRect.top + cupRect.height * .88;
-  /* Legacy quirk kept verbatim: this branch reads `.uid` off the uid strings,
-     so the DOM fallback gathers nothing. WebGL is the live path. */
-  const elements = uids.map((uid) => dieElement((uid as unknown as { uid: string }).uid)).filter(isElement);
+  const mouth = cupMouthPoint();
+  const elements = uids.map((uid) => dieElement(uid)).filter(isElement);
+  if (!elements.length) return;
+  const cup = $('#cup');
   const animations = elements.map((element, index) => {
     const rect = element.getBoundingClientRect();
-    const dx = mouthX - (rect.left + rect.width / 2);
-    const dy = mouthY - (rect.top + rect.height / 2);
+    const dx = mouth.x - (rect.left + rect.width / 2);
+    const dy = mouth.y - (rect.top + rect.height / 2);
     element.style.pointerEvents = 'none';
+    const dir = index % 2 ? 1 : -1;
     return element.animate([
       { transform: 'translate(0, 0) scale(1) rotate(0deg)', opacity: 1 },
-      { transform: `translate(${dx * .55}px, ${dy * .4 - 18}px) scale(.66) rotate(90deg)`, opacity: .9, offset: .5 },
-      { transform: `translate(${dx}px, ${dy}px) scale(.14) rotate(150deg)`, opacity: 0 },
-    ], { duration: 340, delay: index * 18, easing: 'cubic-bezier(.45,0,.2,1)', fill: 'forwards' })
+      {
+        transform: `translate(${dx * .5 + dir * 22}px, ${dy * .34 - 42}px) scale(.62) rotate(${dir * 70}deg)`,
+        opacity: .94, offset: .48,
+      },
+      {
+        transform: `translate(${dx}px, ${dy}px) scale(.08) rotate(${dir * 150}deg)`,
+        opacity: 0,
+      },
+    ], { duration: 380, delay: index * 24, easing: 'cubic-bezier(.4,0,.16,1)', fill: 'forwards' })
       .finished.catch(() => {});
   });
+  cup?.classList.add('is-catching');
   await Promise.all(animations);
   elements.forEach((element) => { element.style.opacity = '0'; });
+  if (!cup) return;
+  setTimeout(() => cup.classList.remove('is-catching'), 220);
+}
+
+/**
+ * 2D pour: each new die starts at the cup and lands on its resting spot.
+ * Runs on the freshly rendered tray, before the next repaint.
+ */
+async function pourDiceFromCup(uids: string[]) {
+  if (prefersReducedMotion()) return;
+  const host = $('#dice-dom-fallback');
+  if (!host || !uids.length) return;
+  host.classList.remove('is-rolling');
+  const mouth = cupMouthPoint();
+  const targets = uids
+    .map((uid) => host.querySelector<HTMLElement>(`[data-die-uid="${CSS.escape(uid)}"]`))
+    .filter((el): el is HTMLElement => Boolean(el))
+    .filter((el) => !el.classList.contains('is-hidden') && !el.classList.contains('is-scored'));
+  if (!targets.length) return;
+  for (const [index, element] of targets.entries()) {
+    const rect = element.getBoundingClientRect();
+    const dx = mouth.x - (rect.left + rect.width / 2);
+    const dy = mouth.y - (rect.top + rect.height / 2);
+    element.style.setProperty('--pour-x', `${dx.toFixed(1)}px`);
+    element.style.setProperty('--pour-y', `${dy.toFixed(1)}px`);
+    element.style.setProperty('--pour-rot', `${(index % 2 ? 1 : -1) * (70 + index * 12)}deg`);
+    element.style.setProperty('--pour-delay', `${index * 54}ms`);
+    element.classList.add('is-pouring');
+  }
+  void host.offsetWidth;
+  host.classList.add('is-pouring');
+  await sleep(640 + targets.length * 54);
+  host.classList.remove('is-pouring');
+  targets.forEach((element) => {
+    element.classList.remove('is-pouring');
+    element.style.removeProperty('--pour-x');
+    element.style.removeProperty('--pour-y');
+    element.style.removeProperty('--pour-rot');
+    element.style.removeProperty('--pour-delay');
+  });
 }
 
 /* Pour every rerolled die out of the cup and let it settle. */
@@ -497,8 +518,9 @@ async function performCupRoll({ free = false, prepared = false, from = null }: {
     if (result.bust) showBustNotice(result.bust);
     // The dice pour out of the cup and settle; wait for the real motion
     // instead of a guessed timeout.
-    if (diceTable) await capped(pourDiceIntoTable(pouring.length ? pouring : run.dice.map((die) => die.uid), from), 2500);
-    else await sleep(680);
+    const pourUids = pouring.length ? pouring : run.dice.map((die) => die.uid);
+    if (diceTable) await capped(pourDiceIntoTable(pourUids, from), 2500);
+    else await capped(pourDiceFromCup(pourUids), 1900);
     app.busy = false;
     app.rolling = false;
     app.cupAnimating = false;
@@ -714,6 +736,7 @@ export function advanceCurrentLevel(): void {
   app.resultShown = false;
   clearTimeout(app.rollTimer ?? undefined);
   renderGame();
+  saveGame(app.run, getRunRecord());
   setTimeout(() => {
     app.busy = false;
     showVictory();
@@ -836,9 +859,9 @@ function showGrantModal(): void {
   const cards = candidates.map((die: PricedDie) => {
     const rarity = rarityOf(die);
     return `<button class="replace-option" data-action="choose-grant-die" data-die-id="${h(die.id)}" style="--rarity:${rarity.color};--glow:${rarity.glow}">
-      ${artDieHtml(die)}
+      ${artDieImageHtml(die)}
       <b>${h(die.name)}</b><span>${rarity.name}${die.setId ? ` · ${h(DICE_SETS[die.setId].name)}` : ''}</span>
-      <small style="display:block;color:#8f8069;font-size:9px;line-height:1.6;margin-top:4px">${h(die.desc)}</small>
+      <small style="display:block;color:var(--muted);font-size:10px;line-height:1.6;margin-top:4px">${h(die.desc)}</small>
     </button>`;
   }).join('');
   openOverlay(`
@@ -881,7 +904,7 @@ function showGrantReplaceModal(): void {
     const spec = getDieSpec(entry.dieId);
     const rarity = rarityOf(spec);
     return `<button class="replace-option" data-action="confirm-grant-replace" data-bag-uid="${h(entry.uid)}">
-      ${artDieHtml(spec)}
+      ${artDieImageHtml(spec)}
       <b>${h(spec.name)}</b><span>${rarity.name}${spec.setId ? ` · ${h(DICE_SETS[spec.setId].name)}` : ''}</span>
     </button>`;
   }).join('');

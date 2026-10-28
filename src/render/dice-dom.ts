@@ -13,6 +13,7 @@ import { DICE_SETS, STANDARD_DIE } from '../content/index.ts';
 import {
   dieMotifSvg, dieSkinStyle, favoredFaces, peakFace,
 } from './dice-skins.ts';
+import { dieArt, dieFacesArt } from './art.ts';
 import { pipIndexes } from './pip-layout.ts';
 
 const FACE_ORDER = ['front', 'back', 'right', 'left', 'top', 'bottom'];
@@ -91,7 +92,7 @@ export function dieFacesHtml(
   }).join('');
 }
 
-/** Flat decorative die for shop cards, the replace modal and the compendium. */
+/** CSS-built die kept for the parity fixture; the paper art uses artDieImageHtml. */
 export function artDieHtml(spec: DiceDef): string {
   const demon = spec.setId === 'demon';
   const rarity = spec.rarity || 'common';
@@ -106,6 +107,27 @@ export function artDieHtml(spec: DiceDef): string {
     ${dieMotifSvg(spec)}
     <div class="mini-pips">${demon && bestFace === 1 ? demonHeadSvg('mini-demon-head') : Array.from({ length: 9 }, (_, i) => positions.includes(i) ? `<span class="mini-pip" style="grid-row:${Math.floor(i / 3) + 1};grid-column:${(i % 3) + 1}"></span>` : '').join('')}</div>
   </div>`;
+}
+
+/** 商店/图鉴/开匣用的手绘骰子剪影。 */
+export function artDieImageHtml(spec: DiceDef): string {
+  return `<img class="art-die-img" src="${dieArt(spec.id)}" alt="${h(spec.name)}" loading="lazy" draggable="false">`;
+}
+
+/** 牌桌上的一颗扁纸骰子：直接从六面图集里取当前点数。 */
+export function paperDieFaceHtml(
+  value: number | null | undefined,
+  spec: DiceDef = STANDARD_DIE,
+  concealed = false,
+  blank = false,
+): string {
+  if (concealed) return '<span class="die-paper is-back" aria-hidden="true">✦</span>';
+  if (blank) return '<span class="die-paper is-blank" aria-hidden="true"></span>';
+  const face = Math.min(6, Math.max(1, value || 1));
+  const x = ((face - 1) % 3) * 50;
+  const y = Math.floor((face - 1) / 3) * 100;
+  const sigil = spec.setId === 'demon' && face === 1 ? demonHeadSvg('paper-demon-head') : '';
+  return `<span class="die-paper" aria-hidden="true" style="background-image:url('${dieFacesArt(spec.id)}');background-position:${x}% ${y}%">${sigil}</span>`;
 }
 
 /** What the WebGL path reads off `app`: whether a roll animation is playing
@@ -151,12 +173,13 @@ function dieLabel(state: ReturnType<typeof dieFaceState>, die: BoardDie): string
 export function renderDiceTrayDom(run: RunState, tray: HTMLElement, view: DiceTrayView): void {
   tray.classList.toggle('has-selection', run.selected.length > 0);
   /* Rebuilding the 3D dice DOM on every tap is the single hottest path on
-     phones (≈200 nodes × dozens of preserve-3d layers per click). Only
-     rebuild when the dice set / face values actually change; otherwise just
-     sync classes and attributes in place. */
+     phones. Only rebuild when the dice set / face values actually change;
+     otherwise just sync classes and attributes in place. Rolling is kept out
+     of the signature so the settling frame does not throw the dice back into
+     the air — the toss is driven by the host class instead. */
   const signature = run.dice.map((die) => {
     const state = dieFaceState(run, die);
-    return `${die.uid}:${die.value ?? 'x'}:${state.scored ? 1 : 0}:${state.blank ? 1 : 0}:${state.blocked ? 1 : 0}:${state.gilded ? 1 : 0}:${view.rolling ? 1 : 0}`;
+    return `${die.uid}:${die.value ?? 'x'}:${state.scored ? 1 : 0}:${state.blank ? 1 : 0}:${state.blocked ? 1 : 0}:${state.gilded ? 1 : 0}`;
   }).join('|');
   if (tray.dataset.dieSignature !== signature) {
     tray.dataset.dieSignature = signature;
@@ -171,12 +194,14 @@ export function renderDiceTrayDom(run: RunState, tray: HTMLElement, view: DiceTr
     host.innerHTML = run.dice.map((die, index) => {
       const state = dieFaceState(run, die);
       const disabled = state.scored || state.blank || state.blocked || view.busy || run.phase !== 'selecting';
+      const peak = peakFace(state.spec);
+      const peakClass = !state.hidden && !state.blank && peak > 0 && die.value === peak ? ' is-peak-face' : '';
       return `
-      <button class="${dieClasses(state, view.rolling)}" data-die-uid="${h(die.uid)}" data-die-tip="${h(state.spec.id)}"
+      <button class="${dieClasses(state, view.rolling)}${peakClass}" data-die-uid="${h(die.uid)}" data-die-tip="${h(state.spec.id)}"
         aria-disabled="${disabled ? 'true' : 'false'}" aria-pressed="${state.selected}" aria-label="${h(dieLabel(state, die))}"
-        style="animation-delay:${view.rolling ? index * 45 : 0}ms;${dieSkinStyle(state.spec)}">
-        <span class="die-roller"><span class="die-cube">${dieFacesHtml(die.value, state.spec, state.hidden, state.blank)}</span></span>
-        ${state.hidden ? '<span class="die-mark" style="left:50%;top:50%;transform:translate(-50%,-50%);font-size:12px;color:rgba(231,190,104,.7)">✦</span>' : state.blank ? `
+        style="--i:${index}">
+        ${paperDieFaceHtml(die.value, state.spec, state.hidden, state.blank)}
+        ${state.hidden ? '' : state.blank ? `
           <span class="die-mark" style="left:50%;top:50%;transform:translate(-50%,-50%);font-size:11px;color:#6f6253">白</span>
         ` : state.blocked ? `
           <span class="die-mark" style="left:50%;top:50%;transform:translate(-50%,-50%);font-size:12px;color:#c47768">禁</span>
@@ -187,13 +212,17 @@ export function renderDiceTrayDom(run: RunState, tray: HTMLElement, view: DiceTr
       </button>`;
     }).join('');
   }
+  const host = tray.querySelector<HTMLElement>('#dice-dom-fallback');
+  if (host) host.classList.toggle('is-rolling', view.rolling);
   /* in-place class/attribute sync — no DOM rebuild on selection changes */
   for (const die of run.dice) {
     const element = tray.querySelector<HTMLButtonElement>(`[data-die-uid="${die.uid}"]`);
     if (!element) continue;
     const state = dieFaceState(run, die);
     const disabled = state.scored || state.blank || state.blocked || view.busy || run.phase !== 'selecting';
-    const classes = dieClasses(state, view.rolling);
+    const peak = peakFace(state.spec);
+    const peakClass = !state.hidden && !state.blank && peak > 0 && die.value === peak ? ' is-peak-face' : '';
+    const classes = dieClasses(state, view.rolling) + peakClass;
     if (element.className !== classes) element.className = classes;
     const ariaDisabled = disabled ? 'true' : 'false';
     if (element.getAttribute('aria-disabled') !== ariaDisabled) element.setAttribute('aria-disabled', ariaDisabled);

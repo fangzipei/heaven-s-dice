@@ -6,7 +6,7 @@ import {
   getLevelConfig, getOpponent, getTable,
 } from '../content/index.ts';
 import {
-  analyzeSelection, bestSelection, hasScoringSelection, WILD_VALUE,
+  analyzeSelection, bestSelection, hasScoringSelection, comboKey, WILD_VALUE,
   type ScoringAnalysis, type Combo, type PlayableDie, type FaceCount, type NKindCombo,
 } from './scoring.ts';
 import type {
@@ -365,6 +365,8 @@ export function createRun({ rng = Math.random }: { rng?: () => number } = {}): R
     log: [],
     rngState: 0,
     stats: { rolls: 0, scored: 0, levelRolls: 0, levelScore: 0, bestHit: 0, wins: 0 },
+    comboUsage: {},
+    scoreHistory: [],
     rng,
     levelReward: null,
     pendingReward: null,
@@ -1234,6 +1236,24 @@ export function applyScore(state: RunState, action: ScoreAction): ApplyScoreResu
     state.flags.bossLockedType = handTypeOf(chosen.analysis);
   }
   addScore(state, total, { round: true });
+  state.comboUsage = state.comboUsage || {};
+  state.scoreHistory = state.scoreHistory || [];
+  const wildDice = scoringDice.filter((die) => die.wild).length;
+  if (wildDice) state.flags.wildScored = (state.flags.wildScored || 0) + wildDice;
+  const comboScale = chosen.analysis.base > 0 ? total / chosen.analysis.base : 1;
+  for (const combo of chosen.analysis.combos) {
+    const key = comboKey(combo);
+    state.comboUsage[key] = (state.comboUsage[key] || 0) + 1;
+    const faces: (number | 'wild')[] = combo.type === 'straight'
+      ? [...combo.faces, ...Array.from({ length: combo.wilds || 0 }, () => 'wild' as const)]
+      : Array.from({ length: combo.type === 'single' ? 1 : combo.count }, () => combo.face);
+    state.scoreHistory.push({
+      key, label: combo.label, faces,
+      points: Math.round(combo.points * comboScale),
+      level: state.level, throw: state.throwNumber || 1,
+    });
+  }
+  if (state.scoreHistory.length > 60) state.scoreHistory.splice(0, state.scoreHistory.length - 60);
   state.lastBust = null;
   state.lastScore = {
     total,

@@ -68,7 +68,7 @@ export function showVictory(): void {
         <div><span>目标</span><b>${num(run.target)}</b></div>
         <div><span>奖励</span><b><svg><use href="#i-coin"></use></svg>${num(reward.total)}</b></div>
       </div>
-      ${reward.bossPremium ? `<div class="reward-breakdown"><span style="border-color:rgba(196,170,240,.34);color:#c9b6f0">${h(reward.bossName)} 悬赏 ×${reward.bossScale.toFixed(2)} <b>基础 ${num(reward.curveBase)} → ${num(reward.base)}</b></span></div>` : ''}
+      ${reward.bossPremium ? `<div class="reward-breakdown"><span style="border-color:rgba(116,100,154,.4);color:var(--violet)">${h(reward.bossName)} 悬赏 ×${reward.bossScale.toFixed(2)} <b>基础 ${num(reward.curveBase)} → ${num(reward.base)}</b></span></div>` : ''}
       ${reward.bonuses?.length ? `<div class="reward-breakdown">${reward.bonuses.map((b) => `<span>${h(b.label)} <b>+${num(b.value)}</b></span>`).join('')}</div>` : ''}
       <p class="result-sub" style="font-size:10px;margin-top:-5px">下一站：${h(nextTable.name)} · 第 ${next} 关</p>
       <div class="modal-actions">

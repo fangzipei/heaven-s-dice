@@ -1,0 +1,337 @@
+/* Loaded after every paper sheet: readable play surface and the paper-ball rail. */
+:root {
+  --ink: #241f19;
+  --ink-dim: #453a2d;
+  --muted: #62523f;
+  --pencil: #514330;
+  --sans: "Microsoft YaHei", "PingFang SC", "Segoe UI", sans-serif;
+  --serif: "Microsoft YaHei", "PingFang SC", "Segoe UI", sans-serif;
+  --hand: "Microsoft YaHei", "PingFang SC", "Segoe UI", sans-serif;
+  --rail-width: clamp(320px, 26vw, 408px);
+}
+html, body, .game-screen, .game-layout {
+  background-color: #f4ecd9 !important;
+  background-image: url("../assets/paper/crumpled.svg") !important;
+  background-size: cover !important;
+  background-position: center !important;
+  background-attachment: fixed !important;
+  color: var(--ink) !important;
+}
+body, button, input, textarea, .rail, .score-panel, .action-dock, .shop-card, .modal {
+  font-family: "Microsoft YaHei", "PingFang SC", "Segoe UI", sans-serif !important;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+.game-screen, .game-layout, .scene { min-height: 100%; }
+.scene { background: transparent !important; }
+
+/* Slightly larger generated table illustration so it can carry the dice. */
+.room-wall.back { background-size: 126% auto !important; background-position: center 70% !important; }
+
+/* ── score note: opaque, sharp, readable ─────────────────────────────── */
+.score-panel {
+  background: #fffaf0 !important;
+  width: 310px !important;
+  padding: 17px 17px 15px !important;
+  border: 2px solid rgba(81, 67, 48, .62) !important;
+  border-left: 5px solid #9a6a2e !important;
+  box-shadow: 4px 5px 0 rgba(64, 48, 30, .18) !important;
+  color: var(--ink) !important;
+}
+.score-panel, .score-panel * { filter: none !important; text-shadow: none !important; }
+.score-panel-top { font-size: 14px !important; color: var(--ink-dim) !important; font-weight: 700; }
+.score-number strong { font-size: 42px !important; color: #1f1913 !important; }
+.score-number .score-target, .score-number span { font-size: 14px !important; color: var(--ink-dim) !important; }
+.score-breakdown { font-size: 13px !important; color: var(--ink-dim) !important; }
+.score-breakdown b { font-size: 14px !important; color: var(--ink) !important; }
+.score-panel-bottom { font-size: 13px !important; color: var(--ink-dim) !important; }
+#reroll-inline {
+  min-height: 34px !important;
+  padding: 5px 12px !important;
+  border: 1.6px solid var(--pencil) !important;
+  background: #f8e8a6 !important;
+  color: var(--ink) !important;
+  font-size: 14px !important;
+  box-shadow: 2px 3px 0 rgba(80, 62, 40, .16) !important;
+}
+#reroll-inline b { font-size: 19px !important; color: #7a4c08 !important; }
+#reroll-inline em, .reroll-hud-label { font-size: 12px !important; color: var(--ink-dim) !important; }
+.chapter-tag { background: #fffaf0 !important; border: 1.7px solid var(--pencil) !important; }
+.chapter-tag span { font-size: 11px !important; }
+.chapter-tag b { font-size: 17px !important; }
+
+/* Remove the blurry hint strip above the dock. */
+.combo-preview:has(.combo-placeholder), .combo-preview .combo-placeholder { display: none !important; }
+.dice-tray, .dice-canvas, #dice-dom-fallback, .dice-zone {
+  background: transparent !important;
+  box-shadow: none !important;
+  border-color: transparent !important;
+}
+.dice-tray::before, .dice-tray::after, .dice-zone::before, .dice-zone::after { display: none !important; }
+
+/* ── right rail: paper sheet, only when unfolded ─────────────────────── */
+.game-layout { grid-template-columns: minmax(0, 1fr) var(--rail-width) !important; }
+.rail {
+  width: var(--rail-width) !important;
+  background-color: #f7efdd !important;
+  background-image: url("../assets/paper/crumpled.svg") !important;
+  background-size: cover !important;
+  background-position: center !important;
+  border-left: 2px solid rgba(81, 67, 48, .35) !important;
+  box-shadow: -8px 0 22px rgba(74, 55, 34, .12) !important;
+  padding: 20px 18px 24px 16px !important;
+  color: var(--ink) !important;
+}
+.rail-card { background: #fffaf0 !important; border: 1.6px solid rgba(81, 67, 48, .34) !important; box-shadow: 3px 4px 0 rgba(74, 55, 34, .1) !important; }
+.rail-card-head { font-size: 16px !important; color: var(--ink) !important; }
+.rail-note { font-size: 12px !important; color: var(--ink-dim) !important; }
+.dice-effect-row b { font-size: 15px !important; color: var(--ink) !important; }
+.dice-effect-row span { font-size: 13px !important; color: var(--ink-dim) !important; }
+.dice-effect-row em { font-size: 11px !important; color: var(--ink-dim) !important; }
+.item-slot .item-name { font-size: 14px !important; }
+.passive-chip { font-size: 14px !important; }
+.rail-grip { background: linear-gradient(90deg, rgba(81, 67, 48, .45), transparent) !important; }
+.rail-collapse { display: grid !important; }
+
+body.rail-collapsed .game-layout { grid-template-columns: minmax(0, 1fr) 0 !important; }
+body.rail-collapsed .rail { width: 0 !important; min-width: 0 !important; padding: 0 !important; border: 0 !important; overflow: hidden !important; opacity: 0; pointer-events: none; }
+body.rail-collapsed .cup-zone { right: 4.2% !important; }
+body:not(.rail-collapsed) .rail { animation: paper-unfold .3s cubic-bezier(.2,.8,.3,1) both; transform-origin: right center; }
+@keyframes paper-unfold { from { transform: scaleX(.86) rotate(.4deg); opacity: .4; } to { transform: none; opacity: 1; } }
+
+.rail-paper-ball {
+  display: none;
+  position: absolute; z-index: 45;
+  right: 30px; top: 42%;
+  width: 78px; height: 74px;
+  border: 0; cursor: pointer;
+  background:
+    radial-gradient(circle at 34% 30%, #fffdf4, #e4d5b6 38%, #b89a6d 74%, #8d6c45 100%);
+  clip-path: polygon(18% 8%, 46% 0, 72% 12%, 92% 34%, 88% 62%, 70% 84%, 44% 94%, 18% 82%, 4% 58%, 8% 30%);
+  box-shadow: 4px 6px 0 rgba(70, 52, 32, .2), 0 14px 24px rgba(70, 52, 32, .2);
+  transform: rotate(-7deg);
+  animation: paper-ball-breathe 2.8s ease-in-out infinite;
+}
+.rail-paper-ball::before, .rail-paper-ball::after {
+  content: ""; position: absolute; inset: 18% 20%;
+  border-top: 2px solid rgba(92, 70, 44, .28); border-bottom: 1px solid rgba(92, 70, 44, .2);
+  transform: rotate(28deg);
+}
+.rail-paper-ball::after { transform: rotate(-34deg); inset: 26% 14%; }
+@keyframes paper-ball-breathe { 0%,100% { transform: rotate(-7deg) scale(1); } 50% { transform: rotate(-5deg) scale(1.04); } }
+body.rail-collapsed .rail-paper-ball { display: block; }
+body.rail-collapsed .rail-collapse, body.rail-collapsed .rail-grip { display: none !important; }
+
+@media (max-width: 1050px) {
+  .game-layout { grid-template-columns: 1fr !important; }
+  .rail { position: fixed !important; right: 10px !important; top: 72px !important; width: min(88vw, 340px) !important; max-height: calc(100dvh - 86px) !important; }
+  body.rail-collapsed .rail { display: none !important; }
+  .rail-paper-ball { right: 14px; top: 38%; width: 64px; height: 60px; }
+  .score-panel { width: min(64vw, 270px) !important; }
+}
+
+/* Final responsive pass: fit the viewport, keep the table broad but not tall. */
+:root { --rail-width: clamp(280px, 22vw, 340px) !important; }
+.game-screen { height: var(--app-height, 100dvh) !important; min-height: 0 !important; max-height: var(--app-height, 100dvh) !important; overflow: hidden !important; }
+.game-layout {
+  height: calc(var(--app-height, 100dvh) - 68px) !important;
+  max-height: calc(var(--app-height, 100dvh) - 68px) !important;
+  min-height: 0 !important;
+  overflow: hidden !important;
+}
+.scene { height: 100% !important; min-height: 0 !important; }
+.action-dock { bottom: 16px !important; max-height: 112px; }
+.action-dock-inner { min-height: 0; }
+.score-panel { width: 320px !important; }
+.score-panel-top { font-size: 15px !important; }
+.score-breakdown { font-size: 14px !important; line-height: 1.7 !important; }
+.score-breakdown b { font-size: 15px !important; }
+.score-panel-bottom { font-size: 14px !important; }
+#reroll-inline { font-size: 15px !important; min-height: 38px !important; }
+#reroll-inline b { font-size: 21px !important; }
+.chapter-tag b { font-size: 18px !important; }
+.chapter-tag span { font-size: 12px !important; }
+.dice-tray-head { font-size: 13px !important; }
+.action-hint { font-size: 12px !important; }
+
+/* The flat table illustration should cover the scene, not crop into a tall board. */
+.room-wall.back { background-size: cover !important; background-position: center 62% !important; }
+.table-3d { width: 118% !important; height: 152% !important; bottom: -1% !important; }
+
+/* Paper ball sits on the tabletop, right of the dice. */
+.rail-paper-ball { right: 18% !important; top: 57% !important; }
+body.rail-collapsed .rail-paper-ball { display: block !important; }
+body.rail-collapsed .cup-zone { right: 4.2% !important; }
+
+@media (max-width: 1050px) {
+  .game-layout { height: calc(var(--app-height, 100dvh) - 60px) !important; max-height: calc(var(--app-height, 100dvh) - 60px) !important; }
+  .score-panel { width: min(64vw, 280px) !important; }
+  .action-dock { bottom: 8px !important; }
+  .rail-paper-ball { right: 10% !important; top: 56% !important; width: 62px; height: 58px; }
+}
+
+/* Flat scroll wipe: a paper sheet slides across, swaps, then exits. */
+.paper-wipe {
+  position: fixed; inset: 0; z-index: 500; pointer-events: none;
+  background: #f4ecd9 url("../assets/paper/crumpled.svg") center / cover no-repeat;
+  box-shadow: inset -24px 0 40px rgba(70, 54, 36, .12);
+  transform: translateX(101%);
+  transition: transform .24s cubic-bezier(.4, 0, .2, 1);
+}
+.paper-wipe.is-covering { transform: translateX(0); }
+.paper-wipe.is-revealing { transform: translateX(-101%); }
+
+body:not(.rail-collapsed) .cup-zone { right: calc(var(--rail-width) + 64px) !important; }
+body.rail-collapsed .cup-zone { right: 64px !important; }
+@media (max-width: 1050px) {
+  body:not(.rail-collapsed) .cup-zone, body.rail-collapsed .cup-zone { right: 8% !important; }
+}
+
+/* Floating left intel sheet instead of a layout column. */
+.game-layout { grid-template-columns: 1fr !important; max-width: none !important; width: 100% !important; margin: 0 !important; }
+.rail {
+  position: fixed !important;
+  left: 18px !important; top: 82px !important; right: auto !important;
+  width: min(338px, 32vw) !important;
+  max-height: calc(var(--app-height, 100dvh) - 102px) !important;
+  z-index: 70 !important;
+  transform-origin: left top;
+  transition: opacity .24s ease, transform .28s cubic-bezier(.2,.8,.3,1), visibility .28s;
+  border: 2px solid rgba(81, 67, 48, .58) !important;
+  border-radius: 3px !important;
+  box-shadow: 8px 10px 0 rgba(74, 55, 34, .14), 0 24px 50px rgba(74, 55, 34, .22) !important;
+  overflow-y: auto !important;
+}
+body.rail-collapsed .rail { opacity: 0; transform: translate(-18px, -8px) scale(.28) rotate(-10deg); pointer-events: none; visibility: hidden; }
+body:not(.rail-collapsed) .rail { opacity: 1; transform: none; visibility: visible; animation: paper-unfold-left .32s cubic-bezier(.2,.8,.3,1) both; }
+@keyframes paper-unfold-left { from { transform: translate(-10px, -4px) scale(.35) rotate(-8deg); opacity: .35; } to { transform: none; opacity: 1; } }
+.rail-grip { display: none !important; }
+.rail-collapse { top: 8px !important; right: 8px !important; width: 30px !important; height: 30px !important; font-size: 22px !important; background: #fffaf0 !important; }
+
+.rail-paper-ball {
+  display: none;
+  position: absolute; z-index: 45; right: 6% !important; top: 47% !important;
+  width: 86px; height: 82px; border: 0; cursor: pointer;
+  border-radius: 46% 54% 42% 58% / 54% 43% 57% 46%;
+  background: radial-gradient(circle at 34% 30%, #fffdf4, #e4d5b6 38%, #b89a6d 74%, #8d6c45 100%);
+  box-shadow: 5px 7px 0 rgba(70, 52, 32, .2), 0 16px 26px rgba(70, 52, 32, .22);
+  transform: rotate(-7deg); animation: paper-ball-breathe 2.8s ease-in-out infinite;
+}
+.rail-paper-ball span {
+  position: absolute; left: 50%; top: calc(100% + 8px); transform: translateX(-50%) rotate(2deg);
+  white-space: nowrap; padding: 4px 9px; border: 1.5px solid var(--pencil); background: #f8e8a6;
+  color: #2c2115; font-size: 14px; font-weight: 700; letter-spacing: .08em;
+  box-shadow: 2px 3px 0 rgba(74, 55, 34, .14);
+}
+.rail-paper-ball::before, .rail-paper-ball::after { content: ""; position: absolute; inset: 18% 20%; border-top: 2px solid rgba(92,70,44,.28); border-bottom: 1px solid rgba(92,70,44,.2); transform: rotate(28deg); }
+.rail-paper-ball::after { transform: rotate(-34deg); inset: 26% 14%; }
+body.rail-collapsed .rail-paper-ball { display: block; }
+body.rail-collapsed .cup-zone, body:not(.rail-collapsed) .cup-zone { right: 8% !important; }
+
+/* Keep the battle trio centred and the table broad. */
+.opponent { left: 50% !important; }
+.dice-zone { transform: translateX(-50%) translateY(var(--shift-y, 0px)) !important; }
+.action-dock { transform: translateX(-50%) !important; }
+.room-wall.back { background-size: cover !important; background-position: center 58% !important; }
+
+@media (max-width: 1050px) {
+  .rail { left: 10px !important; top: 72px !important; width: min(88vw, 340px) !important; max-height: calc(var(--app-height, 100dvh) - 92px) !important; }
+  .rail-paper-ball { right: 7% !important; top: 50% !important; width: 68px; height: 64px; }
+}
+
+/* Fill the whole browser window; no empty paper column on the right. */
+html, body { width: 100%; max-width: none !important; overflow-x: hidden; }
+.game-screen, .game-layout, .scene {
+  width: 100% !important; max-width: none !important;
+  margin-left: 0 !important; margin-right: 0 !important;
+}
+.game-layout { grid-template-columns: minmax(0, 1fr) !important; }
+.scene { grid-column: 1 / -1 !important; }
+.game-screen { position: relative; }
+.rail-paper-ball { clip-path: none !important; }
+.rail-paper-ball span { top: auto !important; bottom: calc(100% + 8px) !important; }
+.rail-paper-ball { right: 23% !important; top: 64% !important; }
+@media (max-width: 1050px) { .rail-paper-ball { right: 18% !important; top: 62% !important; } }
+.rail-paper-ball { top: 68% !important; }
+@media (max-width: 1050px) { .rail-paper-ball { top: 66% !important; } }
+
+/* Final: intel sheet on the RIGHT, hand-drawn close X, image assets. */
+.scene {
+  background-color: #f4ecd9 !important;
+  background-size: cover !important;
+  background-position: center 60% !important;
+  background-repeat: no-repeat !important;
+}
+.room-wall.back { background-size: cover !important; background-position: center 60% !important; }
+.table-3d, .table-surface, .table-front, .table-leg, .table-line { display: none !important; }
+
+.rail {
+  left: auto !important; right: 16px !important; top: 82px !important;
+  width: min(338px, 32vw) !important;
+  max-height: calc(var(--app-height, 100dvh) - 102px) !important;
+  transform-origin: right top !important;
+}
+body.rail-collapsed .rail { transform: translate(18px, -8px) scale(.28) rotate(10deg); }
+body:not(.rail-collapsed) .rail { animation: paper-unfold-right .32s cubic-bezier(.2,.8,.3,1) both; }
+@keyframes paper-unfold-right { from { transform: translate(10px, -4px) scale(.35) rotate(8deg); opacity: .35; } to { transform: none; opacity: 1; } }
+
+.rail-collapse {
+  border: 0 !important; background: transparent !important; box-shadow: none !important;
+  width: 34px !important; height: 34px !important; padding: 2px !important; top: 6px !important; right: 6px !important;
+}
+.rail-collapse img { width: 100%; height: 100%; display: block; }
+.rail-collapse:hover { transform: rotate(-8deg); }
+
+.rail-paper-ball {
+  right: 7% !important; top: 66% !important;
+  width: 96px !important; height: 96px !important;
+  border: 0 !important; border-radius: 0 !important; background: none !important; box-shadow: none !important;
+  padding: 0 !important; transform: none !important; animation: none !important;
+}
+.rail-paper-ball img { width: 100%; height: 100%; display: block; filter: drop-shadow(2px 5px 4px rgba(60,40,20,.22)); }
+.rail-paper-ball::before, .rail-paper-ball::after { display: none !important; }
+.rail-paper-ball span { top: auto !important; bottom: calc(100% + 2px) !important; }
+
+body.rail-collapsed .cup-zone, body:not(.rail-collapsed) .cup-zone { right: 27% !important; }
+@media (max-width: 1050px) {
+  .rail { left: auto !important; right: 10px !important; top: 72px !important; }
+  .rail-paper-ball { right: 8% !important; top: 64% !important; width: 78px !important; height: 78px !important; }
+  body.rail-collapsed .cup-zone, body:not(.rail-collapsed) .cup-zone { right: 8% !important; }
+}
+.room-wall.back { background-size: 108% auto !important; background-position: center 62% !important; }
+body.rail-collapsed .cup-zone, body:not(.rail-collapsed) .cup-zone { right: 23% !important; }
+.rail-paper-ball { right: 7% !important; top: 72% !important; }
+.dice-zone { bottom: 124px !important; }
+/* Clear, opaque scoring strip under the dice. */
+.combo-preview {
+  background: #fffaf0 !important;
+  background-image: none !important;
+  border: 2px solid #514330 !important;
+  clip-path: none !important;
+  border-radius: 4px !important;
+  box-shadow: 3px 4px 0 rgba(64, 48, 30, .16) !important;
+  filter: none !important; backdrop-filter: none !important; opacity: 1 !important;
+  min-height: 44px !important; padding: 8px 18px !important;
+  font-size: 16px !important;
+}
+.combo-preview::before, .combo-preview::after { display: none !important; }
+.combo-preview * { filter: none !important; text-shadow: none !important; }
+.combo-preview .combo-label { font-size: 15px !important; color: #241f19 !important; font-weight: 700; }
+.combo-preview .combo-total { font-size: 22px !important; color: #7a4c08 !important; font-weight: 700; }
+.combo-preview .combo-pill { font-size: 13px !important; background: #f8e8a6 !important; color: #3b2c1d !important; border-color: #8d6c45 !important; }
+
+/* Bigger tabletop: the oval table should fill most of the width. */
+.room-wall.back { background-size: 125% auto !important; background-position: center 62% !important; }
+.room-wall.back { background-size: 150% auto !important; background-position: center 75% !important; }
+body.rail-collapsed .cup-zone, body:not(.rail-collapsed) .cup-zone { right: 20% !important; }
+/* Clear dice header and remove tiny annotations from action buttons. */
+.dice-tray-head { color: #241f19 !important; text-shadow: none !important; font-size: 14px !important; font-weight: 700 !important; letter-spacing: .06em !important; }
+#throw-label, .dice-count { background: #fffaf0 !important; border: 1.4px solid rgba(81,67,48,.55) !important; padding: 3px 9px !important; box-shadow: 2px 2px 0 rgba(74,55,34,.1); }
+.action-hint { display: none !important; }
+.score-action em, .score-action .action-points small { display: none !important; }
+.score-action { min-height: 58px !important; }
+.score-action b { font-size: 17px !important; }
+.score-action .action-points { font-size: 18px !important; }
+/* Scored dice leave the table immediately; the next throw only rolls what remains. */
+#dice-dom-fallback .die.is-scored { display: none !important; }
+#dice-dom-fallback { justify-content: center !important; }

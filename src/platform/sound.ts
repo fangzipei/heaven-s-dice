@@ -85,6 +85,7 @@ export class SoundKit {
   }
 
   item() { this.tone(620, .1, 'triangle', .028); this.tone(930, .2, 'sine', .02, .07); }
+  paperUnfold() { this.noise(.24, .035, 0, 620); this.tone(240, .16, 'triangle', .022, .02); this.tone(360, .12, 'sine', .015, .12); }
 
   gesture() {
     [392, 523, 659, 784, 1046].forEach((f, i) => this.tone(f, .24, 'sine', .022, i * .075));

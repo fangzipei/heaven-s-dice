@@ -76,7 +76,9 @@ describe('the duplicated tables are really gone', () => {
     const tutorial = readFileSync(new URL('../../src/ui/screens/tutorial.ts', import.meta.url), 'utf8');
     const dom = readFileSync(new URL('../../src/render/dice-dom.ts', import.meta.url), 'utf8');
     const table = readFileSync(new URL('../../src/render/dice-table.ts', import.meta.url), 'utf8');
-    for (const [name, source] of [['tutorial.ts', tutorial], ['dice-dom.ts', dom], ['dice-table.ts', table]]) {
+    /* 教程骰面改成纸片渲染后不再自己排点，改为复用 dice-dom 的共享实现。 */
+    expect(tutorial).toMatch(/paperDieFaceHtml/);
+    for (const [name, source] of [['dice-dom.ts', dom], ['dice-table.ts', table]]) {
       expect(source, `${name} imports the shared layout`).toMatch(/pip-layout\.ts/);
     }
   });

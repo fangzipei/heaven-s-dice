@@ -221,15 +221,15 @@ function renderDiceTrayGL(run: RunState, tray: HTMLElement) {
 export function renderDiceTray() {
   const run = app.run;
   const tray = $('#dice-tray');
-  if (!tray) return;
-  if (!run) return;
+  if (!tray || !run) return;
+  // The shipped flow stays flat because app.ts no longer initializes WebGL.
+  // Keep this branch for debug tools and parity tests that explicitly inject a
+  // DiceTable instance.
   if (diceTable) {
     renderDiceTrayGL(run, tray);
     syncDiceTrayLabels(run);
     return;
   }
-  // First frame before WebGL comes up (or a browser without it): keep the
-  // DOM renderer so the table is never empty.
   renderDiceTrayDom(run, tray, { rolling: app.rolling, busy: app.busy });
   syncDiceTrayLabels(run);
 }

@@ -77,12 +77,11 @@ document.addEventListener('DOMContentLoaded', () => {
   refreshResumeButton();
   const profile = loadProfile();
   if (profile?.token) void syncEverything();
-  $('#start-screen')!.hidden = true;
-  $('#game-screen')!.hidden = false;
-  window.addEventListener('beforeunload', () => { pauseRunRecord(); });
+  window.addEventListener('beforeunload', () => { pauseRunRecord(); saveCheckpoint(); });
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'hidden') {
       pauseRunRecord();
+      saveCheckpoint();
     } else {
       resumeRunRecord();
     }
@@ -131,6 +130,7 @@ export function resumeRun(): void {
     app.resultShown = false;
     $('#start-screen')!.hidden = true;
     $('#game-screen')!.hidden = false;
+    document.body.classList.add('rail-collapsed');
     setupLevelScene(true);
     renderGame();
     if (saved.run.phase === 'shop' && saved.run.shop) openShopScreen();
@@ -346,9 +346,23 @@ async function handleAction(action: string, target: HTMLElement, _event?: MouseE
     case 'toggle-sound':
       toggleSound();
       break;
-    case 'toggle-rail':
-      $('#game-screen .rail')?.classList.toggle('is-open');
+    case 'close-rail':
+      document.body.classList.add('rail-collapsed');
+      sound.click();
       break;
+    case 'toggle-rail': {
+      const rail = $('#game-screen .rail');
+      if (window.innerWidth > 1050) {
+        document.body.classList.toggle('rail-collapsed');
+        const collapsed = document.body.classList.contains('rail-collapsed');
+        target.setAttribute('aria-expanded', String(!collapsed));
+        if (!collapsed) sound.paperUnfold();
+      } else {
+        rail?.classList.toggle('is-open');
+        if (rail?.classList.contains('is-open')) sound.paperUnfold();
+      }
+      break;
+    }
     case 'auto-roll':
     case 'manual-roll':
       beginRoll();
@@ -488,6 +502,7 @@ export async function startRun(): Promise<void> {
     app.resultShown = false;
     $('#start-screen')!.hidden = true;
     $('#game-screen')!.hidden = false;
+    document.body.classList.add('rail-collapsed');
     setupLevelScene(true);
     renderGame();
     saveCheckpoint();
@@ -543,6 +558,7 @@ export function setupLevelScene(force = false): void {
   scene.dataset.table = table.id;
   setCss(scene, '--table-accent', table.accent);
   $('#room-back')!.style.backgroundImage = `url("${paperTableArt(table.art)}")`;
+  setCss(scene, '--table-art', `url("${paperTableArt(table.art)}")`);
   $('#chapter-tag')!.innerHTML = `<span>${h(table.subtitle.split(' · ')[0])}</span><b>${h(table.subtitle.split(' · ')[1] || '')}</b>`;
   const opponentEl = $('#opponent')!;
   opponentEl.classList.toggle('is-boss', isBoss);

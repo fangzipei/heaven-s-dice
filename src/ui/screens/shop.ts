@@ -9,21 +9,21 @@ import {
 } from '../../content/index.ts';
 import {
   buyBarrel as engineBuyBarrel, buyDie as engineBuyDie,
-  buyItem as engineBuyItem, canSellItem, effectiveProbs,
+  buyItem as engineBuyItem, canSellItem,
   getBarrel, getDiceCapacity, getDieSpec, getOwnedItemIds, itemSellPrice,
-  refreshCost, refreshSection, sectionLabel, sellItem, setCounts, shopPrice, shopSlots,
+  refreshCost, refreshSection, sectionLabel, sellItem, shopPrice, shopSlots,
 } from '../../core/engine.ts';
-import type { DiceDef, RunState, ShopOffer } from '../../core/types.ts';
+import type { RunState, ShopOffer } from '../../core/types.ts';
 import { h, num } from '../../core/util.ts';
-import { artDieHtml } from '../../render/dice-dom.ts';
+import { artDieImageHtml } from '../../render/dice-dom.ts';
 import { dieSkinStyle, favoredFaces } from '../../render/dice-skins.ts';
-import { probabilityBars } from '../components/cards.ts';
 import { closeOverlay, openOverlay } from '../components/overlay.ts';
 import { showToast } from '../components/toast.ts';
 import { barrelTypeLabel } from '../components/tooltip.ts';
 import { $ } from '../dom.ts';
 import { sound } from '../../platform/sound.ts';
-import { recordShop } from '../../platform/run-record.ts';
+import { getRunRecord, recordShop } from '../../platform/run-record.ts';
+import { saveGame } from '../../platform/save.ts';
 import { discoverLoadout, discoverShop } from '../../platform/storage.ts';
 import { projectedReward } from '../reward.ts';
 import { app } from '../state.ts';
@@ -78,21 +78,21 @@ export function renderShopScreen(): void {
         <div><h2>行商帐篷</h2><p>第 ${run.level} 关之后 · 下一站 ${h(nextTable.name)}</p></div>
       </div>
       <div class="shop-head-right">
+        <span class="shop-reward">本关 +${num(reward)}</span>
         <div class="shop-coin"><svg><use href="#i-coin"></use></svg>${num(run.coins)}<span>银币</span></div>
         <button class="ghost-button" data-action="open-rules"><svg><use href="#i-help"></use></svg><span>规则</span></button>
       </div>
     </header>
     <div class="shop-body">
-      <div class="shop-intro">
-        <p><b>“看一看，摸一摸，别问来路。”</b> 每关之间只有一次市集。骰子、骰桶和物品会改变你下一关能走多远；随身物品也可以半价卖回。<span style="color:#d9b46a"> 本关骰子货架权重：${stockNote}。</span></p>
-        <span class="rail-note">本关奖励已入袋：<b style="color:#e5c278">${num(reward)}</b> 银币</span>
+      <div class="shop-board">
+        <div class="shop-zones">
+          ${shopZone('dice', '骰子', slotNote(slots.dice, '枚', 2, '购入后替换骰袋'), shop.dice, renderDiceShopCard)}
+          ${shopZone('barrel', '骰桶', slotNote(slots.barrel, '只', 1, '立即换上'), shop.barrel, renderBarrelShopCard)}
+          ${shopZone('item', '物品', slotNote(slots.item, '件', 3, '随身携带'), shop.item, renderItemShopCard)}
+        </div>
+        <div class="shop-stock-line">本关骰子货架权重：${stockNote}</div>
+        ${renderSellShelf(run)}
       </div>
-      <div class="shop-zones">
-        ${shopZone('dice', '骰子', slotNote(slots.dice, '枚', 2, '购入后替换骰袋中的骰子'), shop.dice, renderDiceShopCard)}
-        ${shopZone('barrel', '骰桶', slotNote(slots.barrel, '只', 1, '立即替换当前骰桶'), shop.barrel, renderBarrelShopCard)}
-        ${shopZone('item', '物品', slotNote(slots.item, '件', 3, '随身物品不限件数'), shop.item, renderItemShopCard)}
-      </div>
-      ${renderSellShelf(run)}
     </div>
     <footer class="shop-footer">
       <div class="loadout-strip">
@@ -100,11 +100,11 @@ export function renderShopScreen(): void {
         <div class="loadout-dice">${run.bag.map((entry) => {
           const spec = getDieSpec(entry.dieId);
           const weighted = favoredFaces(spec).length > 0;
-          return `<span class="mini-die rarity-${spec.rarity} ${spec.setId === 'demon' ? 'is-demon' : ''} ${weighted ? 'is-weighted' : ''}" style="${dieSkinStyle(spec)}" data-pips="${spec.setId === 'demon' ? '魔' : (spec.setId ? spec.name[0]! : '骰')}" data-die-tip="${h(spec.id)}" title="${h(spec.name)}"></span>`;
+          return `<span class="mini-die rarity-${spec.rarity} ${spec.setId === 'demon' ? 'is-demon' : ''} ${weighted ? 'is-weighted' : ''}" style="${dieSkinStyle(spec)}" data-pips="${spec.setId === 'demon' ? '魔' : (spec.setId ? spec.name[0]! : '骰')}" data-die-tip="${h(spec.id)}"></span>`;
         }).join('')}</div>
         <span class="loadout-label" style="margin-left:8px">骰桶</span>
-        <div class="barrel-thumb" style="width:25px;height:32px" data-barrel-tip="${h(getBarrel(run).id)}"><img src="assets/cups/${getBarrel(run).art}.svg" alt=""></div>
-        <div class="loadout-items">${run.activeItems.concat(run.passiveItems).map((id) => `<img src="assets/items/${ITEM_BY_ID[id]!.icon}.svg" alt="${h(ITEM_BY_ID[id]!.name)}" data-item-tip="${h(id)}" title="${h(ITEM_BY_ID[id]!.name)}">`).join('')}</div>
+        <div class="barrel-thumb" style="width:25px;height:32px" data-barrel-tip="${h(getBarrel(run).id)}"><img src="assets/art/barrels/${getBarrel(run).art}-cup.svg" alt=""></div>
+        <div class="loadout-items">${run.activeItems.concat(run.passiveItems).map((id) => `<img src="assets/art/items/${id}-cut.svg" alt="${h(ITEM_BY_ID[id]!.name)}" data-item-tip="${h(id)}">`).join('')}</div>
       </div>
       <div class="shop-continue">
         <button class="primary-button" data-action="leave-shop">前往第 ${nextLevel} 关 · ${h(nextTable.name)} <svg><use href="#i-arrow"></use></svg></button>
@@ -113,6 +113,7 @@ export function renderShopScreen(): void {
   `;
   const body = $('.shop-body', screen);
   if (body) body.scrollTop = bodyScroll;
+  saveGame(run, getRunRecord());
 }
 
 function renderSellShelf(run: RunState): string {
@@ -124,7 +125,7 @@ function renderSellShelf(run: RunState): string {
     const rarity = rarityOf(item);
     const price = itemSellPrice(item);
     return `<article class="sell-card" style="--rarity:${rarity.color}" data-item-tip="${h(item.id)}">
-      <img src="assets/items/${item.icon}.svg" alt="${h(item.name)}">
+      <img src="assets/art/items/${item.id}-cut.svg" alt="${h(item.name)}">
       <div class="sell-copy">
         <div class="sell-tags"><span>${item.consumable ? '一次性' : item.type === 'active' ? '主动' : '被动'}</span><b>${rarity.name}</b></div>
         <strong>${h(item.name)}</strong>
@@ -137,7 +138,7 @@ function renderSellShelf(run: RunState): string {
   }).join('');
   return `<section class="shop-sell">
     <header class="shop-sell-head">
-      <div><h3>随身物品 · 半价回收</h3><p>出售自己拥有的主动或被动物品，立即换取一半价格。</p></div>
+      <div><h3>随身物品 · 半价回收</h3></div>
       <span class="rail-note">可出售 ${owned.length} 件</span>
     </header>
     ${owned.length ? `<div class="sell-grid">${cards}</div>` : '<div class="sell-empty">行囊里还没有可出售的物品。</div>'}
@@ -154,26 +155,14 @@ function shopZone(
     : `<div class="empty-stock"><svg><use href="#i-lock"></use></svg><span>这一栏已经空了。<br>${section === 'barrel' ? '你已收集所有骰桶。' : '没有更多货品。'}</span></div>`;
   return `
     <section class="shop-zone">
-      <header class="shop-zone-head">
-        <div><h3>${h(title)}</h3><p>${h(subtitle)}</p></div>
+      <header class="zone-head">
+        <div><h3>${h(title)}<span class="zone-count">${entries.filter((entry) => !entry.sold).length}</span></h3><p>${h(subtitle)}</p></div>
         <button class="refresh-button" data-action="refresh-shop" data-section="${section}" ${app.run!.coins < cost ? 'disabled' : ''}>
           <svg><use href="#i-restart"></use></svg>刷新 <b>${cost}</b>
         </button>
       </header>
-      <div class="shop-grid ${section}">${cards}</div>
+      <div class="stock-list">${cards}</div>
     </section>`;
-}
-
-function setPurchaseHint(spec: DiceDef): string {
-  const set = spec.setId ? DICE_SETS[spec.setId] : null;
-  if (!set || !app.run) return '';
-  const count = setCounts(app.run)[set.id]?.count || 0;
-  const after = Math.min(4, count + 1);
-  const unlocked = set.bonuses.find((bonus) => count < bonus.pieces && after >= bonus.pieces);
-  const active = [...set.bonuses].reverse().find((bonus) => count >= bonus.pieces);
-  if (unlocked) return `<div class="card-set is-unlock"><b>购入后激活 ${unlocked.pieces} 件套</b><span>${h(unlocked.text)}</span></div>`;
-  if (active) return `<div class="card-set is-active"><b>${h(set.name)} ${count} / 4 · ${active.pieces} 件套已生效</b><span>${h(active.text)}</span></div>`;
-  return `<div class="card-set"><b>${h(set.name)} ${count} / 4</b><span>再买 ${Math.max(0, 2 - after)} 枚激活 2 件套</span></div>`;
 }
 
 function renderDiceShopCard(entry: ShopOffer, index: number): string {
@@ -185,20 +174,18 @@ function renderDiceShopCard(entry: ShopOffer, index: number): string {
   const price = shopPrice(app.run!, spec.price);
   const affordable = app.run!.coins >= price;
   const full = app.run!.bag.length >= getDiceCapacity(app.run!);
-  const probs = effectiveProbs(spec.id, getBarrel(app.run!).id);
-  const bars = probabilityBars(probs, spec.rarity);
   return `
-    <article class="shop-card ${entry.sold ? 'is-sold' : ''}" style="--rarity:${rarity.color};--glow:${rarity.glow}" data-die-tip="${h(spec.id)}">
-      <div class="card-topline"><span class="rarity-tag">${rarity.name}</span><span class="set-tag">${set ? h(set.name) + '套组' : '无套组'}</span></div>
-      <div class="card-art">${artDieHtml(spec)}</div>
-      <h4>${h(spec.name)}</h4>
-      <div class="card-sub">${h(spec.desc)}</div>
-      ${setPurchaseHint(spec)}
-      ${bars}
-      ${spec.bonus ? `<div class="card-bonus">${h(spec.bonus.label)}</div>` : '<div class="card-bonus" style="opacity:.4">没有额外骰面特性</div>'}
-      <div class="card-foot">
-        <span class="price-tag"><svg><use href="#i-coin"></use></svg>${num(price)}<small>${full ? '需替换' : '购入'}</small></span>
-        <button class="buy-button" data-action="buy-die" data-index="${index}" ${entry.sold || !affordable ? 'disabled' : ''}>${affordable ? '购入' : '银币不足'}</button>
+    <article class="shop-card stock-row ${entry.sold ? 'is-sold' : ''}" style="--rarity:${rarity.color};--glow:${rarity.glow}" data-die-tip="${h(spec.id)}">
+      <div class="stock-art">${artDieImageHtml(spec)}</div>
+      <div class="stock-copy">
+        <div class="stock-tags"><span class="rarity-tag">${rarity.name}</span><span class="set-tag">${set ? h(set.name) + '套组' : '无套组'}</span></div>
+        <h4>${h(spec.name)}</h4>
+        <p class="stock-line">${h(spec.desc)}</p>
+        <p class="stock-effect">${h(spec.bonus?.label || '没有额外骰面特性')}</p>
+      </div>
+      <div class="stock-buy">
+        <span class="price-tag"><svg><use href="#i-coin"></use></svg>${num(price)}</span>
+        <button class="buy-button" data-action="buy-die" data-index="${index}" ${entry.sold || !affordable ? 'disabled' : ''}>${full ? '替换' : '购入'}</button>
       </div>
       ${entry.sold ? '<span class="sold-stamp">SOLD</span>' : ''}
     </article>`;
@@ -212,15 +199,17 @@ function renderBarrelShopCard(entry: ShopOffer, index: number): string {
   const price = shopPrice(app.run!, barrel.price);
   const affordable = app.run!.coins >= price;
   return `
-    <article class="shop-card ${entry.sold ? 'is-sold' : ''}" style="--rarity:${rarity.color};--glow:${rarity.glow};min-height:306px" data-barrel-tip="${h(barrel.id)}">
-      <div class="card-topline"><span class="rarity-tag">${rarity.name}</span><span class="set-tag">${barrelTypeLabel(barrel)}</span></div>
-      <div class="card-art"><img class="art-cup" src="assets/cups/${barrel.art}.svg" alt="${h(barrel.name)}"></div>
-      <h4>${h(barrel.name)}</h4>
-      <div class="card-sub">${h(barrel.short)}</div>
-      <div class="card-desc">${h(barrel.desc)}</div>
-      <div class="card-foot">
-        <span class="price-tag"><svg><use href="#i-coin"></use></svg>${num(price)}<small>换上</small></span>
-        <button class="buy-button" data-action="buy-barrel" data-index="${index}" ${entry.sold || !affordable ? 'disabled' : ''}>${affordable ? '换上' : '银币不足'}</button>
+    <article class="shop-card stock-row ${entry.sold ? 'is-sold' : ''}" style="--rarity:${rarity.color};--glow:${rarity.glow}" data-barrel-tip="${h(barrel.id)}">
+      <div class="stock-art"><img class="art-cup" src="assets/art/barrels/${barrel.art}-cut.svg" alt="${h(barrel.name)}"></div>
+      <div class="stock-copy">
+        <div class="stock-tags"><span class="rarity-tag">${rarity.name}</span><span class="set-tag">${h(barrelTypeLabel(barrel))}</span></div>
+        <h4>${h(barrel.name)}</h4>
+        <p class="stock-line">${h(barrel.desc)}</p>
+        <p class="stock-effect">${h(barrel.short)}</p>
+      </div>
+      <div class="stock-buy">
+        <span class="price-tag"><svg><use href="#i-coin"></use></svg>${num(price)}</span>
+        <button class="buy-button" data-action="buy-barrel" data-index="${index}" ${entry.sold || !affordable ? 'disabled' : ''}>换上</button>
       </div>
       ${entry.sold ? '<span class="sold-stamp">SOLD</span>' : ''}
     </article>`;
@@ -234,15 +223,16 @@ function renderItemShopCard(entry: ShopOffer, index: number): string {
   const price = shopPrice(app.run!, item.price);
   const affordable = app.run!.coins >= price;
   return `
-    <article class="shop-card ${entry.sold ? 'is-sold' : ''}" style="--rarity:${rarity.color};--glow:${rarity.glow};min-height:306px" data-item-tip="${h(item.id)}">
-      <div class="card-topline"><span class="rarity-tag">${rarity.name}</span><span class="set-tag">${item.type === 'active' ? '主动' : '被动'}</span></div>
-      <div class="card-art"><img src="assets/items/${item.icon}.svg" alt="${h(item.name)}" style="width:64px;height:64px"></div>
-      <h4>${h(item.name)}</h4>
-      <div class="card-sub">${item.consumable ? '一次性物品 · 使用后消失' : item.type === 'active' ? '主动物品 · 每关一次' : '被动物品 · 永久生效'}</div>
-      <div class="card-desc">${h(item.desc)}</div>
-      <div class="card-foot">
-        <span class="price-tag"><svg><use href="#i-coin"></use></svg>${num(price)}<small>购入</small></span>
-        <button class="buy-button" data-action="buy-item" data-index="${index}" ${entry.sold || !affordable ? 'disabled' : ''}>${affordable ? '购入' : '银币不足'}</button>
+    <article class="shop-card stock-row ${entry.sold ? 'is-sold' : ''}" style="--rarity:${rarity.color};--glow:${rarity.glow}" data-item-tip="${h(item.id)}">
+      <div class="stock-art"><img src="assets/art/items/${item.id}-cut.svg" alt="${h(item.name)}"></div>
+      <div class="stock-copy">
+        <div class="stock-tags"><span class="rarity-tag">${rarity.name}</span><span class="set-tag">${item.consumable ? '一次性' : item.type === 'active' ? '主动' : '被动'}</span></div>
+        <h4>${h(item.name)}</h4>
+        <p class="stock-line">${h(item.desc)}</p>
+      </div>
+      <div class="stock-buy">
+        <span class="price-tag"><svg><use href="#i-coin"></use></svg>${num(price)}</span>
+        <button class="buy-button" data-action="buy-item" data-index="${index}" ${entry.sold || !affordable ? 'disabled' : ''}>购入</button>
       </div>
       ${entry.sold ? '<span class="sold-stamp">SOLD</span>' : ''}
     </article>`;
@@ -318,7 +308,7 @@ export function showReplaceModal(): void {
     const rarity = rarityOf(spec);
     return `
       <button class="replace-option" data-action="confirm-replace" data-bag-uid="${h(entry.uid)}">
-        ${artDieHtml(spec)}
+        ${artDieImageHtml(spec)}
         <b>${h(spec.name)}</b><span>${rarity.name}${spec.setId ? ` · ${DICE_SETS[spec.setId].name}` : ''}</span>
       </button>`;
   }).join('');

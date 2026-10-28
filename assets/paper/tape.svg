@@ -1,0 +1,5 @@
+<svg xmlns='http://www.w3.org/2000/svg' width='120' height='34' viewBox='0 0 120 34'>
+  <path d='M3 5 L20 2 L38 6 L58 1 L78 5 L97 2 L117 6 L115 29 L98 32 L78 28 L58 33 L37 29 L19 32 L3 28 Z' fill='#e7d8b4' opacity='.86'/>
+  <path d='M3 5 L20 2 L38 6 L58 1 L78 5 L97 2 L117 6 L115 29 L98 32 L78 28 L58 33 L37 29 L19 32 L3 28 Z' fill='none' stroke='#b8a37a' stroke-width='.8' opacity='.55'/>
+  <path d='M14 9 L16 27 M34 8 L35 28 M54 7 L56 29 M74 8 L76 28 M94 7 L95 28' stroke='#c8b58d' stroke-width='.7' opacity='.5'/>
+</svg>

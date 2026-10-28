@@ -78,6 +78,29 @@ test('score and continue rerolls only the remaining dice', () => {
   expect(state.dice.filter((d) => !d.scored).length).toBe(4);
 });
 
+test('scoring records each combo with its faces and points', () => {
+  const state = fresh();
+  state.target = 9999;
+  forceRoll(state, [1, 5, 2, 3, 4, 6]);
+  state.selected = state.dice.filter((d) => d.value === 1 || d.value === 5).map((d) => d.uid);
+  applyScore(state, 'continue');
+  expect(state.scoreHistory).toHaveLength(2);
+  expect(state.scoreHistory.map((entry) => entry.faces)).toEqual([[1], [5]]);
+  expect(state.scoreHistory.map((entry) => entry.points)).toEqual([100, 50]);
+  expect(state.scoreHistory.every((entry) => entry.level === 1 && entry.throw === 1)).toBe(true);
+});
+
+test('the rule hover counter tracks jokers that took part in a scored hand', () => {
+  const state = fresh();
+  state.target = 9999;
+  forceRoll(state, [4, 4, 4, 4, 2, 3]);
+  state.dice[0].wild = true;
+  state.selected = state.dice.slice(0, 4).map((d) => d.uid);
+  const result = applyScore(state, 'continue');
+  expect(result.ok).toBe(true);
+  expect(state.flags.wildScored).toBe(1);
+});
+
 test('score and continue stays free even with no reroll tokens', () => {
   const state = fresh();
   state.target = 9999;

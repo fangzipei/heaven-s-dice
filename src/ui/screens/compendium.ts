@@ -8,7 +8,7 @@ import {
 import { h } from '../../core/util.ts';
 import type { DiscoveryKind } from '../../platform/storage.ts';
 import { discoverLoadout, discoverShop, isDiscovered } from '../../platform/storage.ts';
-import { artDieHtml } from '../../render/dice-dom.ts';
+import { artDieImageHtml } from '../../render/dice-dom.ts';
 import { probabilityBars } from '../components/cards.ts';
 import { openOverlay } from '../components/overlay.ts';
 import { barrelTypeLabel, hideTooltip } from '../components/tooltip.ts';
@@ -71,7 +71,7 @@ function compendiumBody(tab: string): string {
         const bars = probabilityBars(spec.probs, spec.rarity);
         return `<article class="compendium-card compendium-die" style="--rarity:${rarity.color};--glow:${rarity.glow}" data-die-tip="${h(spec.id)}">
           <div class="card-topline"><span class="rarity-tag">${rarity.name}</span><span class="set-tag">${h(setTag)}</span></div>
-          <div class="comp-art"><div class="card-art" style="height:74px">${artDieHtml(spec)}</div></div>
+          <div class="comp-art"><div class="card-art" style="height:74px">${artDieImageHtml(spec)}</div></div>
           <h4>${h(spec.name)}</h4>
           <div class="comp-sub">${h(spec.desc)}</div>
           ${bars}
@@ -86,7 +86,7 @@ function compendiumBody(tab: string): string {
         const rarity = rarityOf(barrel);
         return `<article class="compendium-card barrel-compendium" style="--rarity:${rarity.color};--glow:${rarity.glow}" data-barrel-tip="${h(barrel.id)}">
           <div class="card-topline"><span class="rarity-tag">${rarity.name}</span><span class="set-tag">${barrelTypeLabel(barrel)}</span></div>
-          <div class="comp-art"><img src="assets/cups/${barrel.art}.svg" alt="${h(barrel.name)}"></div>
+          <div class="comp-art"><img src="assets/art/barrels/${barrel.art}-cut.svg" alt="${h(barrel.name)}"></div>
           <h4>${h(barrel.name)}</h4>
           <div class="comp-sub">${h(barrel.short)}</div>
           <p>${h(barrel.desc)}</p>
@@ -100,7 +100,7 @@ function compendiumBody(tab: string): string {
         const rarity = rarityOf(item);
         return `<article class="compendium-card item-compendium" style="--rarity:${rarity.color};--glow:${rarity.glow}" data-item-tip="${h(item.id)}">
           <div class="card-topline"><span class="rarity-tag">${rarity.name}</span><span class="set-tag">${item.consumable ? '一次性' : item.type === 'active' ? '主动' : '被动'}</span></div>
-          <div class="comp-art"><img src="assets/items/${item.icon}.svg" alt="${h(item.name)}"></div>
+          <div class="comp-art"><img src="assets/art/items/${item.id}-cut.svg" alt="${h(item.name)}"></div>
           <h4>${h(item.name)}</h4>
           <div class="comp-sub">${h(item.desc)}</div>
           <p>${h(item.flavor)}</p>
@@ -111,7 +111,7 @@ function compendiumBody(tab: string): string {
     return `<p class="compendium-intro">五张赌桌，五种材质。关卡越深，桌面越昂贵，坐在对面的东西也越不像人。前四幕各 6 关、终幕 4 关，每幕有两位庄家看守，庄家之间的小兵越排越长。</p>
       <div class="compendium-grid tables-grid">
         ${TABLES.map((table) => `<article class="compendium-card table-comp-card" style="--rarity:${table.accent};--glow:${table.glow};min-height:280px;overflow:hidden">
-          <div class="comp-table-bg" style="background-image:url('assets/tables/${table.art}.svg')"></div>
+          <div class="comp-table-bg" style="background-image:url('assets/paper/tables/${table.art}.svg')"></div>
           <div class="comp-table-content">
             <div class="comp-sub">第 ${chapterLevelSpan(table.group)[0]}–${chapterLevelSpan(table.group)[1]} 关 · ${h(table.material)}</div>
             <h4>${h(table.name)}</h4>
@@ -123,22 +123,22 @@ function compendiumBody(tab: string): string {
   }
   if (tab === 'bosses') {
     return `<p class="compendium-intro">每一位庄家都有一句自己的规矩。第 ${BOSSES.map((boss) => boss.level).join('、')} 关庄家亲自落座，两场之间的小兵关越拖越长（${MINION_GAPS.join('、')}）；击败他们，桌子会随章节换成下一种材质。</p>
-      <h3 style="font-family:var(--serif);font-weight:400;font-size:18px;color:#e4cd9f;margin:8px 0 12px;letter-spacing:.1em">${BOSSES.length} 位庄家</h3>
+      <h3 style="font-family:var(--serif);font-weight:400;font-size:20px;color:var(--ink);margin:8px 0 12px;letter-spacing:.06em">${BOSSES.length} 位庄家</h3>
       <div class="compendium-grid bosses-grid">
         ${BOSSES.map((boss) => `<article class="compendium-card boss-compendium-card" style="--rarity:${boss.accent};--glow:${boss.accent}33">
-          <img class="comp-portrait" src="assets/portraits/${boss.art}.svg" alt="${h(boss.name)}">
+          <img class="comp-portrait" src="assets/portraits/paper/${boss.art}.svg" alt="${h(boss.name)}">
           <div class="comp-content">
             <div class="comp-sub">第 ${boss.level} 关 · ${h(boss.title)} · 悬赏 ×${boss.curve.reward!.toFixed(2)}</div>
             <h4>${h(boss.name)}</h4>
             <div class="effect"><b>${h(boss.effectName)}</b><p>${h(boss.effectDesc)}</p></div>
-            <p style="color:#8f7f69;font-size:8px">“${h(boss.intro)}”</p>
+            <p style="color:var(--muted);font-size:11px">“${h(boss.intro)}”</p>
           </div>
         </article>`).join('')}
       </div>
-      <h3 style="font-family:var(--serif);font-weight:400;font-size:18px;color:#e4cd9f;margin:22px 0 12px;letter-spacing:.1em">五位小兵</h3>
+      <h3 style="font-family:var(--serif);font-weight:400;font-size:20px;color:var(--ink);margin:22px 0 12px;letter-spacing:.06em">五位小兵</h3>
       <div class="compendium-grid minions-grid">
         ${MINIONS.map((minion) => `<article class="compendium-card" style="--rarity:${minion.accent};--glow:${minion.accent}22;overflow:hidden;min-height:250px">
-          <img src="assets/portraits/${minion.art}.svg" alt="${h(minion.name)}" style="position:absolute;right:-8%;bottom:-2%;width:78%;opacity:.62;-webkit-mask-image:linear-gradient(180deg,#000 65%,transparent);mask-image:linear-gradient(180deg,#000 65%,transparent)">
+          <img src="assets/portraits/paper/${minion.art}.svg" alt="${h(minion.name)}" style="position:absolute;right:-8%;bottom:-2%;width:78%;opacity:.78;-webkit-mask-image:linear-gradient(180deg,#000 65%,transparent);mask-image:linear-gradient(180deg,#000 65%,transparent)">
           <div style="position:relative;z-index:2;max-width:64%">
             <div class="comp-sub">${h(minion.title)}</div>
             <h4>${h(minion.name)}</h4>

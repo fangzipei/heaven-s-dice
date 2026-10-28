@@ -7,7 +7,7 @@ import {
   loadProfile, normalizeUserId, saveProfile, validUserId, type PlayerProfile,
 } from '../../platform/profile.ts';
 import {
-  accessAccount, checkUsername, claimUsername, setAccountPassword,
+  API_ENABLED, accessAccount, checkUsername, claimUsername, setAccountPassword,
 } from '../../platform/api.ts';
 import { syncEverything } from '../../platform/sync.ts';
 import { setRecordUser } from '../../platform/run-record.ts';
@@ -47,6 +47,14 @@ export function openAccount(): void {
 }
 
 export function openIdentity(onDone?: () => void): void {
+  if (!API_ENABLED) {
+    const id = loadProfile()?.id || '本地旅人';
+    saveProfile({ id, mode: 'local', hasPassword: false, createdAt: loadProfile()?.createdAt || Date.now() });
+    setRecordUser(id);
+    refreshAccountButton();
+    onDone?.();
+    return;
+  }
   const profile = loadProfile();
   if (profile) {
     onDone?.();

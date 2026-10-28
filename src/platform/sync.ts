@@ -1,6 +1,6 @@
 // platform/sync.ts — 已结算历程的本地保存与后端同步。
 import { clearPending, queuePending, readHistory, readPending, saveHistory } from './save.ts';
-import { uploadRuns } from './api.ts';
+import { API_ENABLED, uploadRuns } from './api.ts';
 import { loadProfile, saveProfile } from './profile.ts';
 import type { RunRecord } from './run-record.ts';
 
@@ -16,7 +16,7 @@ export function storeFinishedRun(record: RunRecord): void {
 
 export async function syncRecords(records: RunRecord[]): Promise<{ synced: number; failed: number }> {
   const profile = loadProfile();
-  if (!profile?.token || !records.length) return { synced: 0, failed: 0 };
+  if (!API_ENABLED || !profile?.token || !records.length) return { synced: 0, failed: 0 };
   let synced = 0;
   for (let index = 0; index < records.length; index += 10) {
     const chunk = records.slice(index, index + 10);

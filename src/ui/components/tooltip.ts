@@ -11,35 +11,59 @@ import { h } from '../../core/util.ts';
 import { $ } from '../dom.ts';
 import { app } from '../state.ts';
 
-const TIP_SELECTOR = '[data-die-tip],[data-item-tip],[data-set-tip],[data-barrel-tip]';
+const TIP_SELECTOR = '[data-die-tip],[data-item-tip],[data-set-tip],[data-barrel-tip],[data-pattern-tip],[data-rule-tip]';
 
 let tooltipCurrent: HTMLElement | null = null;
 
-function positionTooltip(tip: HTMLElement, x: number, y: number): void {
-  const pad = 16;
+/** Stick the note just above the data it explains; a short tape strip sits at
+ *  the top edge, so the note reads as taped onto the card. */
+function positionTooltip(tip: HTMLElement, anchor: HTMLElement | null): void {
+  const pad = 14;
+  const gap = 9;
   const rect = tip.getBoundingClientRect();
-  let left = x + 18;
-  let top = y + 18;
-  if (left + rect.width + pad > window.innerWidth) left = x - rect.width - 18;
-  if (top + rect.height + pad > window.innerHeight) top = window.innerHeight - rect.height - pad;
-  tip.style.left = `${Math.max(pad, left)}px`;
-  tip.style.top = `${Math.max(pad, top)}px`;
+  const box = anchor?.getBoundingClientRect();
+  if (!box || box.width < 2) {
+    tip.style.left = `${pad}px`;
+    tip.style.top = `${pad}px`;
+    return;
+  }
+  const center = box.left + box.width / 2;
+  let left = center - rect.width / 2;
+  left = Math.max(pad, Math.min(window.innerWidth - rect.width - pad, left));
+  let top = box.top - rect.height - gap;
+  const side = top < pad ? 'below' : 'above';
+  if (side === 'below') top = Math.min(window.innerHeight - rect.height - pad, box.bottom + gap);
+  tip.dataset.side = side;
+  tip.style.left = `${left}px`;
+  tip.style.top = `${top}px`;
 }
 
-/** Show arbitrary tooltip HTML at a viewport point (used by the WebGL dice table). */
-export function showTooltipHtml(html: string, x: number, y: number): void {
+/** Show arbitrary tooltip HTML (used by the legacy WebGL dice table). */
+export function showTooltipHtml(html: string, x: number, y: number, anchor: HTMLElement | null = null): void {
   const tip = $('#tooltip');
   if (!tip || !html) return;
   tip.innerHTML = html;
   tip.hidden = false;
-  positionTooltip(tip, x, y);
+  if (anchor) positionTooltip(tip, anchor);
+  else {
+    // Cursor mode kept for the optional WebGL path.
+    const rect = tip.getBoundingClientRect();
+    tip.style.left = `${Math.max(14, Math.min(window.innerWidth - rect.width - 14, x + 18))}px`;
+    tip.style.top = `${Math.max(14, Math.min(window.innerHeight - rect.height - 14, y + 18))}px`;
+    tip.dataset.side = 'above';
+  }
 }
 
-/** Reposition the visible tooltip without rebuilding its content. */
+/** Reposition the visible note against its anchor (or a viewport point). */
 export function positionTooltipAt(x: number, y: number): void {
   const tip = $('#tooltip');
   if (!tip || tip.hidden) return;
-  positionTooltip(tip, x, y);
+  if (tooltipCurrent) positionTooltip(tip, tooltipCurrent);
+  else {
+    const rect = tip.getBoundingClientRect();
+    tip.style.left = `${Math.max(14, Math.min(window.innerWidth - rect.width - 14, x + 18))}px`;
+    tip.style.top = `${Math.max(14, Math.min(window.innerHeight - rect.height - 14, y + 18))}px`;
+  }
 }
 
 export function bindTooltip(): void {
@@ -65,7 +89,7 @@ export function bindTooltip(): void {
       const html = tooltipFor(el);
       if (!html) return;
       tooltipCurrent = el;
-      showTooltipHtml(html, pressStart!.x, pressStart!.y);
+      showTooltipHtml(html, pressStart!.x, pressStart!.y, el);
     }, 420);
   });
   document.addEventListener('pointermove', (event) => {
@@ -86,7 +110,7 @@ export function bindTooltip(): void {
     tooltipCurrent = el;
     const html = tooltipFor(el);
     if (!html) return;
-    showTooltipHtml(html, event.clientX, event.clientY);
+    showTooltipHtml(html, event.clientX, event.clientY, el);
   });
   document.addEventListener('pointerout', (event) => {
     if (!tooltipCurrent || event.pointerType === 'touch') return;
@@ -99,7 +123,7 @@ export function bindTooltip(): void {
   });
   document.addEventListener('pointermove', (event) => {
     if (!tooltipCurrent || tip.hidden) return;
-    positionTooltip(tip, event.clientX, event.clientY);
+    positionTooltip(tip, tooltipCurrent);
   });
   document.addEventListener('scroll', () => { tooltipCurrent = null; tip.hidden = true; }, true);
 }
@@ -115,7 +139,46 @@ export function tooltipFor(el: HTMLElement): string {
   if (el.dataset.itemTip) return itemTooltip(el.dataset.itemTip);
   if (el.dataset.setTip) return setTooltip(el.dataset.setTip);
   if (el.dataset.barrelTip) return barrelTooltip(el.dataset.barrelTip);
+  if (el.dataset.ruleTip) return ruleUsageTooltip(el.dataset.ruleTip);
+  if (el.dataset.patternTip) return patternTooltip(el.dataset.patternTip, el.dataset.patternLabel || '骰型');
   return '';
+}
+
+const RULE_TIP_GROUPS: Record<string, { label: string; note: string; match?: (key: string) => boolean }> = {
+  single: { label: '单颗 1 / 5', note: '只有 1 和 5 能单独计分。', match: (key) => key === 'single:1' || key === 'single:5' },
+  triple: { label: '三条', note: '同点三颗 × 100；三条 1 记 1000。', match: (key) => /^nkind:\d:3$/.test(key) },
+  quad: { label: '四条 / 五条 / 六条', note: '在三条的基础上翻倍。', match: (key) => /^nkind:\d:[456]$/.test(key) },
+  straight: { label: '顺子', note: '五颗连号 500；2 起头 750；1-6 全顺 1500。', match: (key) => key.startsWith('straight:') },
+  wild: { label: '恶魔赖子', note: '赖子替顺子或同点补位，不能单独计分。' },
+};
+
+/** Hover card for one rule row: how often this run has scored that shape. */
+export function ruleUsageTooltip(group: string): string {
+  const def = RULE_TIP_GROUPS[group];
+  if (!def) return '';
+  const usage = app.run?.comboUsage || {};
+  const counted = def.match
+    ? Object.entries(usage).filter(([key]) => def.match!(key)).reduce((sum, [, times]) => sum + times, 0)
+    : (app.run?.flags.wildScored || 0);
+  const body = group === 'wild'
+    ? (counted ? `本局已有 ${counted} 颗赖子参与计分。` : `${def.note}这一局赖子还没有参与过计分。`)
+    : (counted ? def.note : `${def.note}这一局还没有用这个骰型计过分。`);
+  return `
+    <h5>${h(def.label)}</h5>
+    <div class="tip-sub">本局计分记录</div>
+    <p class="tip-usage"><b>${counted}</b> 次</p>
+    <p>${h(body)}</p>
+  `;
+}
+
+export function patternTooltip(key: string, label: string): string {
+  const used = app.run?.comboUsage?.[key] || 0;
+  return `
+    <h5>${h(label)}</h5>
+    <div class="tip-sub">本局骰型记录</div>
+    <p class="tip-usage"><b>${used}</b> 次</p>
+    <p>${used ? '这一手已经算上你拥有的被动物品、套组与骰桶加成。' : '这一次牌局还没有用这个骰型计过分。'}</p>
+  `;
 }
 
 export function dieTooltip(dieId: string): string {
@@ -138,10 +201,10 @@ export function dieTooltip(dieId: string): string {
     <div class="tip-sub">${h(rarity.name)}${set ? ` · ${h(set.name)}套组` : spec.id === 'standard' ? ' · 标准骰' : ' · 无套组'}</div>
     <p>${h(spec.desc)}</p>
     <div class="tip-probs">${bars}</div>
-    <p style="color:#756755;font-size:8px">当前骰桶「${h(barrel.name)}」修正后的点数概率</p>
+    <p class="tip-note">当前骰桶「${h(barrel.name)}」修正后的点数概率</p>
     ${spec.bonus ? `<p class="tip-bonus">${h(spec.bonus.label)}</p>` : ''}
     ${set ? `<div class="tip-set"><div class="tip-set-head">${h(set.name)}套组 · ${setCount} / 4</div>${set.bonuses.map((bonus) => `<p class="${setCount >= bonus.pieces ? 'is-active' : ''}">${setCount >= bonus.pieces ? '✦ 已生效' : '◇ 未激活'} · ${bonus.pieces} 件：${h(bonus.text)}</p>`).join('')}</div>` : ''}
-    ${set ? `<p style="color:#8d7c64;font-size:8px">${h(set.motto)}</p>` : ''}
+    ${set ? `<p class="tip-note">${h(set.motto)}</p>` : ''}
   `;
 }
 

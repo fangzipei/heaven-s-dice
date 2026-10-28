@@ -42,14 +42,14 @@ describe('市集页搬到 ui/screens/shop.ts 之后仍然写同样的文案', ()
     expect(app.shopOpen).toBe(true);
     expect(html).toContain('<h2>行商帐篷</h2>');
     expect(html).toContain(`第 1 关之后 · 下一站 ${getTable(2).name}`);
-    expect(html).toContain('“看一看，摸一摸，别问来路。”');
-    expect(html).toContain('货架 2 枚 · 购入后替换骰袋中的骰子');
-    expect(html).toContain('货架 1 只 · 立即替换当前骰桶');
-    expect(html).toContain('货架 3 件 · 随身物品不限件数');
+    expect(html).toContain('货架 2 枚 · 购入后替换骰袋');
+    expect(html).toContain('货架 1 只 · 立即换上');
+    expect(html).toContain('货架 3 件 · 随身携带');
+    expect(html).toContain('shop-card stock-row');
     for (const section of ['dice', 'barrel', 'item']) {
       expect(html).toContain(`data-action="refresh-shop" data-section="${section}"`);
-      expect(html).toContain(`<div class="shop-grid ${section}">`);
     }
+    expect((html.match(/class="stock-list"/g) || []).length).toBe(3);
     expect(html).toContain(`data-action="leave-shop">前往第 2 关 · ${getTable(2).name}`);
     expect(html).toContain('当前骰袋');
     expect(dom.body.children.some((child) => child.className === 'shop-screen')).toBe(true);
