@@ -903,7 +903,7 @@ function showGrantReplaceModal(): void {
   const options = app.run.bag.map((entry) => {
     const spec = getDieSpec(entry.dieId);
     const rarity = rarityOf(spec);
-    return `<button class="replace-option" data-action="confirm-grant-replace" data-bag-uid="${h(entry.uid)}">
+    return `<button class="replace-option" data-action="confirm-grant-replace" data-bag-uid="${h(entry.uid)}" data-die-tip="${h(spec.id)}">
       ${artDieImageHtml(spec)}
       <b>${h(spec.name)}</b><span>${rarity.name}${spec.setId ? ` · ${h(DICE_SETS[spec.setId].name)}` : ''}</span>
     </button>`;

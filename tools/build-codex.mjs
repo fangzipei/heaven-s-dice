@@ -16,7 +16,7 @@ import { dirname, join } from 'node:path';
 import {
   DICE, STANDARD_DIE, DICE_SETS, BARRELS, ITEMS, LEVELS,
   RARITIES, SHOP_RARITY_WEIGHTS, REROLL_BONUS_RATE, OVERSHOOT_RATIO, OVERSHOOT_BONUS_RATE,
-  BOSSES, LEVEL_CURVE,
+  BOSSES, LEVEL_CURVE, rarityShopWeight,
 } from '../src/content/index.ts';
 import { dieSkinStyle, dieMotifSvg } from '../src/render/dice-skins.ts';
 import { pipPoints } from '../src/render/pip-layout.ts';
@@ -147,7 +147,7 @@ function barrelCard(barrel) {
   const rarity = RARITIES[barrel.rarity] || RARITIES.common;
   return `<article class="card barrel-card" data-rarity="${barrel.rarity}" data-name="${esc(barrel.name)}" style="--rarity:${rarity.color};--glow:${rarity.glow}">
     <div class="top"><span class="rarity">${rarity.name}</span><span class="price">${barrel.price ? `${barrel.price} 银币` : '初始持有'}</span></div>
-    <div class="art cup">${inlineSvg(`assets/cups/${barrel.art}.svg`, barrel.id)}</div>
+    <div class="art cup">${inlineSvg(`assets/art/barrels/${barrel.art}-full.svg`, barrel.id)}</div>
     <h4>${esc(barrel.name)}</h4>
     <p class="desc">${esc(barrel.desc)}</p>
     <div class="kv-list">${barrelExtra(barrel)}</div>
@@ -162,7 +162,7 @@ function itemCard(item) {
   const extra = [item.unique ? '整局限一次' : '', item.consumable ? '一次性消耗' : ''].filter(Boolean);
   return `<article class="card item-card" data-rarity="${item.rarity}" data-name="${esc(item.name)}" style="--rarity:${rarity.color};--glow:${rarity.glow}">
     <div class="top"><span class="rarity">${rarity.name}</span><span class="price">${item.price} 银币</span></div>
-    <div class="art icon">${inlineSvg(`assets/items/${item.icon}.svg`, item.id)}</div>
+    <div class="art icon">${inlineSvg(`assets/art/items/${item.id}-full.svg`, item.id)}</div>
     <h4>${esc(item.name)}</h4>
     <p class="desc">${esc(item.desc)}</p>
     <p class="flavor">“${esc(item.flavor)}”</p>
@@ -179,6 +179,70 @@ diceBySet.none = diceList.filter((d) => d.id !== 'standard' && !d.setId);
 const rarityCount = DICE.reduce((acc, d) => { acc[d.rarity] = (acc[d.rarity] || 0) + 1; return acc; }, {});
 const activeItems = ITEMS.filter((i) => i.type === 'active');
 const passiveItems = ITEMS.filter((i) => i.type === 'passive');
+
+/* ── rarity-sorted overview table ─────────────────────────────────────── */
+const RORDER = { common: 0, rare: 1, epic: 2, legendary: 3 };
+const byRarity = (a, b) => (RORDER[a.rarity] ?? 9) - (RORDER[b.rarity] ?? 9)
+  || a.name.localeCompare(b.name, 'zh-CN');
+const pctText = (p) => p >= 1 ? `${p.toFixed(1)}%` : p >= 0.01 ? `${p.toFixed(2)}%` : '<0.01%';
+
+function diceStrength(die) {
+  const ev = die.probs.reduce((sum, p, i) => sum + p * (i + 1), 0);
+  const peak = Math.max(...die.probs);
+  const bonus = die.bonus ? 8 : 0;
+  return Math.round(50 + (ev - 3.5) * 26 + (peak - 1 / 6) * 85 + (RORDER[die.rarity] * 6) + (die.price || 0) / 18 + bonus);
+}
+function barrelStrength(barrel) {
+  const type = { gesture: 12, extraDie: 10, gild: 7, faceScore: 7, wildScore: 7, probability: 5, singlesBonus: 5 }[barrel.type] || 0;
+  return Math.round(42 + (RORDER[barrel.rarity] * 7) + barrel.price / 9 + type);
+}
+function itemStrength(item) {
+  const kind = item.type === 'active' ? 4 : 7;
+  return Math.round(40 + (RORDER[item.rarity] * 7) + item.price / 9 + kind + (item.consumable ? -3 : 0) + (item.unique ? 5 : 0));
+}
+function bossStrength(boss) {
+  return Math.round(45 + boss.level * 0.9 + boss.curve.reward * 18 + boss.curve.target * 12);
+}
+const bossRarity = (boss) => (boss.level <= 6 ? 'rare' : boss.level <= 14 ? 'epic' : 'legendary');
+
+const dicePool = (rarity) => DICE.filter((d) => d.rarity === rarity).length;
+const barrelPool = (rarity) => BARRELS.filter((b) => b.rarity === rarity).length;
+const itemPool = (rarity) => ITEMS.filter((i) => i.rarity === rarity).length;
+
+const ovRow = ({ name, rarity, price, effect, within, chance, strength, probabilities = '—' }) => `<tr>
+  <td>${esc(name)}</td><td><span class="ov-r" style="--c:${RARITIES[rarity]?.color || '#aaa'}">${RARITIES[rarity]?.name || rarity}</span></td>
+  <td>${esc(price)}</td><td class="ov-effect">${esc(effect)}</td><td>${esc(within)}</td><td>${esc(chance)}</td><td class="ov-prob">${esc(probabilities)}</td><td><b>${strength}</b></td></tr>`;
+
+const ovDice = [...DICE].sort(byRarity).map((die) => {
+  const pool = dicePool(die.rarity);
+  const shopChance = (rarityShopWeight(die.rarity, 1) / 100) / Math.max(1, pool) * 100;
+  return ovRow({
+    name: die.name, rarity: die.rarity, price: `${die.price} 银币`,
+    effect: die.bonus?.label || die.desc, within: `1 / ${pool}`,
+    chance: `${pctText(shopChance)} / 格`,
+    probabilities: die.probs.map((p, i) => `${i + 1}:${pctText(p * 100)}`).join(' · '),
+    strength: diceStrength(die),
+  });
+}).join('');
+const ovBarrels = [...BARRELS].sort(byRarity).map((barrel) => ovRow({
+  name: barrel.name, rarity: barrel.rarity, price: `${barrel.price} 银币`,
+  effect: `${barrel.short} · ${barrel.desc}`, within: `1 / ${barrelPool(barrel.rarity)}`,
+  chance: `${pctText(100 / BARRELS.length)} / 格`, strength: barrelStrength(barrel),
+})).join('');
+const ovItems = [...ITEMS].sort(byRarity).map((item) => ovRow({
+  name: item.name, rarity: item.rarity, price: `${item.price} 银币`,
+  effect: item.desc, within: `1 / ${itemPool(item.rarity)}`,
+  chance: `${pctText(100 / ITEMS.length)} / 格`, strength: itemStrength(item),
+})).join('');
+const ovBosses = [...BOSSES].sort((a, b) => a.level - b.level).map((boss) => {
+  const r = bossRarity(boss);
+  return ovRow({
+    name: `${boss.name}（第 ${boss.level} 关）`, rarity: r,
+    price: `${LEVELS[boss.level - 1]?.reward || 0} 基础银币`,
+    effect: `${boss.effectName}：${boss.effectDesc}`, within: '固定关卡',
+    chance: '非商店刷新', strength: bossStrength(boss),
+  });
+}).join('');
 
 /* The live roller needs each die's six face drawings, its skin variables and
    the real post-barrel probabilities. Baking them in keeps the page a single
@@ -225,11 +289,11 @@ const diceGroups = SET_IDS.map((id) => {
   const set = DICE_SETS[id];
   return `<div class="set-group" style="--set-color:${set.color}">
     <h3>${esc(set.name)} <span>${esc(set.motto)}</span></h3>
-    <div class="grid dice-grid">${diceBySet[id].map(dieCard).join('')}</div>
+    <div class="grid dice-grid">${[...diceBySet[id]].sort(byRarity).map(dieCard).join('')}</div>
   </div>`;
 }).join('') + `<div class="set-group" style="--set-color:#8a7c66">
     <h3>无套组 <span>不参与 2 / 4 件加成，但随时能买能卖——走极端点数、顺序互动或商店成长。</span></h3>
-    <div class="grid dice-grid">${diceBySet.none.map(dieCard).join('')}</div>
+    <div class="grid dice-grid">${[...diceBySet.none].sort(byRarity).map(dieCard).join('')}</div>
   </div>`;
 
 const shopTable = SHOP_RARITY_WEIGHTS.map((band, i) => {
@@ -262,7 +326,7 @@ const html = `<!doctype html>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>天国骰局 · 全图鉴（骰子 / 骰桶 / 物品）</title>
+<title>天国骰局 · 全图鉴（骰子 / 骰桶 / 物品 / 庄家）</title>
 <style>
 :root{
   --ink:#eadfc8; --ink-dim:#b8aa91; --muted:#81745f; --gold:#d9b46a; --gold-bright:#ffe5a2;
@@ -308,6 +372,26 @@ h2{font-family:var(--serif);font-weight:400;font-size:28px;letter-spacing:.07em;
 .sec-head .count{margin-left:auto;color:#847459;font-size:11px;letter-spacing:.08em}
 .sec-intro{color:#9a8970;font-size:12.5px;line-height:1.9;max-width:1040px;margin:0 0 22px}
 .sec-intro b{color:#cdb387;font-weight:400}
+.ov-table{width:100%;border-collapse:collapse;font-size:11px;margin-bottom:18px}
+.ov-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;margin-bottom:18px}
+.ov-wrap .ov-table{min-width:1040px;margin-bottom:0}
+.ov-prob{white-space:normal!important;min-width:210px;font-size:10px;color:#9d8b70!important}
+@media (max-width:760px){
+  .ov-wrap .ov-table{min-width:900px;font-size:10px}
+  .ov-effect{max-width:240px}
+  .ov-prob{min-width:170px}
+}
+.ov-table th{position:sticky;top:0;background:#0b0805;z-index:1;text-align:left;padding:7px 8px;color:#8f7b5e;font-weight:400;font-size:9.5px;letter-spacing:.08em;border-bottom:1px solid var(--line-strong)}
+.ov-table td{padding:6px 8px;border-bottom:1px solid rgba(255,255,255,.055);vertical-align:top;color:#b7a58a}
+.ov-table tr:hover td{background:rgba(217,180,106,.035)}
+.ov-table td:first-child{color:#e0cba8;white-space:nowrap}
+.ov-table td:nth-child(3){white-space:nowrap;color:#c7aa75}
+.ov-table td:nth-child(5),.ov-table td:nth-child(6),.ov-table td:nth-child(7){white-space:nowrap;font-variant-numeric:tabular-nums}
+.ov-table td:nth-child(7) b{color:#ffe0a0;font-weight:400}
+.ov-effect{max-width:520px;line-height:1.55}
+.ov-r{display:inline-block;padding:1px 6px;border:1px solid color-mix(in srgb,var(--c) 50%,transparent);color:var(--c);font-size:9px;letter-spacing:.08em}
+.ov-sub{display:flex;align-items:baseline;gap:10px;margin:24px 0 8px;font-family:var(--serif);font-size:17px;color:#dfc89f}
+.ov-sub span{font-family:var(--sans);font-size:10px;color:#7f705b}
 
 /* ── sets ─────────────────────────────────────────────────────────── */
 .sets{display:grid;grid-template-columns:repeat(${SET_IDS.length},minmax(0,1fr));gap:14px}
@@ -512,13 +596,14 @@ footer code{color:#93836b;font-family:Consolas,monospace;font-size:9.5px}
 <header class="hero">
   <p class="kicker">HEAVEN'S DICE · THE GAMBLER'S ARCHIVE</p>
   <h1>天国骰局 · 内容总览</h1>
-  <p class="lede">骰子 ${diceList.length} 枚（${SET_IDS.map((id) => `${DICE_SETS[id].name} ${diceBySet[id].length}`).join(' / ')} / 无套组 ${diceBySet.none.length} / 标准 1）、骰桶 ${BARRELS.length} 只、物品 ${ITEMS.length} 件（含一次性 ${ITEMS.filter((i) => i.consumable).length} 件）。骰面立绘取自游戏真实皮肤（材质渐变 + 刻纹 + 点数），骰桶与物品为仓库 <code>assets/</code> 内的原始矢量图；所有数值由 <code>src/content/</code> 与 <code>src/core/engine.ts</code> 直接生成，不会与游戏脱节。</p>
+  <p class="lede">骰子 ${diceList.length} 枚（${SET_IDS.map((id) => `${DICE_SETS[id].name} ${diceBySet[id].length}`).join(' / ')} / 无套组 ${diceBySet.none.length} / 标准 1）、骰桶 ${BARRELS.length} 只、物品 ${ITEMS.length} 件（含一次性 ${ITEMS.filter((i) => i.consumable).length} 件）、庄家 ${BOSSES.length} 位。骰面立绘取自游戏真实皮肤（材质渐变 + 刻纹 + 点数），骰桶与物品为仓库 <code>assets/</code> 内的原始矢量图；所有数值由 <code>src/content/</code> 与 <code>src/core/engine.ts</code> 直接生成，不会与游戏脱节。</p>
   <div class="legend">
     ${Object.values(RARITIES).map((r) => `<span style="--c:${r.color}"><i></i>${r.name}</span>`).join('')}
     <span style="--c:#8a6d3d"><i></i>普通 ${rarityCount.common || 0} · 稀有 ${rarityCount.rare || 0} · 史诗 ${rarityCount.epic || 0} · 传说 ${rarityCount.legendary || 0}</span>
     <span style="--c:#ff6a52"><i></i>恶魔赖子</span>
   </div>
   <nav>
+    <a href="#overview"><b>00</b> 强度总览</a>
     <a href="#sets"><b>01</b> 骰组</a>
     <a href="#dice"><b>02</b> 骰子 ${diceList.length}</a>
     <a href="#lab"><b>▶</b> 试掷台</a>
@@ -527,6 +612,23 @@ footer code{color:#93836b;font-family:Consolas,monospace;font-size:9.5px}
     <a href="#market"><b>05</b> 数值速查</a>
   </nav>
 </header>
+
+<section id="overview">
+  <div class="sec-head"><span class="sec-no">00</span><h2>全内容强度总览</h2><span class="count">骰子 ${DICE.length} · 骰桶 ${BARRELS.length} · 物品 ${ITEMS.length} · 庄家 ${BOSSES.length}</span></div>
+  <p class="sec-intro">所有内容按稀有度升序排列。价格/收入、效果、档内数量、刷新概率和强度值都来自当前内容表。<b>强度值</b>是用于横向比较的启发式评分：骰子看期望点数、最高面概率、稀有度、价格和附加特性；骰桶/物品看稀有度、价格、类型与消耗/唯一性；庄家看关卡、目标系数和赏金系数。它不是胜率。</p>
+
+  <h3 class="ov-sub">骰子 <span>稀有度升序 · 刷新概率按 1 级商店、每格单枚骰子计算</span></h3>
+  <div class="ov-wrap"><table class="ov-table"><thead><tr><th>名称</th><th>稀有度</th><th>价格</th><th>效果</th><th>档内</th><th>刷新概率</th><th>点数概率</th><th>强度</th></tr></thead><tbody>${ovDice}</tbody></table></div>
+
+  <h3 class="ov-sub">骰桶 <span>稀有度升序 · 骰桶区目前为均匀抽取</span></h3>
+  <div class="ov-wrap"><table class="ov-table"><thead><tr><th>名称</th><th>稀有度</th><th>价格</th><th>效果</th><th>档内</th><th>刷新概率</th><th>点数概率</th><th>强度</th></tr></thead><tbody>${ovBarrels}</tbody></table></div>
+
+  <h3 class="ov-sub">物品 <span>稀有度升序 · 物品区目前为均匀抽取</span></h3>
+  <div class="ov-wrap"><table class="ov-table"><thead><tr><th>名称</th><th>稀有度</th><th>价格</th><th>效果</th><th>档内</th><th>刷新概率</th><th>点数概率</th><th>强度</th></tr></thead><tbody>${ovItems}</tbody></table></div>
+
+  <h3 class="ov-sub">庄家 <span>按关卡 / 稀有度升序 · 固定关卡，不参与商店刷新</span></h3>
+  <div class="ov-wrap"><table class="ov-table"><thead><tr><th>名称</th><th>稀有度</th><th>基础赏金</th><th>效果</th><th>出现</th><th>刷新概率</th><th>点数概率</th><th>强度</th></tr></thead><tbody>${ovBosses}</tbody></table></div>
+</section>
 
 <section id="sets">
   <div class="sec-head"><span class="sec-no">01</span><h2>骰子套组</h2><span class="count">2 件 / 4 件触发</span></div>
@@ -595,7 +697,7 @@ footer code{color:#93836b;font-family:Consolas,monospace;font-size:9.5px}
     ${Object.values(RARITIES).map((r) => `<button class="btn" data-filter="barrelRarity" data-value="${r.id}">${r.name}</button>`).join('')}
     <span class="count-note" id="barrelCount"></span>
   </div>
-  <div class="grid barrel-grid">${BARRELS.map(barrelCard).join('')}</div>
+  <div class="grid barrel-grid">${[...BARRELS].sort(byRarity).map(barrelCard).join('')}</div>
 </section>
 
 <section id="items">
@@ -608,9 +710,9 @@ footer code{color:#93836b;font-family:Consolas,monospace;font-size:9.5px}
     <span class="count-note" id="itemCount"></span>
   </div>
   <h3 class="sub-head">主动物品 · 每关 1 次</h3>
-  <div class="grid item-grid">${activeItems.map(itemCard).join('')}</div>
+  <div class="grid item-grid">${[...activeItems].sort(byRarity).map(itemCard).join('')}</div>
   <h3 class="sub-head">被动物品 · 永久生效</h3>
-  <div class="grid item-grid">${passiveItems.map(itemCard).join('')}</div>
+  <div class="grid item-grid">${[...passiveItems].sort(byRarity).map(itemCard).join('')}</div>
 </section>
 
 <section id="market">
@@ -672,7 +774,7 @@ footer code{color:#93836b;font-family:Consolas,monospace;font-size:9.5px}
 </section>
 
 <footer>
-  <span>数据：src/content/ · 皮肤：src/render/dice-skins.ts · 插画：assets/cups、assets/items · 本页由 tools/build-codex.mjs 生成 · ${stamp}</span>
+  <span>数据：src/content/ · 皮肤：src/render/dice-skins.ts · 插画：assets/art · 本页由 tools/build-codex.mjs 生成 · ${stamp}</span>
   <span>天国骰局 · 骰子落下之前，命运只是一句空话。</span>
 </footer>
 

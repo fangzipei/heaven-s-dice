@@ -307,7 +307,7 @@ export function showReplaceModal(): void {
     const spec = getDieSpec(entry.dieId);
     const rarity = rarityOf(spec);
     return `
-      <button class="replace-option" data-action="confirm-replace" data-bag-uid="${h(entry.uid)}">
+      <button class="replace-option" data-action="confirm-replace" data-bag-uid="${h(entry.uid)}" data-die-tip="${h(spec.id)}">
         ${artDieImageHtml(spec)}
         <b>${h(spec.name)}</b><span>${rarity.name}${spec.setId ? ` · ${DICE_SETS[spec.setId].name}` : ''}</span>
       </button>`;
