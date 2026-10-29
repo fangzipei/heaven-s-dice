@@ -7,7 +7,7 @@ import { ITEM_BY_ID, LEVEL_COUNT, getOpponent, rarityOf, DICE_SETS } from '../co
 import {
   advanceLevel, applyGesture, applyItemGrant, applyScore, canUseItem, forfeit, getBarrel,
   getDieSpec, getScorePreview, resolveSaltOffer as engineResolveSaltOffer, resolveLoanOffer as engineResolveLoanOffer,
-  setTwoFaceFaces, rollDice, selectedDice,
+  setTwoFaceFaces, settleFloatingBust, selectBestScoring, rollDice, selectedDice,
   handTypeName, activeBoss,
   useItem as engineUseItem,
 } from '../core/engine.ts';
@@ -665,6 +665,15 @@ export function toggleTwoFace(face: number): void {
   target.classList.add('is-selected');
 }
 
+export function hintBestScore(): void {
+  const run = app.run;
+  if (!run) return;
+  const result = selectBestScoring(run);
+  if (!result.ok) { showToast(result.error!, 'error'); return; }
+  renderGame();
+  showToast(`已选择本次最高分组合：+${num(result.total || 0)}`, 'good');
+}
+
 export function beginRoll({ free = false }: { free?: boolean } = {}): void {
   if (!app.run || app.busy || app.introOpen) return;
   const run = app.run;
@@ -672,6 +681,12 @@ export function beginRoll({ free = false }: { free?: boolean } = {}): void {
   const allowedNormal = ['ready', 'dead', 'hot', 'selecting', 'reroll-pending'].includes(run.phase);
   if (!allowedNormal && !free) return;
   const freeContinuation = run.phase === 'reroll-pending' && !run.flags.rerollAll;
+  if (!free && run.phase === 'dead' && run.flags.floatingBustPending && run.rerolls <= 0) {
+    settleFloatingBust(run);
+    renderGame();
+    showDefeat();
+    return;
+  }
   if (run.rerolls <= 0 && run.phase !== 'hot' && run.phase !== 'ready' && !free && !freeContinuation) {
     showToast('没有剩余重投次数。', 'error');
     return;
@@ -845,17 +860,56 @@ function scoreFireHtml(flames: number): string {
   return Array.from({ length: flames }, (_, index) => `<span class="float-fire" style="--flux:${index}">${frames}</span>`).join('');
 }
 
+let longScoreFloat: HTMLElement | null = null;
+let longScoreTimer: ReturnType<typeof setTimeout> | null = null;
+let longScoreValue = 0;
+
+function scoreFloatHtml(total: number, tier: (typeof FIRE_TIERS)[number] | undefined, hotMultiplier = 1): string {
+  return `${tier ? scoreFireHtml(tier.flames) : ''}+${num(total)}<small>SCORE</small>${hotMultiplier > 1 ? `<em class="float-chain">全骰连击 ×${hotMultiplier.toFixed(2)}</em>` : ''}`;
+}
+
 function showScoreFloat(total: number, rect: DOMRect | null | undefined, hotMultiplier = 1) {
-  const el = document.createElement('div');
-  const tier = FIRE_TIERS.find((entry) => total > entry.min);
-  el.className = `score-float${tier ? ` ${tier.className}` : ''}`;
   const x = rect ? rect.left + rect.width / 2 : window.innerWidth / 2;
   const y = rect ? rect.top - 10 : window.innerHeight / 2;
+  // A high-value hit keeps its numbers on screen for ten seconds. Any score
+  // that lands during that window is added to the same float and restarts it.
+  if (longScoreFloat && document.body.contains(longScoreFloat)) {
+    longScoreValue += total;
+    const mergedTier = FIRE_TIERS.find((entry) => longScoreValue > entry.min);
+    longScoreFloat.className = `score-float is-long${mergedTier ? ` ${mergedTier.className}` : ''}`;
+    longScoreFloat.style.left = `${x}px`;
+    longScoreFloat.style.top = `${y}px`;
+    longScoreFloat.innerHTML = scoreFloatHtml(longScoreValue, mergedTier, hotMultiplier);
+    if (longScoreTimer) clearTimeout(longScoreTimer);
+    longScoreTimer = setTimeout(() => {
+      longScoreFloat?.remove();
+      longScoreFloat = null;
+      longScoreTimer = null;
+      longScoreValue = 0;
+    }, 10000);
+    return;
+  }
+
+  const tier = FIRE_TIERS.find((entry) => total > entry.min);
+  const el = document.createElement('div');
+  el.className = `score-float${tier ? ` ${tier.className}` : ''}`;
   el.style.left = `${x}px`;
   el.style.top = `${y}px`;
-  el.innerHTML = `${tier ? scoreFireHtml(tier.flames) : ''}+${num(total)}<small>SCORE</small>${hotMultiplier > 1 ? `<em class="float-chain">全骰连击 ×${hotMultiplier.toFixed(2)}</em>` : ''}`;
+  el.innerHTML = scoreFloatHtml(total, tier, hotMultiplier);
   document.body.append(el);
-  setTimeout(() => el.remove(), 1400);
+  if (tier) {
+    el.classList.add('is-long');
+    longScoreFloat = el;
+    longScoreValue = total;
+    longScoreTimer = setTimeout(() => {
+      el.remove();
+      longScoreFloat = null;
+      longScoreTimer = null;
+      longScoreValue = 0;
+    }, 10000);
+  } else {
+    setTimeout(() => el.remove(), 1400);
+  }
 }
 
 /** The hot counter escalates: a hop at the corner, and from the third hot the

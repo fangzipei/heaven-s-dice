@@ -3,7 +3,7 @@ import type { BossContentDef } from '../../core/types.ts';
 
 export default {
   id: 'lucifer', art: 'boss-seraph',
-  curve: { target: 1.65, reward: 2.15 },
+  curve: { target: 1.5, reward: 2.15 },
   rarity: 'legendary',
   name: '路西法', title: '晨星', accent: '#d9c2ff',
   effectName: '禁声令', effectKey: 'banTypeEachThrow',

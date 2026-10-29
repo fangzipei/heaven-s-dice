@@ -10,7 +10,9 @@ import { sound } from '../../platform/sound.ts';
 import { finishRunRecord } from '../../platform/run-record.ts';
 import { clearGameSave } from '../../platform/save.ts';
 import { clearActiveGame, storeFinishedRun } from '../../platform/sync.ts';
-import { openOverlay } from '../components/overlay.ts';
+import { devilRetry as engineDevilRetry, devilRetryCost, useItem as engineUseItem } from '../../core/engine.ts';
+import { showToast } from '../components/toast.ts';
+import { closeOverlay, openOverlay } from '../components/overlay.ts';
 import { showHeavenGate } from './heaven.ts';
 import { projectedReward } from '../reward.ts';
 import { app } from '../state.ts';
@@ -101,10 +103,72 @@ export function showVictory(): void {
   `, { dismissible: false });
 }
 
-export function showDefeat(): void {
-  if (!app.run || app.resultShown) return;
-  app.resultShown = true;
+export function showDevilOffer(run: typeof app.run, cost: number): void {
+  if (!run) return;
+  const attempt = (run.retryCount || 0) + 1;
+  openOverlay(`
+    <div class="modal result-modal loss devil-offer">
+      <div class="result-sigil"><svg><use href="#i-skull"></use></svg></div>
+      <p class="modal-kicker">A DEAL WITH THE DEVIL</p>
+      <h2>再赌一次？</h2>
+      <p class="result-sub">重投已经耗尽，你还没够到 ${num(run.target)} 分。魔鬼愿意让你重开这一关，但要收钱。</p>
+      <div class="result-score">
+        <div><span>第几次重来</span><b>${attempt}</b></div>
+        <div><span>这次价格</span><b><svg><use href="#i-coin"></use></svg>${num(cost)}</b></div>
+        <div><span>你的银币</span><b>${num(run.coins)}</b></div>
+      </div>
+      <p class="result-sub" style="font-size:10px">重开会保留骰子、骰桶和物品，但本关分数从 0 开始。下一次价格会涨。</p>
+      <div class="modal-actions">
+        <button class="secondary-button" data-action="devil-decline">不赌了</button>
+        ${run.activeItems.includes('devil_reset') ? '<button class="secondary-button" data-action="devil-receipt">使用魔鬼的收据</button>' : ''}
+        <button class="primary-button" data-action="devil-retry">和魔鬼交易 <svg><use href="#i-coin"></use></svg>${num(cost)}</button>
+      </div>
+    </div>
+  `, { dismissible: false });
+}
+
+export function useDevilReceipt(): void {
   const run = app.run;
+  if (!run) return;
+  const result = engineUseItem(run, 'devil_reset');
+  if (!result.ok) { showToast(result.error!, 'error'); return; }
+  closeOverlay();
+  const cost = devilRetryCost(run);
+  if (cost != null) showDevilOffer(run, cost);
+}
+
+export function answerDevilRetry(pay: boolean): void {  const run = app.run;
+  if (!run) return;
+  if (!pay) {
+    closeOverlay();
+    showDefeat(true);
+    return;
+  }
+  const result = engineDevilRetry(run);
+  if (!result.ok) { showToast(result.error!, 'error'); return; }
+  closeOverlay();
+  app.resultShown = false;
+  app.busy = false;
+  void (async () => {
+    const [{ setupLevelScene, showLevelIntro, saveCheckpoint }, { renderGame }] = await Promise.all([
+      import('../app.ts'), import('../game.ts'),
+    ]);
+    setupLevelScene(true);
+    renderGame();
+    saveCheckpoint();
+    showLevelIntro();
+  })();
+}
+
+export function showDefeat(skipDevil = false): void {
+  if (!app.run || app.resultShown) return;
+  const run = app.run;
+  const cost = devilRetryCost(run);
+  if (!skipDevil && cost != null && run.coins >= cost) {
+    showDevilOffer(run, cost);
+    return;
+  }
+  app.resultShown = true;
   const opponent = getOpponent(run.level, run)!;
   const finished = finishRunRecord(run, 'loss');
   if (finished) storeFinishedRun(finished);

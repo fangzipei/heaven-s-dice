@@ -19,8 +19,9 @@ function buildNoBossTargets(): number[] {
     else if (level === 8) value += 500;
     else if (level === 16) value += 1000;
     else if (level <= 7) value *= 1.15;
-    else if (level <= 15) value *= 1.15;
-    else value *= 1.12;
+    else if (level <= 10) value *= 1.15;
+    else if (level <= 15) value *= 1.12;
+    else value *= 1.11;
     targets.push(value);
   }
   return targets;

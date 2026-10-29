@@ -11,16 +11,16 @@ const countBy = (list, key) => list.reduce((counts, entry) => {
   return counts;
 }, {});
 
-test('dice roster: 4 wolf + 4 demon + 26 free agents, rarity 11/9/8/6', () => {
+test('dice roster: four 4-piece sets + 18 free agents, rarity 10/10/9/5', () => {
   expect(DICE.length).toBe(34);
-  expect(countBy(DICE, 'rarity')).toEqual({ common: 11, rare: 9, epic: 8, legendary: 6 });
-  expect(Object.keys(DICE_SETS)).toEqual(['wolf', 'demon']);
+  expect(countBy(DICE, 'rarity')).toEqual({ common: 10, rare: 10, epic: 9, legendary: 5 });
+  expect(Object.keys(DICE_SETS)).toEqual(['wolf', 'demon', 'stargazer', 'caravan']);
   for (const set of Object.values(DICE_SETS)) {
     expect(DICE.filter((die) => die.setId === set.id).length).toBe(4);
     expect(set.bonuses.length).toBe(2);
   }
   // The whole point of the reshuffle: not every die has to be in a set.
-  expect(DICE.filter((die) => !die.setId).length).toBe(26);
+  expect(DICE.filter((die) => !die.setId).length).toBe(18);
   for (const die of DICE) {
     expect(die.probs.length).toBe(6);
     const sum = die.probs.reduce((a, b) => a + b, 0);
@@ -41,7 +41,9 @@ test('every die bonus is well-formed, and bias dice mark 1/5 rare', () => {
   expect(bias.length).toBe(6);
   for (const die of bias) {
     expect(die.rarity).toBe(die.id === 'bias_one' || die.id === 'bias_five' ? 'rare' : 'common');
-    expect(Math.max(...die.probs)).toBeCloseTo(0.30);
+    expect(Math.max(...die.probs)).toBeCloseTo(
+      ['bias_two', 'bias_three', 'bias_four'].includes(die.id) ? 0.38 : 0.30,
+    );
     expect(die.bonus).toBe(null);
   }
 });
@@ -85,11 +87,11 @@ test('shop rarity weights open up across four level bands, legendary capped at 1
   }
 });
 
-test('item mix: 41 items, 14 active / 27 passive, 10 one-shot consumables', () => {
-  expect(ITEMS.length).toBe(41);
-  expect(countBy(ITEMS, 'type')).toEqual({ active: 14, passive: 27 });
+test('item mix: 42 items, 15 active / 27 passive, 11 one-shot consumables', () => {
+  expect(ITEMS.length).toBe(42);
+  expect(countBy(ITEMS, 'type')).toEqual({ active: 15, passive: 27 });
   expect(ITEMS.filter((item) => item.consumable).map((item) => item.id).sort()).toEqual([
-    'boss_ward', 'courage', 'epic_chest', 'glove', 'hunter_mark', 'lucky_coin',
+    'boss_ward', 'courage', 'devil_reset', 'epic_chest', 'glove', 'hunter_mark', 'lucky_coin',
     'powder', 'rare_pair', 'salt', 'wager',
   ]);
   for (const item of ITEMS.filter((entry) => entry.consumable)) {
@@ -118,10 +120,10 @@ test('every non-final boss has a legendary drop-only relic', () => {
   expect(Object.keys(BOSS_RELICS).length).toBe(normalBosses.length);
 });
 
-test('shop prices sit in the 35–300 band', () => {
+test('shop prices sit in the 35–444 band', () => {
   const prices = ITEMS.filter((item) => !item.bossOnly).map((item) => item.price);
   expect(Math.min(...prices)).toBe(35);
-  expect(Math.max(...prices)).toBe(300);
+  expect(Math.max(...prices)).toBe(444);
   // 时间沙漏 is epic now and must out-price the rare tier.
   const hourglass = ITEMS.find((item) => item.id === 'hourglass');
   expect(hourglass.rarity).toBe('epic');
@@ -221,7 +223,7 @@ test('the level table uses the no-boss curve, then boss coefficients', () => {
   expect(buildLevelTable()).toEqual(LEVELS);
   expect(LEVELS[0].target).toBe(LEVEL_CURVE.targetBase);
   expect(LEVELS[1].target).toBe(LEVEL_CURVE.nonBossTargets[1]);
-  expect(LEVELS[23].target).toBe(31380);
+  expect(LEVELS[23].target).toBe(23690);
   expect(LEVELS[24].target).toBe(100000);
   expect(LEVELS[0].reward).toBe(LEVEL_CURVE.rewardBase);
   for (const level of LEVELS) {

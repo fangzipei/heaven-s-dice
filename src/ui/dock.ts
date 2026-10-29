@@ -145,14 +145,18 @@ export function renderActionDock() {
     return;
   }
   if (phase === 'dead') {
+    const pending = Boolean(run.flags.floatingBustPending);
     const canReroll = run.rerolls > 0;
+    const canClick = canReroll || pending;
     dock.innerHTML = `
       <div class="action-dock-inner">
-        <div class="action-hint">${canReroll ? `没有可计分的组合 · 重投消耗 1 次（剩余 ${run.rerolls}）` : '没有可计分的组合，重投已经耗尽'}</div>
+        <div class="action-hint">${pending
+          ? `浮动分还挂在桌上 · ${canReroll ? `重投会扣掉它并消耗 1 次（剩余 ${run.rerolls}）` : '先使用烟雾弹或 +重投道具；点重投会结算本关'}`
+          : canReroll ? `没有可计分的组合 · 重投消耗 1 次（剩余 ${run.rerolls}）` : '没有可计分的组合，重投已经耗尽'}</div>
         <div class="action-buttons">
-          <button class="score-action primary single-action" data-action="manual-roll" ${canReroll ? '' : 'disabled'}>
+          <button class="score-action primary single-action" data-action="manual-roll" ${canClick ? '' : 'disabled'}>
             <span class="action-icon"><svg><use href="#i-cup"></use></svg></span>
-            <span class="action-copy"><b>${canReroll ? '重投剩余骰子' : '重投已耗尽'}</b><em>${canReroll ? '消耗 1 次重投' : '使用物品或结束本关'}</em></span>
+            <span class="action-copy"><b>${canReroll ? '重投剩余骰子' : pending ? '结算浮动分' : '重投已耗尽'}</b><em>${canReroll ? '消耗 1 次重投' : pending ? '点击后结束本关' : '使用物品或结束本关'}</em></span>
             <span class="action-points">${canReroll ? `−1<small>重投</small>` : '—'}</span>
           </button>
         </div>
@@ -173,6 +177,7 @@ export function renderActionDock() {
         <div class="action-dock-inner">
           <div class="action-hint">${valid ? '全部重投已耗尽 · 继续免费，或计分并结算' : h(invalidHint)}</div>
           <div class="action-buttons">
+            <button class="hint-score-button" data-action="hint-score"><svg><use href="#i-spark"></use></svg>提示最高分</button>
             <button class="score-action" data-action="score-continue" ${valid ? '' : 'disabled'}>
               <span class="action-icon"><svg><use href="#i-die"></use></svg></span>
               <span class="action-copy"><b>计分并继续</b><em>免费重投剩余骰子 · 不消耗重投</em></span>
@@ -191,6 +196,7 @@ export function renderActionDock() {
       <div class="action-dock-inner">
         <div class="action-hint">${valid ? '继续免费；只有全部重投消耗 1 次' : h(invalidHint)}</div>
         <div class="action-buttons">
+          <button class="hint-score-button" data-action="hint-score"><svg><use href="#i-spark"></use></svg>提示最高分</button>
           <button class="score-action" data-action="score-continue" ${valid ? '' : 'disabled'}>
             <span class="action-icon"><svg><use href="#i-die"></use></svg></span>
             <span class="action-copy"><b>计分并继续</b><em>免费重投剩余骰子 · 不消耗重投</em></span>
@@ -210,6 +216,6 @@ export function renderDangerStrip() {
   const run = app.run;
   const strip = $('#danger-strip')!;
   if (!run) return;
-  const show = run.phase === 'dead' && run.rerolls <= 0 && run.score < run.target;
+  const show = run.phase === 'dead' && run.rerolls <= 0 && run.score < run.target && !run.flags.floatingBustPending;
   strip.hidden = !show;
 }

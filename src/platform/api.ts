@@ -39,6 +39,8 @@ export interface HistoryEntry {
   levelReached: number;
   finalScore: number;
   coins: number;
+  retryCount?: number;
+  devilPaid?: number;
   loadout: {
     dice: string[];
     barrel: string;

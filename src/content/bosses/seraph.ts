@@ -5,7 +5,7 @@ export default {
   id: 'seraph', art: 'boss-diamond',
   // 赏金系数：这一关的银币 = 曲线 × 系数（曲线本身逐关上涨，系数随
   // 关卡缓慢收敛，否则后期赏金会指数爆炸）。
-  curve: { target: 1.65, reward: 2.15 },
+  curve: { target: 1.5, reward: 2.15 },
   rarity: 'legendary',
   name: '钻石天使', title: '最后的庄家', accent: '#a8e8f1',
   effectName: '四成归天', effectKey: 'scoreTaxReroll',

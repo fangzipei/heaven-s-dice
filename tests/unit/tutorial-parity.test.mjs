@@ -55,7 +55,7 @@ describe('图解教程搬到 ui/screens/tutorial.ts 之后仍然写同样的正�
     openTutorial();
     const html = overlay();
     expect(html).toContain(`${LEVEL_COUNT} 关 · ${BOSS_CATALOG.length} 位庄家`);
-    expect(html).toContain(`骰子 · ${DICE.length} 枚 · 两套 + 无套`);
+    expect(html).toContain(`骰子 · ${DICE.length} 枚 · 四套 + 无套`);
     expect(html).toContain(`物品 · ${ITEMS.length} 件`);
     expect(html).toContain(`赌桌 · ${TABLES.length} 张`);
     expect(html).toContain(`基础赏金的 ${Math.round(REROLL_BONUS_RATE * 100)}%`);

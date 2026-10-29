@@ -62,7 +62,7 @@ function compendiumProgress(kind: DiscoveryKind, total: number): string {
 function compendiumBody(tab: string): string {
   if (tab === 'dice') {
     const dice = codexDice();
-    return `<p class="compendium-intro">每一枚秘骰都像一张有偏向的牌：点数概率不同。狼裔 5 枚把筹码押在 3 上，恶魔 5 枚把掷出的 1 变成赖子，同套组集齐 2 枚与 4 枚会解锁额外效果；其余 ${dice.filter((die) => !die.setId).length} 枚无套组，走极端骰型、顺序互动或商店成长。额外加分不再只属于史诗与传说，普通骰也可能带一条明确的计分规则。${compendiumProgress('dice', dice.length)}</p>
+    return `<p class="compendium-intro">每一枚秘骰都像一张有偏向的牌：点数概率不同。狼裔、恶魔、星轨、商旅各 4 枚，同套组集齐 2 枚与 4 枚会解锁额外效果；其余 ${dice.filter((die) => !die.setId).length} 枚无套组，走极端骰型、顺序互动或商店成长。额外加分不再只属于史诗与传说，普通骰也可能带一条明确的计分规则。${compendiumProgress('dice', dice.length)}</p>
       <div class="compendium-grid">${dice.map((spec) => {
         if (!isDiscovered('dice', spec.id)) return compendiumLockedCard('这枚骰子');
         const rarity = rarityOf(spec);

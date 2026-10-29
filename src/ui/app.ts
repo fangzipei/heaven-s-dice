@@ -37,7 +37,7 @@ import { $, $$, setCss } from './dom.ts';
 import { paperSwap } from './paper-transition.ts';
 import {
   advanceCurrentLevel, answerLoanOffer, answerSaltOffer, answerTwoFace, beginRoll, bindCupDrag, cancelGrant, cancelGrantReplace,
-  chooseGrantDie, confirmGrantReplace, confirmUseItem, forfeitRun, handleScore, pulseCup, renderGame,
+  chooseGrantDie, confirmGrantReplace, confirmUseItem, forfeitRun, handleScore, hintBestScore, pulseCup, renderGame,
   requestUseItem, setSpeech, toggleTwoFace,
 } from './game.ts';
 import { renderTopbar } from './hud.ts';
@@ -45,7 +45,7 @@ import { baseReward } from './reward.ts';
 import { openCompendium, switchCompendiumTab } from './screens/compendium.ts';
 import { openHistory } from './screens/history.ts';
 import { openGesture } from './screens/gesture.ts';
-import { showDefeat, showVictory } from './screens/result.ts';
+import { answerDevilRetry, showDefeat, showVictory, useDevilReceipt } from './screens/result.ts';
 import {
   buyBarrel, buyDie, buyItem, closeShopScreen, confirmReplace, openShopScreen,
   refreshShop, sellShopItem,
@@ -93,7 +93,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 /* Checkpoints are written only when a level or shop is finished, so continuing
    always drops the player at a clean level start instead of a half-played hand. */
-function saveCheckpoint(): void {
+export function saveCheckpoint(): void {
   if (!app.run) return;
   const record = getRunRecord();
   saveGame(app.run, record);
@@ -337,6 +337,15 @@ async function handleAction(action: string, target: HTMLElement, _event?: MouseE
     case 'heaven-fight':
       fightSatan();
       break;
+    case 'devil-retry':
+      answerDevilRetry(true);
+      break;
+    case 'devil-decline':
+      answerDevilRetry(false);
+      break;
+    case 'devil-receipt':
+      useDevilReceipt();
+      break;
     case 'heaven-enter':
     case 'heaven-leave':
       leaveHeaven();
@@ -389,6 +398,9 @@ async function handleAction(action: string, target: HTMLElement, _event?: MouseE
       break;
     case 'score-continue':
       handleScore('continue');
+      break;
+    case 'hint-score':
+      hintBestScore();
       break;
     case 'score-reroll':
       handleScore('reroll');
@@ -613,6 +625,8 @@ export function setupLevelScene(force = false): void {
   if (isBoss) {
     $('#boss-badge')!.dataset.bossTip = boss!.id;
     $('#boss-effect-card')!.dataset.bossTip = boss!.id;
+    const plate = $('.opponent-plate');
+    if (plate) plate.dataset.bossTip = boss!.id;
     $('#boss-effect-name')!.textContent = boss!.effectName;
     $('#boss-effect-title')!.textContent = boss!.effectName;
     const status = Engine.bossStatusText(app.run);

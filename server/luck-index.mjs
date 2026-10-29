@@ -54,7 +54,7 @@ function levelFacts(run) {
 export function calculateLuckIndex(run) {
   const summary = run?.summary && typeof run.summary === 'object' ? run.summary : {};
   const facts = levelFacts(run);
-  const levelReached = clamp((Number(run?.levelReached) || 1) / 24);
+  const levelReached = clamp((Number(run?.levelReached) || 1) / 25);
   const levelsSeen = Math.max(1, facts.levelCount || Number(run?.levelReached) || 1);
   const clearRate = clamp(facts.cleared / levelsSeen);
   const targetRatio = facts.levelCount ? clamp(facts.targetRatio / 1.15) : 0;
@@ -68,7 +68,7 @@ export function calculateLuckIndex(run) {
 
   // Progress is the gate. A high score in the first two/three levels cannot
   // dominate the index before the run has demonstrated survival.
-  const progress = clamp((levelReached - 1 / 24) / (23 / 24));
+  const progress = clamp((levelReached - 1 / 25) / (24 / 25));
   const scoreGate = clamp((Number(run?.levelReached) || 1) / 6);
   const raw = 100 * (
     progress * 0.48

@@ -350,6 +350,8 @@ body {
 .rail > .rail-card { display: none !important; }
 .rail > .rail-card.dice-effects-card,
 .rail > .rail-card.patterns-card,
+.rail > .rail-card.hot-card,
+.rail > .rail-card.retry-card,
 .rail > .rail-card.items-card { display: block !important; }
 .rail .dice-effects-card { order: 1; }
 .rail .patterns-card { order: 2; }

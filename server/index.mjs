@@ -240,21 +240,22 @@ async function saveRun(conn, userId, run) {
   const durationMs = Math.max(0, Math.min(Number(run.durationMs) || 0, 7 * 24 * 3600 * 1000));
   const started = asDate(run.startedAt, new Date(ended.getTime() - durationMs));
   const summary = run.summary && typeof run.summary === 'object' ? run.summary : {};
-  const levelReached = Math.max(1, Math.min(Number(run.levelReached) || 1, 24));
+  const levelReached = Math.max(1, Math.min(Number(run.levelReached) || 1, 25));
   const luckIndex = calculateLuckIndex({ ...run, result, levelReached, summary });
   const [inserted] = await conn.query(
     `INSERT INTO hd_runs
       (user_id, client_run_id, started_at, ended_at, duration_ms, result, level_reached,
-       final_score, coins, luck_index, summary, payload)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       final_score, coins, retry_count, devil_paid, luck_index, summary, payload)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [userId, clientRunId, started, ended, durationMs, result, levelReached,
       Math.max(0, Number(run.finalScore) || 0), Math.max(0, Number(run.coins) || 0),
+      Math.max(0, Number(run.retryCount) || 0), Math.max(0, Number(run.devilPaid) || 0),
       luckIndex, JSON.stringify(summary), JSON.stringify(run)],
   );
   const runId = inserted.insertId;
   const levels = Array.isArray(run.levels) ? run.levels : [];
   for (const level of levels) {
-    const levelNo = Math.max(1, Math.min(Number(level.level) || 1, 24));
+    const levelNo = Math.max(1, Math.min(Number(level.level) || 1, 25));
     await conn.query(
       `INSERT INTO hd_run_levels
         (run_id, level, opponent, table_name, target, score, started_at, ended_at, loadout, throws)
@@ -308,7 +309,7 @@ async function history(req, res, url) {
   const [rows] = await pool.query(
     `SELECT client_run_id AS clientRunId, started_at AS startedAt, ended_at AS endedAt,
             duration_ms AS durationMs, result, level_reached AS levelReached,
-            final_score AS finalScore, coins, payload, summary
+            final_score AS finalScore, coins, retry_count AS retryCount, devil_paid AS devilPaid, payload, summary
        FROM hd_runs WHERE user_id = ? ORDER BY ended_at DESC LIMIT ?`,
     [user.id, limit],
   );
@@ -325,6 +326,8 @@ async function history(req, res, url) {
       levelReached: Number(row.levelReached) || 1,
       finalScore: Number(row.finalScore) || 0,
       coins: Number(row.coins) || 0,
+      retryCount: Number(row.retryCount) || 0,
+      devilPaid: Number(row.devilPaid) || 0,
       loadout: last.loadout || { dice: [], barrel: 'oak', activeItems: [], passiveItems: [] },
       summary: parseJson(row.summary, {}),
     };

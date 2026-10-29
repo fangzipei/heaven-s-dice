@@ -3,7 +3,7 @@ import type { BossContentDef } from '../../core/types.ts';
 
 export default {
   id: 'suspensor', art: 'boss-scale',
-  curve: { target: 1.35, reward: 1.85 },
+  curve: { target: 1.2, reward: 1.85 },
   rarity: 'epic',
   name: '悬秤人', title: '未落定之数', accent: '#c3b4e6',
   effectName: '浮筹未决', effectKey: 'floatingScore',

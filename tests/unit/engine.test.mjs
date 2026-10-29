@@ -8,7 +8,8 @@ import {
   buildScore, syncBag, getScorePreview, hasItemEverBeenTaken,
   activeBoss, isBossDieBlocked, handTypeOf, sellItem, canSellItem, itemSellPrice,
   bossEffectKey, shopSlots, isFloatingScore, resolveSaltOffer, activeItemCapacity,
-  bustRound, setTwoFaceFaces, resolveLoanOffer,
+  bustRound, setTwoFaceFaces, resolveLoanOffer, settleFloatingBust,
+  devilRetry, devilRetryCost, selectBestScoring,
 } from '../../src/core/engine.ts';
 import { makeRng, cashOutValue } from '../../src/core/engine.ts';
 import {
@@ -453,7 +454,7 @@ test('wolf two-piece pays for every scored 3', () => {
   expect(score.valid).toBe(true);
   expect(score.breakdown.base).toBe(300);
   expect(score.breakdown.flats.some(
-    (flat) => flat.label === '狼裔 2 件 · 每颗 3 +60' && flat.value === 180,
+    (flat) => flat.label === '狼裔 2 件 · 每颗 3 +80' && flat.value === 240,
   )).toBeTruthy();
 });
 
@@ -468,7 +469,7 @@ test('wolf four-piece adds the triple-three bonus', () => {
   state.selected = state.dice.filter((d) => d.value === 3).map((d) => d.uid);
   const score = buildScore(state, 'reroll');
   expect(score.breakdown.flats.some(
-    (flat) => flat.label === '狼裔 4 件 · 三条 3 加成' && flat.value === 600,
+    (flat) => flat.label === '狼裔 4 件 · 三条 3 加成' && flat.value === 800,
   )).toBeTruthy();
 });
 
@@ -1317,6 +1318,105 @@ test('a dealer level records the coefficient that paid it', () => {
   advanceLevel(minion);
   expect(minion.levelReward.bossPremium).toBe(0);
   expect(minion.levelReward.curveBase).toBe(minion.levelReward.base);
+});
+
+test('devil retries cost 100, 1000 and 10000; the receipt resets the count', () => {
+  const state = fresh();
+  state.phase = 'lost';
+  state.coins = 5000;
+  expect(devilRetryCost(state)).toBe(100);
+  expect(devilRetry(state).ok).toBe(true);
+  expect(state.coins).toBe(4900);
+  expect(state.retryCount).toBe(1);
+  state.phase = 'lost';
+  expect(devilRetryCost(state)).toBe(1000);
+  expect(devilRetry(state).ok).toBe(true);
+  expect(state.retryCount).toBe(2);
+  state.phase = 'lost';
+  expect(devilRetryCost(state)).toBe(10000);
+  state.activeItems = ['devil_reset'];
+  state.itemCharges = { devil_reset: 1 };
+  expect(useItem(state, 'devil_reset').ok).toBe(true);
+  expect(state.retryCount).toBe(0);
+});
+
+test('floating bust stays pending until a real reroll or settlement', () => {
+  const state = fresh();
+  state.flags.floatingBustPending = true;
+  state.phase = 'dead';
+  state.roundScore = 500;
+  state.score = 700;
+  const settled = settleFloatingBust(state);
+  expect(settled.ok).toBe(true);
+  expect(settled.lost).toBe(500);
+  expect(state.roundScore).toBe(0);
+  expect(state.phase).toBe('lost');
+});
+
+test('smoke only rerolls the dice that have not scored yet', () => {
+  const state = fresh();
+  state.activeItems = ['smoke'];
+  state.itemCharges = { smoke: 1 };
+  initLevel(state);
+  forceRoll(state, [5, 2, 2, 3, 4, 6]);
+  state.dice[0].scored = true;
+  const scoredUid = state.dice[0].uid;
+  state.phase = 'selecting';
+  expect(useItem(state, 'smoke').ok).toBe(true);
+  expect(state.flags.smokeReroll).toBe(true);
+  const result = rollDice(state, { free: true, forced: [6, 6, 6, 6, 6] });
+  expect(result.ok).toBe(true);
+  const kept = state.dice.find((die) => die.uid === scoredUid);
+  expect(kept.value).toBe(5);
+  expect(kept.scored).toBe(true);
+  for (const die of state.dice.filter((entry) => entry.uid !== scoredUid)) expect(die.value).toBe(6);
+});
+
+test('stargazer and caravan sets unlock their unique mechanics', () => {
+  const star = fresh();
+  star.bag[0].dieId = 'ladder';
+  star.bag[1].dieId = 'mirror';
+  syncBag(star);
+  initLevel(star);
+  forceRoll(star, [1, 2, 3, 4, 5, 6]);
+  star.selected = star.dice.slice(0, 5).map((die) => die.uid);
+  expect(buildScore(star, 'reroll').breakdown.flats.some(
+    (flat) => flat.label === '星轨 2 件 · 三种点数' && flat.value === 150,
+  )).toBe(true);
+
+  const caravan = fresh();
+  ['gilded_trace', 'last_road', 'balance', 'merchant'].forEach((id, i) => { caravan.bag[i].dieId = id; });
+  syncBag(caravan);
+  initLevel(caravan);
+  caravan.phase = 'lost';
+  caravan.coins = 0;
+  expect(devilRetryCost(caravan)).toBe(0);
+  expect(devilRetry(caravan).ok).toBe(true);
+  expect(caravan.caravanFreeRetryUsed).toBe(true);
+});
+
+test('hint selection chooses the highest-scoring legal dice subset', () => {
+  const state = fresh();
+  initLevel(state);
+  forceRoll(state, [1, 5, 1, 5, 1, 5]);
+  const result = selectBestScoring(state);
+  expect(result.ok).toBe(true);
+  expect(result.total).toBeGreaterThan(0);
+  expect(state.selected.length).toBeGreaterThan(0);
+  expect(buildScore(state, 'continue').valid).toBe(true);
+});
+
+test('glove can rescue a dead throw and reopens scoring', () => {
+  const state = fresh();
+  state.activeItems = ['glove'];
+  state.itemCharges = { glove: 1 };
+  initLevel(state);
+  forceRoll(state, [2, 2, 2, 3, 4, 6]);
+  state.phase = 'dead';
+  state.selected = [state.dice[0].uid];
+  expect(useItem(state, 'glove').ok).toBe(true);
+  expect(state.dice[0].value).toBe(1);
+  expect(state.phase).toBe('selecting');
 });
 
 test('chain-note die adds +100 after the first successful score', () => {

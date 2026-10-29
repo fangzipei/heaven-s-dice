@@ -2,7 +2,7 @@
 import type { DiceDef } from '../../core/types.ts';
 
 export default {
-  id: 'merchant', name: '商旅骰', setId: null, rarity: 'legendary',
+  id: 'merchant', name: '商旅骰', setId: 'caravan', rarity: 'epic',
   probs: [1 / 6, 1 / 6, 1 / 6, 1 / 6, 1 / 6, 1 / 6],
   flavor: '它记得每一次讨价还价，也记得每一次你忍不住重随。',
   desc: '六面均衡；每次商店重随（每店最多一次）后，此骰计分永久 +10%。',

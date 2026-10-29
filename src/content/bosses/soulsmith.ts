@@ -5,7 +5,7 @@ export default {
   id: 'soulsmith', art: 'boss-iron',
   // 赏金系数：这一关的银币 = 曲线 × 系数（曲线本身逐关上涨，系数随
   // 关卡缓慢收敛，否则后期赏金会指数爆炸）。
-  curve: { target: 1.35, reward: 1.85 },
+  curve: { target: 1.2, reward: 1.85 },
   rarity: 'epic',
   name: '铁面铸魂师', title: '熔炉之主', accent: '#e07d4d',
   effectName: '五点回炉', effectKey: 'noFive',

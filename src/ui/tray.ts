@@ -167,14 +167,14 @@ function renderDiceA11y(run: RunState) {
   if (!layer) return;
   const signature = run.dice.map((die) => {
     const state = dieStateOf(run, die);
-    const disabled = state.scored || state.blank || state.blocked || app.busy || run.phase !== 'selecting';
+    const disabled = state.scored || state.blank || state.blocked || app.busy || (run.phase !== 'selecting' && run.phase !== 'dead');
     return `${die.uid}:${die.value ?? 'x'}:${state.selected ? 1 : 0}:${disabled ? 1 : 0}`;
   }).join('|');
   if (layer.dataset.signature !== signature) {
     layer.dataset.signature = signature;
     layer.innerHTML = run.dice.map((die) => {
       const state = dieStateOf(run, die);
-      const disabled = state.scored || state.blank || state.blocked || app.busy || run.phase !== 'selecting';
+      const disabled = state.scored || state.blank || state.blocked || app.busy || (run.phase !== 'selecting' && run.phase !== 'dead');
       const label = state.hidden ? '未掷出的骰子'
         : state.blank ? '白骰，无法计分'
           : state.blocked ? `${die.value} 点被庄家禁用`

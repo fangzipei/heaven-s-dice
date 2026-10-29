@@ -15,7 +15,7 @@ export interface RarityInfo {
 
 export type RarityTable = Record<RarityId, RarityInfo>;
 
-export type DiceSetId = 'wolf' | 'demon';
+export type DiceSetId = 'wolf' | 'demon' | 'stargazer' | 'caravan';
 
 export interface SetBonusDef {
   pieces: number;
@@ -351,6 +351,12 @@ export interface RunFlags {
   twoFaceFaces?: number[];
   /** 双面桶：本关还没确认两面。 */
   twoFacePending?: boolean;
+  /** 烟雾弹：本次免费重投只处理未计分骰子。 */
+  smokeReroll?: boolean;
+  /** 悬秤人：浮动分掷空后先挂起，等真正重投时再清零。 */
+  floatingBustPending?: boolean;
+  /** 星轨套：本关第一次重投已经免费。 */
+  stargazerRerollUsed?: boolean;
 }
 
 export interface LogEntry {
@@ -439,6 +445,12 @@ export interface RunState {
   roundCoins?: number;
   /** 连记骰：每颗骰子成功参与非浮动计分的累计次数，按 bagUid 记录。 */
   dieStacks?: Record<string, number>;
+  /** 本局已经向魔鬼支付过几次重来。 */
+  retryCount?: number;
+  /** 本局支付给魔鬼的重来银币总额。 */
+  devilPaid?: number;
+  /** 商旅套：本局免费重来是否已用。 */
+  caravanFreeRetryUsed?: boolean;
   /** 本关触发的全骰次数；左上角计数与连击倍率都读它。 */
   hotCount?: number;
   targetReached: boolean;

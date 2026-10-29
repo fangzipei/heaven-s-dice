@@ -6,6 +6,7 @@ import lucky_coin from './lucky_coin.ts';
 import hunter_mark from './hunter_mark.ts';
 import glove from './glove.ts';
 import smoke from './smoke.ts';
+import devil_reset from './devil_reset.ts';
 import charm from './charm.ts';
 import hourglass from './hourglass.ts';
 import blood_contract from './blood_contract.ts';
@@ -51,6 +52,7 @@ export const ITEM_DEFS: ItemDef[] = [
   hunter_mark,
   glove,
   smoke,
+  devil_reset,
   charm,
   hourglass,
   blood_contract,

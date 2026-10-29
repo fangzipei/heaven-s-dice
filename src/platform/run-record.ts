@@ -77,6 +77,8 @@ export interface RunRecord {
   complete?: boolean;
   finalScore: number;
   coins: number;
+  retryCount?: number;
+  devilPaid?: number;
   levels: RecordedLevel[];
   summary: {
     throws: number;
@@ -125,6 +127,8 @@ export function beginRunRecord(run: RunState, userId: string): RunRecord {
     complete: false,
     finalScore: run.score,
     coins: run.coins,
+    retryCount: run.retryCount || 0,
+    devilPaid: run.devilPaid || 0,
     levels: [],
     summary: { throws: 0, busts: 0, hotThrows: 0, hotDice: 0, shopPurchases: 0, rerollsSpent: 0 },
   };
@@ -314,6 +318,8 @@ export function finishRunRecord(run: RunState, result: RunResult): RunRecord | n
     && active.levels[active.levels.length - 1]?.level === run.level;
   active.finalScore = run.score;
   active.coins = run.coins;
+  active.retryCount = run.retryCount || 0;
+  active.devilPaid = run.devilPaid || 0;
   const throws = active.levels.flatMap((item) => item.throws);
   active.summary = {
     throws: throws.length,

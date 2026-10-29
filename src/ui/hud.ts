@@ -7,7 +7,7 @@ import {
   DICE_SETS, ITEM_BY_ID, LEVEL_COUNT, LEVELS, getLevelConfig, getOpponent, getTable,
 } from '../content/index.ts';
 import {
-  bossStatusText, canUseItem, getBarrel, getDieSpec, isFloatingScore, setCounts, HOT_CHAIN_MULTIPLIER,
+  bossStatusText, canUseItem, getBarrel, getDieSpec, isFloatingScore, setCounts, HOT_CHAIN_MULTIPLIER, DEVIL_RETRY_COSTS,
 } from '../core/engine.ts';
 import type { BossDef } from '../core/types.ts';
 import { clamp, h, num } from '../core/util.ts';
@@ -78,6 +78,15 @@ export function renderScorePanel() {
       ? `本关全骰 ${hots} 次 · 下一次全骰 ×${(HOT_CHAIN_MULTIPLIER ** (hots + 1)).toFixed(2)}`
       : '';
   }
+  const totalHots = run.stats.hotDice || 0;
+  const hotTotal = $('#hot-total-count');
+  if (hotTotal) hotTotal.textContent = String(totalHots);
+  const hotTotalNote = $('#hot-total-note');
+  if (hotTotalNote) {
+    hotTotalNote.textContent = run.hotCount
+      ? `本关 ${run.hotCount} 次 · 连击 ×${(HOT_CHAIN_MULTIPLIER ** run.hotCount).toFixed(2)}`
+      : '本关还没有触发全骰';
+  }
   $('#score-panel')!.classList.toggle('is-floating', floating);
   $('#score-panel')!.classList.toggle('is-danger', run.rerolls <= 0 && run.score < run.target);
   const canAdvance = run.score >= run.target && !['won', 'run-won', 'lost', 'shop'].includes(run.phase);
@@ -123,6 +132,8 @@ export function renderOpponentPlate() {
     const boss = opponent as BossDef;
     $('#boss-badge')!.dataset.bossTip = boss.id;
     $('#boss-effect-card')!.dataset.bossTip = boss.id;
+    const plate = document.querySelector('.opponent-plate');
+    if (plate) (plate as HTMLElement).dataset.bossTip = boss.id;
     $('#boss-effect-name')!.textContent = boss.effectName;
     $('#boss-effect-title')!.textContent = boss.effectName;
     const status = bossStatusText(run);
@@ -150,6 +161,16 @@ export function renderRail() {
     taunt.textContent = `“${opponent.taunts[0]}”`;
   }
   $('#reroll-note')!.textContent = `剩余 ${run.rerolls} 次`;
+  const retryCount = run.retryCount || 0;
+  const retryCountNode = $('#devil-retry-count');
+  if (retryCountNode) retryCountNode.textContent = String(retryCount);
+  const retryNote = $('#devil-retry-note');
+  if (retryNote) {
+    const nextCost = DEVIL_RETRY_COSTS[retryCount];
+    retryNote.textContent = nextCost
+      ? `下一次重来 ${nextCost} 银币。`
+      : '魔鬼已经收手，不再接受交易。';
+  }
   const maxTokens = Math.max(run.maxRerolls, run.rerolls, 1);
   $('#reroll-row')!.innerHTML = Array.from({ length: Math.min(12, maxTokens) }, (_, index) => {
     const active = index < run.rerolls;

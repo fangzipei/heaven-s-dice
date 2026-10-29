@@ -2,7 +2,7 @@
 import type { DiceDef } from '../../core/types.ts';
 
 export default {
-  id: 'gilded_trace', name: '金痕骰', setId: null, rarity: 'common',
+  id: 'gilded_trace', name: '金痕骰', setId: 'caravan', rarity: 'common',
   probs: [1 / 6, 1 / 6, 1 / 6, 1 / 6, 1 / 6, 1 / 6],
   flavor: '落桌时会在桌布上留下一道洗不掉的金痕。',
   desc: '六面均衡；此骰计分时先把 20 银币挂在本轮，锁分（计分并重投 / 计分并结算）时一并入账，掷空则作废。',

@@ -44,12 +44,12 @@
         {
           "pieces": 2,
           "key": "wolfThree",
-          "text": "每颗计分的 3 额外 +60 分。"
+          "text": "每颗计分的 3 额外 +80 分。"
         },
         {
           "pieces": 4,
           "key": "wolfTripleThree",
-          "text": "计分含三条 3 时额外 +600 分。"
+          "text": "计分含三条 3 时额外 +800 分。"
         }
       ]
     },
@@ -71,6 +71,44 @@
           "text": "恶魔赖子参与计分时，本次计分 ×1.22（替代 2 件）。"
         }
       ]
+    },
+    "stargazer": {
+      "id": "stargazer",
+      "name": "星轨",
+      "icon": "star",
+      "color": "#7fa9c9",
+      "motto": "不同的点数连成一条线，星盘才会转动。",
+      "bonuses": [
+        {
+          "pieces": 2,
+          "key": "starFaces",
+          "text": "计分含 3 种以上不同点数时，本手 +150。"
+        },
+        {
+          "pieces": 4,
+          "key": "starReroll",
+          "text": "每关第一次重投免费。"
+        }
+      ]
+    },
+    "caravan": {
+      "id": "caravan",
+      "name": "商旅",
+      "icon": "coin",
+      "color": "#c9a45f",
+      "motto": "路费、货价、利息——每一项都能变成筹码。",
+      "bonuses": [
+        {
+          "pieces": 2,
+          "key": "caravanCoin",
+          "text": "每次成功计分额外获得 10 银币。"
+        },
+        {
+          "pieces": 4,
+          "key": "caravanRetry",
+          "text": "每局第一次魔鬼重来免费。"
+        }
+      ]
     }
   },
   "DICE": [
@@ -80,15 +118,15 @@
       "setId": "wolf",
       "rarity": "common",
       "probs": [
-        0.2,
-        0.14,
-        0.2,
-        0.12,
-        0.19,
-        0.15
+        0.193,
+        0.135,
+        0.23,
+        0.115,
+        0.183,
+        0.144
       ],
       "flavor": "森林里第一颗掉落的乳牙，只认一个数字。",
-      "desc": "1、5 各约 20%，3 也抬到 20%，中间点数薄。",
+      "desc": "1、5 约 19% / 18%，3 抬到 23%，中间点数薄。",
       "bonus": null,
       "price": 35
     },
@@ -98,15 +136,15 @@
       "setId": "wolf",
       "rarity": "rare",
       "probs": [
-        0.2,
-        0.07,
-        0.33,
-        0.06,
-        0.22,
-        0.12
+        0.191,
+        0.067,
+        0.36,
+        0.057,
+        0.21,
+        0.115
       ],
       "flavor": "月全食那晚，整片森林都听见了骨头里的回声。",
-      "desc": "3 点概率 33%，1、5 各 20%。",
+      "desc": "3 点概率 36%，1、5 各 20%。",
       "bonus": null,
       "price": 70
     },
@@ -116,15 +154,15 @@
       "setId": "wolf",
       "rarity": "epic",
       "probs": [
-        0.16,
-        0.1,
-        0.3,
-        0.1,
-        0.18,
-        0.16
+        0.153,
+        0.096,
+        0.33,
+        0.096,
+        0.172,
+        0.153
       ],
       "flavor": "它从不嚎叫。它只是看，群狼便知道该咬住哪一个数字。",
-      "desc": "3 点 30%；计分含至少一颗 3 时，本手分数 +30%。",
+      "desc": "3 点 33%；计分含至少一颗 3 时，本手分数 +30%。",
       "bonus": {
         "type": "scorePercent",
         "percent": 30,
@@ -142,15 +180,15 @@
       "setId": "wolf",
       "rarity": "legendary",
       "probs": [
-        0.16,
-        0.08,
-        0.34,
-        0.08,
-        0.16,
-        0.18
+        0.153,
+        0.076,
+        0.37,
+        0.076,
+        0.153,
+        0.172
       ],
       "flavor": "第一头狼的牙床。三这个数字，是它先咬出来的。",
-      "desc": "3 点概率 34%；计分含至少一颗 3 时，本手分数 +35%。",
+      "desc": "3 点概率 37%；计分含至少一颗 3 时，本手分数 +35%。",
       "bonus": {
         "type": "scorePercent",
         "percent": 35,
@@ -249,7 +287,7 @@
     {
       "id": "odd_eye",
       "name": "孤影骰",
-      "setId": null,
+      "setId": "stargazer",
       "rarity": "rare",
       "probs": [
         0.3333333333333333,
@@ -267,7 +305,7 @@
     {
       "id": "even_twin",
       "name": "双生骰",
-      "setId": null,
+      "setId": "stargazer",
       "rarity": "epic",
       "probs": [
         0,
@@ -310,7 +348,7 @@
     {
       "id": "ladder",
       "name": "拾级骰",
-      "setId": null,
+      "setId": "stargazer",
       "rarity": "common",
       "probs": [
         0.14,
@@ -328,7 +366,7 @@
     {
       "id": "mirror",
       "name": "照面骰",
-      "setId": null,
+      "setId": "stargazer",
       "rarity": "rare",
       "probs": [
         0.25,
@@ -470,8 +508,8 @@
     {
       "id": "balance",
       "name": "衡心骰",
-      "setId": null,
-      "rarity": "common",
+      "setId": "caravan",
+      "rarity": "rare",
       "probs": [
         0.16666666666666666,
         0.16666666666666666,
@@ -487,7 +525,7 @@
         "value": 100,
         "label": "衡心：此骰计分 +100"
       },
-      "price": 35
+      "price": 70
     },
     {
       "id": "cliff",
@@ -556,8 +594,8 @@
     {
       "id": "merchant",
       "name": "商旅骰",
-      "setId": null,
-      "rarity": "legendary",
+      "setId": "caravan",
+      "rarity": "epic",
       "probs": [
         0.16666666666666666,
         0.16666666666666666,
@@ -573,12 +611,12 @@
         "value": 0.1,
         "label": "商旅：每次商店重随，计分 +10%"
       },
-      "price": 210
+      "price": 130
     },
     {
       "id": "gilded_trace",
       "name": "金痕骰",
-      "setId": null,
+      "setId": "caravan",
       "rarity": "common",
       "probs": [
         0.16666666666666666,
@@ -600,7 +638,7 @@
     {
       "id": "last_road",
       "name": "末路骰",
-      "setId": null,
+      "setId": "caravan",
       "rarity": "common",
       "probs": [
         0.16666666666666666,
@@ -667,7 +705,6 @@
       "name": "连记骰",
       "setId": null,
       "rarity": "rare",
-      "price": 150,
       "probs": [
         0.16666666666666666,
         0.16666666666666666,
@@ -682,7 +719,8 @@
         "type": "afterScoreFlat",
         "value": 100,
         "label": "连记：每成功参与一次计分，后续此骰 +100"
-      }
+      },
+      "price": 150
     },
     {
       "id": "bias_one",
@@ -708,15 +746,15 @@
       "setId": null,
       "rarity": "common",
       "probs": [
-        0.14,
-        0.3,
-        0.14,
-        0.14,
-        0.14,
-        0.14
+        0.124,
+        0.38,
+        0.124,
+        0.124,
+        0.124,
+        0.124
       ],
       "flavor": "两面三刀的人最喜欢它。",
-      "desc": "2 点概率 30%，其余五面各 14%。",
+      "desc": "2 点概率 38%，其余五面各 12.4%。",
       "bonus": null,
       "price": 35
     },
@@ -726,15 +764,15 @@
       "setId": null,
       "rarity": "common",
       "probs": [
-        0.14,
-        0.14,
-        0.3,
-        0.14,
-        0.14,
-        0.14
+        0.124,
+        0.124,
+        0.38,
+        0.124,
+        0.124,
+        0.124
       ],
       "flavor": "逢三则变，赌桌上也不例外。",
-      "desc": "3 点概率 30%，其余五面各 14%。",
+      "desc": "3 点概率 38%，其余五面各 12.4%。",
       "bonus": null,
       "price": 35
     },
@@ -744,15 +782,15 @@
       "setId": null,
       "rarity": "common",
       "probs": [
-        0.14,
-        0.14,
-        0.14,
-        0.3,
-        0.14,
-        0.14
+        0.124,
+        0.124,
+        0.124,
+        0.38,
+        0.124,
+        0.124
       ],
       "flavor": "四方桌，四面风，四点的骰子最稳。",
-      "desc": "4 点概率 30%，其余五面各 14%。",
+      "desc": "4 点概率 38%，其余五面各 12.4%。",
       "bonus": null,
       "price": 35
     },
@@ -1095,10 +1133,22 @@
       "type": "active",
       "icon": "smoke",
       "rarity": "epic",
-      "price": 95,
+      "price": 200,
       "charges": 1,
-      "desc": "免费重掷所有未计分骰子，不消耗重投次数。",
+      "desc": "免费重掷所有未计分骰子，不消耗重投次数；已经计分的骰子留在桌上。",
       "flavor": "烟雾散去时，桌上少了一颗骰子，多了一个说法。"
+    },
+    {
+      "id": "devil_reset",
+      "name": "魔鬼的收据",
+      "type": "active",
+      "icon": "salt",
+      "rarity": "epic",
+      "price": 444,
+      "charges": 1,
+      "consumable": true,
+      "desc": "使用后清空本局的重来次数；下一次与魔鬼交易从 100 银币重新开始。",
+      "flavor": "一张被烧焦的收据。魔鬼收回了利息，但没收回名字。"
     },
     {
       "id": "charm",
@@ -1776,7 +1826,7 @@
       "id": "soulsmith",
       "art": "boss-iron",
       "curve": {
-        "target": 1.35,
+        "target": 1.2,
         "reward": 1.85
       },
       "rarity": "epic",
@@ -1824,7 +1874,7 @@
       "id": "startax",
       "art": "boss-tax",
       "curve": {
-        "target": 1.65,
+        "target": 1.35,
         "reward": 2.15
       },
       "rarity": "legendary",
@@ -1848,7 +1898,7 @@
       "id": "seraph",
       "art": "boss-diamond",
       "curve": {
-        "target": 1.65,
+        "target": 1.5,
         "reward": 2.15
       },
       "rarity": "legendary",
@@ -1959,20 +2009,20 @@
       2511.3571875,
       2888.0607656249995,
       3321.2698804687493,
-      3819.4603625390614,
-      4392.37941691992,
-      5051.236329457907,
-      5808.921778876593,
-      6680.260045708081,
-      7680.260045708081,
-      8601.891251193052,
-      9634.11820133622,
-      10790.212385496567,
-      12085.037871756156,
-      13535.242416366897,
-      15159.471506330925,
-      16978.608087090637,
-      19016.041057541515,
+      3719.8222661249997,
+      4166.20093806,
+      4666.1450506272,
+      5226.082456702465,
+      5853.212351506761,
+      6853.212351506761,
+      7607.065710172505,
+      8443.84293829148,
+      9372.665661503544,
+      10403.658884268936,
+      11548.061361538521,
+      12818.34811130776,
+      14228.366403551614,
+      15793.486707942293,
       100000
     ]
   },
@@ -2071,130 +2121,130 @@
     },
     {
       "level": 11,
-      "target": 5160,
+      "target": 4460,
       "reward": 180,
       "curve": {
-        "target": 3820,
+        "target": 3720,
         "reward": 100
       },
       "boss": true
     },
     {
       "level": 12,
-      "target": 4390,
+      "target": 4170,
       "reward": 105,
       "curve": {
-        "target": 4390,
+        "target": 4170,
         "reward": 105
       }
     },
     {
       "level": 13,
-      "target": 5050,
+      "target": 4670,
       "reward": 110,
       "curve": {
-        "target": 5050,
+        "target": 4670,
         "reward": 110
       }
     },
     {
       "level": 14,
-      "target": 5810,
+      "target": 5230,
       "reward": 115,
       "curve": {
-        "target": 5810,
+        "target": 5230,
         "reward": 115
       }
     },
     {
       "level": 15,
-      "target": 5340,
+      "target": 4680,
       "reward": 230,
       "curve": {
-        "target": 6680,
+        "target": 5850,
         "reward": 125
       },
       "boss": true
     },
     {
       "level": 16,
-      "target": 7680,
+      "target": 6850,
       "reward": 130,
       "curve": {
-        "target": 7680,
+        "target": 6850,
         "reward": 130
       }
     },
     {
       "level": 17,
-      "target": 8600,
+      "target": 7610,
       "reward": 140,
       "curve": {
-        "target": 8600,
+        "target": 7610,
         "reward": 140
       }
     },
     {
       "level": 18,
-      "target": 9630,
+      "target": 8440,
       "reward": 150,
       "curve": {
-        "target": 9630,
+        "target": 8440,
         "reward": 150
       }
     },
     {
       "level": 19,
-      "target": 10790,
+      "target": 9370,
       "reward": 155,
       "curve": {
-        "target": 10790,
+        "target": 9370,
         "reward": 155
       }
     },
     {
       "level": 20,
-      "target": 19940,
+      "target": 14040,
       "reward": 360,
       "curve": {
-        "target": 12090,
+        "target": 10400,
         "reward": 165
       },
       "boss": true
     },
     {
       "level": 21,
-      "target": 13540,
+      "target": 11550,
       "reward": 175,
       "curve": {
-        "target": 13540,
+        "target": 11550,
         "reward": 175
       }
     },
     {
       "level": 22,
-      "target": 15160,
+      "target": 12820,
       "reward": 185,
       "curve": {
-        "target": 15160,
+        "target": 12820,
         "reward": 185
       }
     },
     {
       "level": 23,
-      "target": 16980,
+      "target": 14230,
       "reward": 200,
       "curve": {
-        "target": 16980,
+        "target": 14230,
         "reward": 200
       }
     },
     {
       "level": 24,
-      "target": 31380,
+      "target": 23690,
       "reward": 450,
       "curve": {
-        "target": 19020,
+        "target": 15790,
         "reward": 210
       },
       "boss": true

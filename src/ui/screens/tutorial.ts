@@ -172,7 +172,7 @@ function tutorialHtml(): string {
         <div class="tut-section-head"><span>04</span><div><p>THE REST OF THE TABLE</p><h3>骰桶、骰子、物品、市集与庄家</h3></div></div>
         <div class="tut-cards">
           <div class="tut-card"><b>骰桶 · ${BARRELS.length} 只</b><p>初始橡木桶之外，概率桶偏向某些点数，点数/赖子桶奖励指定结果，还有染金、定点、补顺、增殖与单骰桶会在落骰时插手。仪式桶需要按住后沿桌面轨迹画阵，五芒星每关只能生效一次，也可点右下角「画阵」。</p></div>
-          <div class="tut-card"><b>骰子 · ${DICE.length} 枚 · 两套 + 无套</b><p>${RARITIES.common.name} ${DICE.filter((d) => d.rarity === 'common').length}、${RARITIES.rare.name} ${DICE.filter((d) => d.rarity === 'rare').length}、${RARITIES.epic.name} ${DICE.filter((d) => d.rarity === 'epic').length}、${RARITIES.legendary.name} ${DICE.filter((d) => d.rarity === 'legendary').length}。每枚骰子有自己的六面概率，悬停可看真实概率；普通骰也可能带一条明确的计分规则。<b>狼裔 5 枚</b>把 3 的概率抬高，2 / 4 件分别让每颗计分的 3 加分、三条 3 大幅加分。<b>恶魔 5 枚</b>把掷出的 1 变成「恶魔赖子」——能补三条或顺子（顺子最多替 1 颗；顺子已完整时可以顶替其中一面，把该面的自然骰解放出来单独计分），但不能单独计分。剩下的 <b>${DICE.filter((d) => !d.setId).length} 枚无套组</b>走极端骰型、顺序互动与商店成长：复制第一颗、贴邻前一颗、每关换面、重随成长……它们不参与套装，但随时能买能卖。</p></div>
+          <div class="tut-card"><b>骰子 · ${DICE.length} 枚 · 四套 + 无套</b><p>${RARITIES.common.name} ${DICE.filter((d) => d.rarity === 'common').length}、${RARITIES.rare.name} ${DICE.filter((d) => d.rarity === 'rare').length}、${RARITIES.epic.name} ${DICE.filter((d) => d.rarity === 'epic').length}、${RARITIES.legendary.name} ${DICE.filter((d) => d.rarity === 'legendary').length}。每枚骰子有自己的六面概率，悬停可看真实概率；普通骰也可能带一条明确的计分规则。<b>狼裔 4 枚</b>把 3 的概率抬高，2 / 4 件分别让每颗计分的 3 加分、三条 3 大幅加分。<b>恶魔 4 枚</b>把掷出的 1 变成「恶魔赖子」。<b>星轨 4 枚</b>奖励不同点数并送每关一次免费重投；<b>商旅 4 枚</b>奖励银币，并让每局第一次魔鬼重来免费。剩下的 <b>${DICE.filter((d) => !d.setId).length} 枚无套组</b>走极端骰型、顺序互动与商店成长。</p></div>
           <div class="tut-card"><b>物品 · ${ITEMS.length} 件</b><p>${ITEMS.filter((i) => i.type === 'active').length} 主动、${ITEMS.filter((i) => i.type === 'passive').length} 被动，其中 <b>${ITEMS.filter((i) => i.consumable).length} 件一次性</b>——用完即消失。主动物品默认最多同时携带 <b>3 件</b>；<b>夹层行囊</b>（史诗）再 +1 格。被动物品永久生效。<b>三层骰架 / 双孔桶架 / 暗格货架</b>分别让市集的骰子、骰桶、物品各 +1 个货位。丰饶骰袋 +1 骰、裂痕骰袋 -1 骰但计分 +25%，这两件整局各只能获取一次。</p></div>
           <div class="tut-card"><b>市集</b><p>每关之后进入：骰子 2 枚、骰桶 1 只、物品 3 件；带上货架类被动会各 +1。骰子按等级加权，恶魔骰在同等稀有度中只有其他骰子一半的刷新权重。每次刷新都消耗银币，同一区域连续刷新价格会累计 +30%。随身物品可以半价卖回。</p></div>
           <div class="tut-card"><b>赌桌 · ${TABLES.length} 张</b><p>木头、青石、黑铁、黄金、钻石。五张桌子平分 ${LEVEL_COUNT} 关（${LEVEL_CURVE.targetBase} 分起步），庄家按难度穿插落座：越晚的桌子越贵，也越不像人坐的地方。</p></div>
@@ -273,7 +273,7 @@ export function openRules(): void {
               <p>${h(boss.effectName)}：${h(boss.effectDesc)}</p>
             </div>`).join('')}
           <h3 style="margin-top:16px">装备与市集</h3>
-          <p>骰子有各自的点数概率与套组效果，${DICE.length} 枚秘骰分为普通、稀有、史诗、传说：狼裔 5 枚、恶魔 5 枚，其余 ${DICE.filter((d) => !d.setId).length} 枚无套组。鼠标移到骰子上查看六面概率；普通骰也可能带计分规则。骰桶分为概率、点数/赖子、染金/定点/补顺/增殖/单骰与仪式等类型，点「画阵」完成星阵或旋涡，能为本次投掷争取优势。</p>
+          <p>骰子有各自的点数概率与套组效果，${DICE.length} 枚秘骰分为普通、稀有、史诗、传说：狼裔、恶魔、星轨、商旅各 4 枚，其余 ${DICE.filter((d) => !d.setId).length} 枚无套组。鼠标移到骰子上查看六面概率；普通骰也可能带计分规则。骰桶分为概率、点数/赖子、染金/定点/补顺/增殖/单骰与仪式等类型，点「画阵」完成星阵或旋涡，能为本次投掷争取优势。</p>
           <p>每关之后进入市集：骰子区默认 2 枚、骰桶区 1 只、物品区 3 件，刷新均需银币。三层骰架 / 双孔桶架 / 暗格货架会各让对应区域多摆 1 件。主动物品每关恢复一次，被动物品永久生效；一次性消耗品用完即消失。市集下方可以把随身物品按半价卖回。</p>
           <div class="rules-note">提示：空格投掷，数字键 1 / 2 分别使用「计分并继续」「计分并重投」。“计分并继续”会触发金冠赌王的抽成。</div>
         </div>

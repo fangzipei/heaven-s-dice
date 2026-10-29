@@ -3,7 +3,7 @@ import type { BossContentDef } from '../../core/types.ts';
 
 export default {
   id: 'mirror', art: 'boss-scale',
-  curve: { target: 1.35, reward: 1.85 },
+  curve: { target: 1.2, reward: 1.85 },
   rarity: 'epic',
   name: '双倍镜', title: '另一个你', accent: '#a8d8e8',
   effectName: '双倍倒影', effectKey: 'doubleTarget',

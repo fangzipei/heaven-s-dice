@@ -221,6 +221,9 @@ function resetLevelFlags(state: RunState) {
     loanOffer: false,
     twoFaceFaces: [],
     twoFacePending: false,
+    smokeReroll: false,
+    floatingBustPending: false,
+    stargazerRerollUsed: false,
   };
 }
 
@@ -454,6 +457,10 @@ export function createRun({ rng = Math.random }: { rng?: () => number } = {}): R
     score: 0,
     roundScore: 0,
     roundCoins: 0,
+    dieStacks: {},
+    retryCount: 0,
+    devilPaid: 0,
+    caravanFreeRetryUsed: false,
     targetReached: false,
     overshootTierKey: null,
     lastBust: null,
@@ -661,15 +668,23 @@ export function buildScore(state: RunState, action = 'reroll'): BuildScoreResult
   // Set bonuses: wolf rides on 3s, demon pays for jokers actually used.
   const wolfCount = sets.wolf?.count || 0;
   const demonCount = sets.demon?.count || 0;
+  const stargazerCount = sets.stargazer?.count || 0;
   const wildDice = selected.filter((d) => d.wild).length;
   if (wolfCount >= 2 && counts[3]! > 0) {
-    const value = counts[3]! * 60;
+    const value = counts[3]! * 80;
     flatAdd += value;
-    flats.push({ label: '狼裔 2 件 · 每颗 3 +60', value });
+    flats.push({ label: '狼裔 2 件 · 每颗 3 +80', value });
   }
   if (wolfCount >= 4 && counts[3]! >= 3) {
-    flatAdd += 600;
-    flats.push({ label: '狼裔 4 件 · 三条 3 加成', value: 600 });
+    flatAdd += 800;
+    flats.push({ label: '狼裔 4 件 · 三条 3 加成', value: 800 });
+  }
+  if (stargazerCount >= 2) {
+    const distinct = new Set(selected.filter((die) => !die.blank).map((die) => die.value)).size;
+    if (distinct >= 3) {
+      flatAdd += 150;
+      flats.push({ label: '星轨 2 件 · 三种点数', value: 150 });
+    }
   }
   if (demonCount >= 4 && wildDice > 0) {
     multiplier *= 1.22;
@@ -872,6 +887,26 @@ export function buildScore(state: RunState, action = 'reroll'): BuildScoreResult
   };
 }
 
+export function selectBestScoring(state: RunState): { ok: boolean; total?: number; error?: string } {
+  if (!['selecting', 'dead'].includes(state.phase)) return { ok: false, error: '现在没有可提示的骰型。' };
+  const dice = scorableDice(state);
+  if (!dice.length) return { ok: false, error: '桌上没有可计分的骰子。' };
+  const previous = state.selected;
+  let bestTotal = -1;
+  let bestSelection: string[] = [];
+  for (let mask = 1; mask < (1 << dice.length); mask += 1) {
+    state.selected = dice.filter((_, index) => mask & (1 << index)).map((die) => die.uid);
+    const score = buildScore(state, 'continue');
+    if (score.valid && score.total > bestTotal) {
+      bestTotal = score.total;
+      bestSelection = [...state.selected];
+    }
+  }
+  state.selected = bestSelection.length ? bestSelection : previous;
+  if (!bestSelection.length) return { ok: false, error: '当前没有可计分的骰型。' };
+  return { ok: true, total: bestTotal };
+}
+
 export function getScorePreview(state: RunState) {
   const reroll = buildScore(state, 'reroll');
   const cont = buildScore(state, 'continue');
@@ -909,6 +944,7 @@ function addScore(state: RunState, amount: number, { round = false }: { round?: 
  * Only the current round is lost; previously secured score stays.
  */
 export function bustRound(state: RunState): number {
+  state.flags.floatingBustPending = false;
   // 金痕 coins ride on the round: a bust forfeits them with the points.
   state.roundCoins = 0;
   let lost = Math.max(0, state.roundScore || 0);
@@ -951,6 +987,14 @@ export function bustRound(state: RunState): number {
     ? `秤翻了：整桌 ${lost} 分漂浮分全部消散。`
     : `本轮 ${lost} 分作废。`, 'bad');
   return lost;
+}
+
+export function settleFloatingBust(state: RunState): { ok: boolean; lost?: number; error?: string } {
+  if (!state.flags.floatingBustPending) return { ok: false, error: '当前没有挂起的浮动分。' };
+  const lost = bustRound(state);
+  state.phase = 'lost';
+  finalizeStuck(state);
+  return { ok: true, lost };
 }
 
 function penalizeScore(state: RunState, amount: number) {
@@ -1139,6 +1183,7 @@ export function activeCharges(state: RunState): number {
 
 export function finalizeStuck(state: RunState): RunState {
   if (state.phase === 'won' || state.phase === 'run-won' || state.phase === 'lost') return state;
+  if (state.flags.floatingBustPending) return state;
   if (state.score >= state.target) {
     checkWin(state);
     return state;
@@ -1310,10 +1355,28 @@ export function rollDice(state: RunState, { free = false, rng = getRng(state), f
     return { ok: false, error: '本关已结束。' };
   }
   if (state.phase === 'shop') return { ok: false, error: '商店阶段不能投掷。' };
+  const smokeReroll = Boolean(state.flags.smokeReroll);
+  state.flags.smokeReroll = false;
+  if (state.flags.floatingBustPending && state.phase === 'dead' && !smokeReroll && !free) {
+    // The floating score was only suspended. A real reroll is the point where
+    // it is finally forfeited, before the new throw begins.
+    bustRound(state);
+  }
+  if (smokeReroll) {
+    // Smoke only touches dice that have not scored; scored dice stay on the
+    // table, even when the previous throw ended in a bust.
+    for (const die of state.dice) {
+      if (die.scored) continue;
+      die.value = null;
+      die.blank = false;
+      die.wild = false;
+      die.gilded = false;
+    }
+  }
   // A no-score throw ends the round outright. The next reroll starts from a
   // clean table: every die — including the ones set aside earlier in this
   // round — goes back into the cup.
-  if (state.phase === 'dead') {
+  if (state.phase === 'dead' && !smokeReroll) {
     for (const die of state.dice) {
       die.value = null;
       die.scored = false;
@@ -1335,11 +1398,15 @@ export function rollDice(state: RunState, { free = false, rng = getRng(state), f
   }
   let pardon = false;
   if (!freeThrow) {
+    const starPardon = hasSetTier(state, 'stargazer', 4) && !state.flags.stargazerRerollUsed;
     pardon = Boolean(state.flags.rerollAll
       && state.passiveItems.includes('judge_relic')
       && !state.flags.judgeRelicUsed
       && rng() < 0.25);
-    if (pardon) {
+    if (starPardon) {
+      state.flags.stargazerRerollUsed = true;
+      pushLog(state, '星轨 4 件：本关第一次重投免费。', 'good');
+    } else if (pardon) {
       state.flags.judgeRelicUsed = true;
       pushLog(state, '停审令牌：这次「计分并重投」不消耗重投。', 'good');
     } else {
@@ -1359,7 +1426,7 @@ export function rollDice(state: RunState, { free = false, rng = getRng(state), f
 
   const wasHot = state.flags.hotDice;
   const rerollAll = state.flags.rerollAll;
-  if (wasHot || rerollAll) {
+  if ((wasHot || rerollAll) && !smokeReroll) {
     // "计分并重投" brings every die back into the cup, including dice that had
     // already been set aside in this throw.
     for (const die of state.dice) {
@@ -1456,7 +1523,13 @@ export function rollDice(state: RunState, { free = false, rng = getRng(state), f
     pushLog(state, `掷出 ${state.lastRoll!.map((v) => v === 0 ? '白' : v).join(' · ')}，没有可计分的组合。`, 'bad');
     /* Salt is no longer armed in advance: the table holds the bust and asks.
        The round stays on the table until resolveSaltOffer() answers. */
-    if (ownsSalt(state)) {
+    /* 悬秤人的浮动分不在掷空瞬间扣掉；它先挂在桌上，等玩家真正发起
+       下一次重投时再结算。这样烟雾弹和 +重投道具仍然有操作空间。 */
+    if (isFloatingScore(state)) {
+      state.flags.floatingBustPending = true;
+      state.lastBust = { saved: Math.max(0, state.roundScore || 0), floating: true };
+      pushLog(state, '秤没有落。浮动分还挂在桌上：重投、用烟雾弹或用 +重投道具，都还有机会。', 'info');
+    } else if (ownsSalt(state)) {
       state.flags.saltOffer = true;
       state.lastBust = { saved: Math.max(0, state.roundScore || 0) };
     } else if (getBarrel(state).type === 'loan'
@@ -1471,6 +1544,7 @@ export function rollDice(state: RunState, { free = false, rng = getRng(state), f
   } else {
     // A scoring throw does not end the round. The accumulated round stays at
     // risk until "计分并重投" or a bust.
+    state.flags.floatingBustPending = false;
     state.lastBust = null;
     pushLog(state, `掷出 ${state.lastRoll!.map((v) => v === 0 ? '白' : v).join(' · ')}。`, 'roll');
   }
@@ -1632,6 +1706,10 @@ export function applyScore(state: RunState, action: ScoreAction): ApplyScoreResu
   if (paidCoins > 0) {
     state.coins += paidCoins;
     pushLog(state, `骰子结算：+${paidCoins} 银币。`, 'reward');
+  }
+  if (hasSetTier(state, 'caravan', 2)) {
+    state.coins += 10;
+    pushLog(state, '商旅 2 件 · 计分路费：+10 银币。', 'reward');
   }
   if (bossEffect === 'coinTaxPerDie') {
     const tax = scoringDice.length * 2;
@@ -1795,7 +1873,9 @@ export function canUseItem(state: RunState, itemId: string): ItemResult {
   if (!state.activeItems.includes(itemId)) return { ok: false, error: '你还没有这件物品。' };
   if ((state.itemCharges[itemId] || 0) <= 0) return { ok: false, error: '本关已经使用过了。' };
   if (state.phase === 'won' || state.phase === 'run-won' || state.phase === 'lost' || state.phase === 'shop') {
-    return { ok: false, error: '当前阶段不能使用物品。' };
+    if (!(itemId === 'devil_reset' && state.phase === 'lost')) {
+      return { ok: false, error: '当前阶段不能使用物品。' };
+    }
   }
   if (itemId === 'salt') {
     return { ok: false, error: '盐会在掷空时自动询问是否使用。' };
@@ -1808,7 +1888,7 @@ export function canUseItem(state: RunState, itemId: string): ItemResult {
     }
     if (!isBoss && state.level >= LEVEL_COUNT) return { ok: false, error: '已经没有下一场庄家。' };
   }
-  if (itemId === 'glove' && (state.phase !== 'selecting' || selectedDice(state).length !== 1)) {
+  if (itemId === 'glove' && (!['selecting', 'dead'].includes(state.phase) || selectedDice(state).length !== 1)) {
     return { ok: false, error: '先选中恰好一颗骰子。' };
   }
   if ((itemId === 'smoke' || itemId === 'powder') && !['selecting', 'dead'].includes(state.phase)) {
@@ -1860,11 +1940,23 @@ export function useItem(state: RunState, itemId: string): ItemResult {
     pushLog(state, die.wild
       ? '魔术手套滑过骰面：一颗恶魔骰翻出赖子。'
       : '魔术手套滑过骰面：一颗骰子变成 1。', 'item');
+    const after = bestSelection(scorableDice(state), scoringOptions(state));
+    if (after) {
+      state.phase = 'selecting';
+      state.flags.floatingBustPending = false;
+      pushLog(state, '手套改变了骰面：现在有可计分的组合了。', 'good');
+    }
   } else if (itemId === 'smoke') {
     pushLog(state, '烟雾弥漫，未计分的骰子被重新掷出。', 'item');
     state.selected = [];
+    state.flags.smokeReroll = true;
+    state.flags.rerollAll = false;
+    state.flags.hotDice = false;
     state.itemCharges[itemId] = 0;
     return { ok: true, rerollFree: true, item };
+  } else if (itemId === 'devil_reset') {
+    state.retryCount = 0;
+    pushLog(state, '魔鬼的收据烧成灰：下一次重来重新从 100 银币开始。', 'good');
   } else if (itemId === 'charm') {
     state.flags.charm = true;
     state.target = Math.ceil(state.target * 0.85);
@@ -1973,6 +2065,30 @@ export function forfeit(state: RunState): { ok: boolean; error?: string } {
   state.phase = 'lost';
   pushLog(state, '你放下了骰子，承认这一局输了。', 'lose');
   return { ok: true };
+}
+
+export const DEVIL_RETRY_COSTS = [100, 1000, 10000] as const;
+
+export function devilRetryCost(state: RunState): number | null {
+  if (state.phase !== 'lost') return null;
+  if (hasSetTier(state, 'caravan', 4) && !state.caravanFreeRetryUsed) return 0;
+  const count = state.retryCount || 0;
+  return count < DEVIL_RETRY_COSTS.length ? (DEVIL_RETRY_COSTS[count] ?? null) : null;
+}
+
+/** Pay the devil and restart the current level without losing the run. */
+export function devilRetry(state: RunState): { ok: boolean; error?: string; cost?: number } {
+  if (state.phase !== 'lost') return { ok: false, error: '现在不需要和魔鬼交易。' };
+  const cost = devilRetryCost(state);
+  if (cost == null) return { ok: false, error: '魔鬼已经不愿意再给你机会了。' };
+  if (state.coins < cost) return { ok: false, error: `需要 ${cost} 银币。` };
+  if (cost === 0) state.caravanFreeRetryUsed = true;
+  state.coins -= cost;
+  state.retryCount = (state.retryCount || 0) + 1;
+  state.devilPaid = (state.devilPaid || 0) + cost;
+  pushLog(state, `和魔鬼交易：付出 ${cost} 银币，本关重新开始。`, 'system');
+  initLevel(state);
+  return { ok: true, cost };
 }
 
 export function retryLevel(state: RunState): { ok: boolean; error?: string } {

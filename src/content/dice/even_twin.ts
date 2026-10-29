@@ -2,7 +2,7 @@
 import type { DiceDef } from '../../core/types.ts';
 
 export default {
-  id: 'even_twin', name: '双生骰', setId: null, rarity: 'epic',
+  id: 'even_twin', name: '双生骰', setId: 'stargazer', rarity: 'epic',
   probs: [0, 0.22, 0, 0.18, 0, 0.60],
   flavor: '它只掷出偶数。成双的东西从不独自计分。',
   desc: '只有 2、4、6（22% / 18% / 60%）；单颗不能计分，是纯组合骰，但三条极好凑。计分含任意三条时 +40%。',
