@@ -50,6 +50,8 @@ export const STARTING_COINS = 0;
 export const DEBUG = false;
 /** 最近一次平衡调整：所有商店货品在标价基础上再上浮 25%。 */
 export const SHOP_PRICE_MULTIPLIER = 1.25;
+/** 所有正向金币收益统一 +10%。 */
+export const COIN_GAIN_MULTIPLIER = 1.1;
 /** 全骰连击：本关第 N 次全骰的那一手按 1.2^N 计分。 */
 export const HOT_CHAIN_MULTIPLIER = 1.2;
 
@@ -1063,6 +1065,11 @@ function awardLevel(state: RunState): LevelRewardInfo {
       value: cash.overshootValue,
     });
   }
+  const grossTotal = total;
+  total = Math.round(total * COIN_GAIN_MULTIPLIER);
+  if (total > grossTotal) {
+    bonuses.push({ label: '金币收益 +10%', value: total - grossTotal });
+  }
   state.coins += total;
   state.levelReward = {
     base: cfg.reward, curveBase: curveReward, bossPremium,
@@ -1642,8 +1649,8 @@ export function applyScore(state: RunState, action: ScoreAction): ApplyScoreResu
     state.flags.ashTypes = [...(state.flags.ashTypes || []), currentType];
   }
   if (state.passiveItems.includes('toll_relic') && scoringDice.length >= 3) {
-    state.coins += 10;
-    pushLog(state, '抽头账簿：这一手有 3 颗以上骰子，+10 银币。', 'reward');
+    state.coins += Math.round(10 * COIN_GAIN_MULTIPLIER);
+    pushLog(state, '抽头账簿：这一手有 3 颗以上骰子，+11 银币。', 'reward');
   }
   addScore(state, total, { round: true });
   state.comboUsage = state.comboUsage || {};
@@ -1703,6 +1710,7 @@ export function applyScore(state: RunState, action: ScoreAction): ApplyScoreResu
       die.gilded = false;
     }
   }
+  handCoins = Math.round(handCoins * COIN_GAIN_MULTIPLIER);
   state.roundCoins = (state.roundCoins || 0) + handCoins;
   const banksRound = action !== 'continue';
   const paidCoins = banksRound ? state.roundCoins : 0;
@@ -1712,8 +1720,8 @@ export function applyScore(state: RunState, action: ScoreAction): ApplyScoreResu
     pushLog(state, `骰子结算：+${paidCoins} 银币。`, 'reward');
   }
   if (hasSetTier(state, 'caravan', 2)) {
-    state.coins += 10;
-    pushLog(state, '商旅 2 件 · 计分路费：+10 银币。', 'reward');
+    state.coins += Math.round(10 * COIN_GAIN_MULTIPLIER);
+    pushLog(state, '商旅 2 件 · 计分路费：+11 银币。', 'reward');
   }
   if (bossEffect === 'coinTaxPerDie') {
     const tax = scoringDice.length * 2;

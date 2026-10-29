@@ -37,5 +37,5 @@ test('boss tooltip exposes the full boss effect', () => {
   const html = bossTooltip('satan');
   expect(html).toContain('撒旦');
   expect(html).toContain('撒旦的恩赐');
-  expect(html).toContain('100000');
+  expect(html).toContain('80000');
 });

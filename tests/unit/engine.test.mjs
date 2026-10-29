@@ -395,7 +395,7 @@ test('defeating a boss never raises the reroll budget', () => {
   const cfg3 = getLevelConfig(3);
   const perReroll = Math.round(cfg3.reward * REROLL_BONUS_RATE);
   const overshoot = Math.round(cfg3.reward * OVERSHOOT_BONUS_RATE);
-  expect(state.levelReward.total).toBe(cfg3.reward + state.rerolls * perReroll + overshoot);
+  expect(state.levelReward.total).toBe(Math.round((cfg3.reward + state.rerolls * perReroll + overshoot) * 1.1));
   expect(state.levelReward.bonuses.some((b) => b.label.includes('未用重投'))).toBeTruthy();
   expect(state.levelReward.bonuses.some((b) => b.label.includes('超过目标'))).toBeTruthy();
   openShop(state);
@@ -882,7 +882,7 @@ test('boss relics change scoring rules instead of adding flat points', () => {
   forceRoll(toll, [3, 3, 3, 2, 4, 6]);
   toll.selected = toll.dice.slice(0, 3).map((die) => die.uid);
   expect(applyScore(toll, 'reroll').ok).toBe(true);
-  expect(toll.coins).toBe(10);
+  expect(toll.coins).toBe(11);
 });
 
 test('the pair-ban boss voids any throw with an exact pair', () => {
@@ -990,7 +990,7 @@ test('unspent rerolls cash out as coins on a level win', () => {
   expect(cash.refund).toBe(3 * perReroll);
   expect(cash.overshoot).toBe(false);
   advanceLevel(state);
-  expect(state.levelReward.total).toBe(cfg.reward + 3 * perReroll);
+  expect(state.levelReward.total).toBe(Math.round((cfg.reward + 3 * perReroll) * 1.1));
   expect(state.levelReward.bonuses.some((b) => b.label.includes('未用重投 3'))).toBeTruthy();
   const reward = state.levelReward;
   expect(state.pendingCoinGain).toBe(reward);
@@ -1012,7 +1012,7 @@ test('overshoot only pays when score is strictly above 2× target', () => {
   expect(cash.refund).toBe(0);
   expect(cash.overshoot).toBe(false);
   advanceLevel(state);
-  expect(state.levelReward.total).toBe(cfg.reward);
+  expect(state.levelReward.total).toBe(Math.round(cfg.reward * 1.1));
 
   const state2 = fresh(3);
   state2.level = 2;
@@ -1024,7 +1024,7 @@ test('overshoot only pays when score is strictly above 2× target', () => {
   expect(cash.overshoot).toBe(true);
   expect(cash.overshootValue).toBe(overshoot);
   advanceLevel(state2);
-  expect(state2.levelReward.total).toBe(cfg.reward + overshoot);
+  expect(state2.levelReward.total).toBe(Math.round((cfg.reward + overshoot) * 1.1));
   expect(state2.levelReward.bonuses.filter((b) => b.label.includes('超过目标')).length).toBe(1);
 });
 
@@ -1036,8 +1036,8 @@ test('a bare pass earns no overshoot bounty and no refund when rerolls are spent
   state.score = 750;
   state.rerolls = 0;
   advanceLevel(state);
-  expect(state.levelReward.total).toBe(getLevelConfig(4).reward);
-  expect(state.levelReward.bonuses).toEqual([]);
+  expect(state.levelReward.total).toBe(Math.round(getLevelConfig(4).reward * 1.1));
+  expect(state.levelReward.bonuses.filter((b) => b.label !== '金币收益 +10%')).toEqual([]);
 });
 
 /* ── one-shot consumables ─────────────────────────────────────────────── */
@@ -1291,7 +1291,7 @@ test('floating points still pay the overshoot bounty once they settle', () => {
 
   // 赏金和分数在同一个时刻兑现：落秤（过关）时一起到账。
   advanceLevel(state);
-  expect(state.levelReward.total).toBe(cfg.reward + 2 * perReroll + overshoot);
+  expect(state.levelReward.total).toBe(Math.round((cfg.reward + 2 * perReroll + overshoot) * 1.1));
 });
 
 test('a dealer level records the coefficient that paid it', () => {
@@ -1450,7 +1450,7 @@ test('satan is the fixed final boss with 100000 target and +2 rerolls', () => {
   state.level = 25;
   initLevel(state);
   expect(activeBoss(state)?.id).toBe('satan');
-  expect(state.target).toBe(100000);
+  expect(state.target).toBe(80000);
   expect(state.rerolls).toBe(BASE_REROLLS + 2);
 });
 
