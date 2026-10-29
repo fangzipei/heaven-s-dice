@@ -8,6 +8,7 @@ import { describe, it, expect } from 'vitest';
 import * as Engine from '../../src/core/engine.ts';
 import { bestSelection } from '../../src/core/scoring.ts';
 import * as Events from '../../src/core/events.ts';
+import { DEFAULT_BOSS_PLAN } from '../../src/content/index.ts';
 /* Die uids, log ids and their `at` stamps embed Date.now() and a process-wide
    counter, so they are opaque bookkeeping, not game state. Alias them in
    first-seen order so two runs of the same seed compare behaviour, not naming. */
@@ -28,6 +29,7 @@ function canonical(value) {
 /** Reads come from the engine directly; only writes go through `ops`. */
 function drive(ops, seed, maxSteps) {
   const run = Engine.createRun({ rng: Engine.makeRng(seed) });
+  run.bossPlan = { ...DEFAULT_BOSS_PLAN };
   const trace = [];
 
   for (let step = 0; step < maxSteps; step += 1) {
@@ -134,8 +136,8 @@ describe('engine event stream', () => {
   }, 180_000);
 
   it('replays the same seed as the same event stream', () => {
-    const first = record(0x1234, 600);
-    const second = record(0x1234, 600);
+    const first = record(0x1234, 1600);
+    const second = record(0x1234, 1600);
     expect(canonical(second.seen)).toBe(canonical(first.seen));
     const types = [...new Set(first.seen.map((event) => event.type))];
     for (const required of [

@@ -61,11 +61,10 @@ export const DIE_PRICE_BY_RARITY: Record<RarityId, number> = {
  * 0 means the tier cannot appear in that band.
  */
 export const SHOP_RARITY_WEIGHTS: ShopWeightBand[] = [
-  { untilLevel: 6, weights: { common: 8000, rare: 1799, epic: 200, legendary: 1 } },
-  { untilLevel: 12, weights: { common: 34, rare: 46, epic: 18, legendary: 2 } },
-  { untilLevel: 18, weights: { common: 18, rare: 44, epic: 30, legendary: 8 } },
-  { untilLevel: 24, weights: { common: 9, rare: 34, epic: 37, legendary: 20 } },
-  { untilLevel: 28, weights: { common: 4, rare: 26, epic: 40, legendary: 30 } },
+  { untilLevel: 6, weights: { common: 65, rare: 27, epic: 7, legendary: 1 } },
+  { untilLevel: 12, weights: { common: 46, rare: 34, epic: 16, legendary: 4 } },
+  { untilLevel: 18, weights: { common: 28, rare: 34, epic: 29, legendary: 9 } },
+  { untilLevel: 24, weights: { common: 15, rare: 32, epic: 43, legendary: 10 } },
 ];
 
 /** A tier's share of the shelf in percent, comparable across level bands. */

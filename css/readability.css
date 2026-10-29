@@ -19,8 +19,6 @@ html, body, .game-screen, .game-layout {
 }
 body, button, input, textarea, .rail, .score-panel, .action-dock, .shop-card, .modal {
   font-family: "Microsoft YaHei", "PingFang SC", "Segoe UI", sans-serif !important;
-  -webkit-font-smoothing: antialiased;
-  text-rendering: optimizeLegibility;
 }
 .game-screen, .game-layout, .scene { min-height: 100%; }
 .scene { background: transparent !important; }
@@ -96,7 +94,7 @@ body, button, input, textarea, .rail, .score-panel, .action-dock, .shop-card, .m
 body.rail-collapsed .game-layout { grid-template-columns: minmax(0, 1fr) 0 !important; }
 body.rail-collapsed .rail { width: 0 !important; min-width: 0 !important; padding: 0 !important; border: 0 !important; overflow: hidden !important; opacity: 0; pointer-events: none; }
 body.rail-collapsed .cup-zone { right: 4.2% !important; }
-body:not(.rail-collapsed) .rail { animation: paper-unfold .3s cubic-bezier(.2,.8,.3,1) both; transform-origin: right center; }
+body:not(.rail-collapsed) .rail { animation: paper-unfold .3s cubic-bezier(.2,.8,.3,1) backwards; transform-origin: right center; }
 @keyframes paper-unfold { from { transform: scaleX(.86) rotate(.4deg); opacity: .4; } to { transform: none; opacity: 1; } }
 
 .rail-paper-ball {
@@ -203,7 +201,7 @@ body.rail-collapsed .cup-zone { right: 64px !important; }
   overflow-y: auto !important;
 }
 body.rail-collapsed .rail { opacity: 0; transform: translate(-18px, -8px) scale(.28) rotate(-10deg); pointer-events: none; visibility: hidden; }
-body:not(.rail-collapsed) .rail { opacity: 1; transform: none; visibility: visible; animation: paper-unfold-left .32s cubic-bezier(.2,.8,.3,1) both; }
+body:not(.rail-collapsed) .rail { opacity: 1; transform: none; visibility: visible; animation: paper-unfold-left .32s cubic-bezier(.2,.8,.3,1) backwards; }
 @keyframes paper-unfold-left { from { transform: translate(-10px, -4px) scale(.35) rotate(-8deg); opacity: .35; } to { transform: none; opacity: 1; } }
 .rail-grip { display: none !important; }
 .rail-collapse { top: 8px !important; right: 8px !important; width: 30px !important; height: 30px !important; font-size: 22px !important; background: #fffaf0 !important; }
@@ -272,7 +270,7 @@ html, body { width: 100%; max-width: none !important; overflow-x: hidden; }
   transform-origin: right top !important;
 }
 body.rail-collapsed .rail { transform: translate(18px, -8px) scale(.28) rotate(10deg); }
-body:not(.rail-collapsed) .rail { animation: paper-unfold-right .32s cubic-bezier(.2,.8,.3,1) both; }
+body:not(.rail-collapsed) .rail { animation: paper-unfold-right .32s cubic-bezier(.2,.8,.3,1) backwards; }
 @keyframes paper-unfold-right { from { transform: translate(10px, -4px) scale(.35) rotate(8deg); opacity: .35; } to { transform: none; opacity: 1; } }
 
 .rail-collapse {
@@ -366,4 +364,113 @@ body, .game-layout { background-image: none !important; background-color: #f4ecd
   .rail-paper-ball { right: 8px !important; top: 44% !important; width: 62px !important; height: 62px !important; }
   .rail-paper-ball span { font-size: 11px !important; }
   .rail { right: 8px !important; left: auto !important; width: min(92vw, 330px) !important; top: 66px !important; }
+}
+.layer-shade { position: absolute; inset: 0; z-index: 7; pointer-events: none; background: #0b0805; opacity: 0; transition: opacity .8s ease; }
+body.layer-dark-1 .layer-shade { opacity: .16; }
+body.layer-dark-2 .layer-shade { opacity: .32; }
+
+/* ── enemy name tag: vertical strip hanging off the portrait's left edge ── */
+@media (min-width: 761px) {
+  .opponent-plate {
+    left: auto !important;
+    right: calc(100% + 8px) !important;
+    top: 12px !important;
+    bottom: auto !important;
+    width: auto !important;
+    min-width: 0 !important;
+    transform: none !important;
+    padding: 12px 7px 10px !important;
+    display: flex !important;
+    flex-direction: row-reverse !important;
+    align-items: flex-start;
+    gap: 6px;
+  }
+  /* row-reverse: the name sits nearest the portrait, the kicker outside it */
+  .opponent-plate strong { order: 1; writing-mode: vertical-rl; font-size: 19px !important; letter-spacing: .18em !important; }
+  .opponent-kicker { order: 2; writing-mode: vertical-rl; font-size: 9px !important; letter-spacing: .26em !important; }
+  .boss-badge { order: 3; writing-mode: vertical-rl; }
+  .opponent-plate::before { width: 30px !important; height: 12px !important; top: -7px !important; }
+  /* Dice cup asked to read 20% smaller than the plain layout; the caption
+     keeps its old painted size so the drag hint stays readable. */
+  #cup-zone { zoom: .8; }
+  .cup-hint, .cup-badge { font-size: 14px !important; }
+}
+
+/* ── 115% play surface, scene art untouched ────────────────────────────
+   The screen is zoomed, then .scene-art is counter-zoomed so the generated
+   landscape keeps its painted size (percentages inside it cancel out). The
+   heights bound to --app-height are divided by the same factor so the zoomed
+   screen still ends exactly at the viewport edge. The rail keeps its old
+   painted width (296 × 1.15 ≈ 340) so the dice row and cup stay clear of it;
+   only its type grows. */
+@media (min-width: 1051px) {
+  :root { --ui-zoom: 1.15; }
+  #game-screen {
+    zoom: var(--ui-zoom);
+    height: calc(var(--app-height, 100dvh) / var(--ui-zoom)) !important;
+    max-height: calc(var(--app-height, 100dvh) / var(--ui-zoom)) !important;
+  }
+  .game-layout {
+    height: calc(var(--app-height, 100dvh) / var(--ui-zoom) - 68px) !important;
+    max-height: calc(var(--app-height, 100dvh) / var(--ui-zoom) - 68px) !important;
+  }
+  .rail {
+    width: min(296px, 27.8vw) !important;
+    max-height: calc(var(--app-height, 100dvh) / var(--ui-zoom) - 102px) !important;
+  }
+  .scene-art { zoom: calc(1 / var(--ui-zoom)); }
+  /* Taller top bar leaves the scene shorter; nudge the art back down by 75%
+     of that (51px = 0.75 × the 68px bar) so the crop matches the plain screen. */
+  .room-wall.back { background-position: center calc(75% + 51px * (var(--ui-zoom) - 1)) !important; }
+  /* The cup keeps its painted spot; only its size is dialled down. Its
+     percentages already resolve in screen pixels, so they stay untouched. */
+  #cup-zone { zoom: calc(.8 / var(--ui-zoom)); }
+  body:has(#game-screen:not([hidden])):not(:has([data-overlay], .shop-screen)) .floating-tooltip { zoom: var(--ui-zoom); }
+}
+
+/* ── phones: target note top-left, boss card top-right, cup clear of the dice ── */
+@media (max-width: 760px) {
+  .score-panel {
+    left: 6px !important; top: 8px !important;
+    width: min(57vw, 212px) !important;
+    padding: 9px 10px !important;
+  }
+  .score-number strong { font-size: 27px !important; }
+  .score-panel-bottom { gap: 5px; }
+  #reroll-inline { padding: 4px 8px !important; }
+  /* Left was over-constrained by the desktop `left: 50%`, which parked the
+     portrait over the target note; pin it to the right edge instead. */
+  .opponent {
+    left: auto !important; right: 6px !important; top: 6px !important;
+    width: 92px !important;
+    transform: rotate(-2deg) !important;
+  }
+  .opponent.is-boss { width: 100px !important; }
+  .opponent-plate {
+    left: auto !important; right: 0 !important;
+    top: calc(100% + 6px) !important;
+    width: 100% !important; min-width: 0 !important;
+    transform: none !important;
+    padding: 4px 6px 5px !important;
+  }
+  .opponent-plate strong { font-size: 12px !important; }
+  .opponent-kicker { font-size: 7px !important; letter-spacing: .12em !important; }
+  /* Cup sits beside the row with a real gap, not on top of the last die. */
+  body.rail-collapsed .cup-zone, body:not(.rail-collapsed) .cup-zone {
+    left: auto !important; right: 4px !important;
+    top: auto !important; bottom: 132px !important;
+    width: 54px !important;
+  }
+  /* The unfolded intel sheet needs its phone width back. */
+  .rail {
+    left: auto !important; right: 8px !important; top: 64px !important;
+    width: min(92vw, 360px) !important;
+    max-height: calc(var(--app-height, 100dvh) - 80px) !important;
+  }
+}
+
+/* Narrow phones: the tray header has to stay on one line above the dice. */
+@media (max-width: 400px) {
+  .dice-tray-head { font-size: 12px !important; }
+  #throw-label, .dice-count { padding: 2px 7px !important; }
 }

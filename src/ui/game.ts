@@ -7,6 +7,7 @@ import { ITEM_BY_ID, LEVEL_COUNT, getOpponent, rarityOf, DICE_SETS } from '../co
 import {
   advanceLevel, applyGesture, applyItemGrant, applyScore, canUseItem, forfeit, getBarrel,
   getDieSpec, getScorePreview, resolveSaltOffer as engineResolveSaltOffer, rollDice, selectedDice,
+  handTypeName, activeBoss,
   useItem as engineUseItem,
 } from '../core/engine.ts';
 import type { ScoreAction } from '../core/engine.ts';
@@ -22,7 +23,7 @@ import { closeOverlay, openOverlay } from './components/overlay.ts';
 import { showToast } from './components/toast.ts';
 import { guideEvent, nextTutorialRoll } from './tutorial-guide.ts';
 import { renderActionDock, renderComboPreview, renderDangerStrip } from './dock.ts';
-import { $, setCss } from './dom.ts';
+import { $, setCss, uiZoom } from './dom.ts';
 import { renderOpponentPlate, renderRail, renderScorePanel, renderTopbar, showBustNotice } from './hud.ts';
 import type { CupTrace } from './state.ts';
 import { app } from './state.ts';
@@ -37,6 +38,8 @@ import { diceTable, renderDiceTray } from './tray.ts';
 export function renderGame(): void {
   if (!app.run) return;
   const run = app.run;
+  document.body.classList.toggle('layer-dark-1', run.level > 7);
+  document.body.classList.toggle('layer-dark-2', run.level > 15);
   discoverLoadout(run);
   renderTopbar();
   renderScorePanel();
@@ -131,8 +134,9 @@ async function gatherDiceToCup(uids: string[]) {
   const cup = $('#cup');
   const animations = elements.map((element, index) => {
     const rect = element.getBoundingClientRect();
-    const dx = mouth.x - (rect.left + rect.width / 2);
-    const dy = mouth.y - (rect.top + rect.height / 2);
+    const zoom = uiZoom(element);
+    const dx = (mouth.x - (rect.left + rect.width / 2)) / zoom;
+    const dy = (mouth.y - (rect.top + rect.height / 2)) / zoom;
     element.style.pointerEvents = 'none';
     const dir = index % 2 ? 1 : -1;
     return element.animate([
@@ -172,8 +176,9 @@ async function pourDiceFromCup(uids: string[]) {
   if (!targets.length) return;
   for (const [index, element] of targets.entries()) {
     const rect = element.getBoundingClientRect();
-    const dx = mouth.x - (rect.left + rect.width / 2);
-    const dy = mouth.y - (rect.top + rect.height / 2);
+    const zoom = uiZoom(element);
+    const dx = (mouth.x - (rect.left + rect.width / 2)) / zoom;
+    const dy = (mouth.y - (rect.top + rect.height / 2)) / zoom;
     element.style.setProperty('--pour-x', `${dx.toFixed(1)}px`);
     element.style.setProperty('--pour-y', `${dy.toFixed(1)}px`);
     element.style.setProperty('--pour-rot', `${(index % 2 ? 1 : -1) * (70 + index * 12)}deg`);
@@ -485,6 +490,9 @@ async function performCupRoll({ free = false, prepared = false, from = null }: {
       return;
     }
     guideEvent('roll', run);
+    if (activeBoss(run)?.effectKey === 'banTypeEachThrow' && run.flags.bossBannedType) {
+      showToast(`路西法封禁「${handTypeName(run.flags.bossBannedType)}」：本投该骰型不计分。`, 'error');
+    }
     recordThrow(run, {
       values: run.lastRoll ? [...run.lastRoll] : [],
       hot: Boolean(result.hot),
@@ -766,7 +774,7 @@ function showHotBurst() {
 
 function speakOnScore(total: number, run: RunState) {
   if (total >= 700 || run.score >= run.target * .75) {
-    const opponent = getOpponent(run.level)!;
+    const opponent = getOpponent(run.level, run)!;
     const lines = opponent.taunts || [];
     if (lines.length) setSpeech(lines[Math.floor(Math.random() * lines.length)]!);
   }
@@ -774,7 +782,7 @@ function speakOnScore(total: number, run: RunState) {
 
 function speakRandomTaunt(probability = .3) {
   if (!app.run || Math.random() > probability) return;
-  const opponent = getOpponent(app.run.level)!;
+  const opponent = getOpponent(app.run.level, app.run)!;
   const lines = opponent.taunts || [];
   if (lines.length) setSpeech(lines[Math.floor(Math.random() * lines.length)]!);
 }
@@ -966,6 +974,7 @@ export function bindCupDrag(): void {
   let pointerId: number | null = null;
   let startX = 0;
   let startY = 0;
+  let dragZoom = 1;
   let dx = 0;
   let dy = 0;
   let traceRadius = 86;
@@ -989,6 +998,7 @@ export function bindCupDrag(): void {
     app.cupPointerId = pointerId;
     startX = event.clientX;
     startY = event.clientY;
+    dragZoom = uiZoom(cup);
     dx = 0;
     dy = 0;
     const cupRect = cup.getBoundingClientRect();
@@ -1024,7 +1034,7 @@ export function bindCupDrag(): void {
     dx = clamp(event.clientX - startX, dragMin, dragMax);
     dy = clamp(event.clientY - startY, dragMinY, dragMaxY);
     const tilt = clamp(dx * .02, -9, 9);
-    cup.style.transform = `translate(${dx}px, ${dy}px) rotate(${tilt}deg)`;
+    cup.style.transform = `translate(${dx / dragZoom}px, ${dy / dragZoom}px) rotate(${tilt}deg)`;
     if (Math.abs(dx) > 8 || Math.abs(dy) > 8) {
       sound.rattle();
       if (!app.cupHoldStarted) {

@@ -57,7 +57,7 @@ describe('content registry equals the frozen pre-refactor tables', () => {
   });
 
   test('rarity shop weights still resolve through the last band', () => {
-    expect(rarityShopWeight('legendary', 99)).toBe(30);
+    expect(rarityShopWeight('legendary', 99)).toBe(10);
     expect(rarityShopWeight('nonsense', 1)).toBe(0);
   });
 });
@@ -69,7 +69,7 @@ describe('one file per entry, and every file registered', () => {
     ['items', () => Content.ITEMS],
     ['tables', () => Content.TABLES],
     ['minions', () => Content.MINIONS],
-    ['bosses', () => Content.BOSSES],
+    ['bosses', () => Content.BOSS_CATALOG],
   ];
 
   for (const [dir, read] of REGISTRIES) {
@@ -107,10 +107,10 @@ describe('one file per entry, and every file registered', () => {
       const source = readFileSync(new URL(`bosses/${file}`, CONTENT_DIR), 'utf8');
       expect(source, `${file} must not hand-write level/group`).not.toMatch(/\b(level|group):/);
     }
-    expect(Content.BOSSES.map((boss) => boss.level)).toEqual([3, 6, 10, 14, 18, 23, 28, 33]);
+    expect(Content.BOSSES.map((boss) => boss.level)).toEqual([3, 7, 11, 15, 20, 24]);
     expect(Content.BOSSES.map((boss) => boss.group))
       .toEqual(SNAPSHOT.BOSSES.map((boss) => boss.group));
     expect(readFileSync(new URL('bosses/index.ts', CONTENT_DIR), 'utf8'))
-      .toContain('BOSS_LEVELS[index]');
+      .toContain('BOSS_SLOTS');
   });
 });

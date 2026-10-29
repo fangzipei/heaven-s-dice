@@ -187,7 +187,7 @@ export function beginLevelRecord(run: RunState): void {
   active.levels.push({
     level: run.level,
 
-    opponent: getOpponent(run.level)?.name || '',
+    opponent: getOpponent(run.level, run)?.name || '',
     table: getTable(run.level).name,
     target: run.target,
     startedAt: now,

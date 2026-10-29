@@ -9,7 +9,7 @@ import { app } from '../../src/ui/state.ts';
 import { bindDiscovery } from '../../src/platform/storage.ts';
 import { openCompendium, switchCompendiumTab } from '../../src/ui/screens/compendium.ts';
 import { probabilityBars } from '../../src/ui/components/cards.ts';
-import { BARRELS, BOSSES, DICE, ITEMS, MINIONS, TABLES } from '../../src/content/index.ts';
+import { BARRELS, BOSS_CATALOG, DICE, ITEMS, MINIONS, MINION_GAPS, TABLES } from '../../src/content/index.ts';
 import { installDomStub } from '../helpers/stub-dom.mjs';
 import { assemblySource, legacyAppSource } from '../helpers/legacy-app.mjs';
 
@@ -79,21 +79,21 @@ describe('图鉴搬到 ui/screens/compendium.ts 之后仍然写同样的文案',
     openCompendium('tables');
     const html = overlay();
     expect(html).toContain('五张赌桌，五种材质。关卡越深，桌面越昂贵，坐在对面的东西也越不像人。');
-    expect(html).toContain('第 1–7 关');
+    expect(html).toContain('第 1–5 关');
     expect((html.match(/comp-table-bg/g) || []).length).toBe(TABLES.length);
   });
 
   test('庄家页：八位庄家 + 五位小兵，赏金系数照写', () => {
     openCompendium('bosses');
     const html = overlay();
-    expect(html).toContain(`${BOSSES.length} 位庄家`);
-    expect(html).toContain(`第 ${BOSSES.map((boss) => boss.level).join('、')} 关庄家亲自落座`);
-    expect(html).toContain('（2、2、3、3、3、4、4、4）');
-    expect(html).toContain('悬赏 ×1.45');
-    expect(html).toContain('六点回炉');
+    expect(html).toContain(`${BOSS_CATALOG.length} 位庄家`);
+    expect(html).toContain('3、7 关从稀有池');
+    expect(html).toContain(MINION_GAPS.join('、'));
+    expect(html).toContain(`悬赏 ×${BOSS_CATALOG[0].curve.reward.toFixed(2)}`);
+    expect(html).toContain('五点回炉');
     expect(html).toContain('五位小兵');
-    expect((html.match(/comp-portrait/g) || []).length).toBe(BOSSES.length);
-    expect((html.match(/assets\/portraits\//g) || []).length).toBe(BOSSES.length + MINIONS.length);
+    expect((html.match(/comp-portrait/g) || []).length).toBe(BOSS_CATALOG.length);
+    expect((html.match(/assets\/portraits\//g) || []).length).toBe(BOSS_CATALOG.length + MINIONS.length);
   });
 });
 

@@ -18,7 +18,7 @@ export function showVictory(): void {
   if (!app.run || app.resultShown) return;
   app.resultShown = true;
   const run = app.run;
-  const opponent = getOpponent(run.level)!;
+  const opponent = getOpponent(run.level, run)!;
   const table = getTable(run.level);
   const isFinal = run.phase === 'run-won' || run.level >= LEVEL_COUNT;
   const reward = (run.levelReward || { total: projectedReward(), bonuses: [] }) as LevelRewardInfo;
@@ -48,7 +48,6 @@ export function showVictory(): void {
         </div>
         <div class="modal-actions">
           <button class="secondary-button" data-action="confirm-home">返回首页</button>
-          <button class="primary-button" data-action="restart-run">再来一局 <svg><use href="#i-restart"></use></svg></button>
         </div>
       </div>
     `, { dismissible: false });
@@ -69,6 +68,7 @@ export function showVictory(): void {
         <div><span>奖励</span><b><svg><use href="#i-coin"></use></svg>${num(reward.total)}</b></div>
       </div>
       ${reward.bossPremium ? `<div class="reward-breakdown"><span style="border-color:rgba(116,100,154,.4);color:var(--violet)">${h(reward.bossName)} 悬赏 ×${reward.bossScale.toFixed(2)} <b>基础 ${num(reward.curveBase)} → ${num(reward.base)}</b></span></div>` : ''}
+      ${reward.relic ? `<div class="reward-breakdown"><span style="border-color:rgba(217,180,106,.5)">庄家掉落 <b>${h(reward.relic.name)}</b></span></div>` : ''}
       ${reward.bonuses?.length ? `<div class="reward-breakdown">${reward.bonuses.map((b) => `<span>${h(b.label)} <b>+${num(b.value)}</b></span>`).join('')}</div>` : ''}
       <p class="result-sub" style="font-size:10px;margin-top:-5px">下一站：${h(nextTable.name)} · 第 ${next} 关</p>
       <div class="modal-actions">
@@ -82,7 +82,7 @@ export function showDefeat(): void {
   if (!app.run || app.resultShown) return;
   app.resultShown = true;
   const run = app.run;
-  const opponent = getOpponent(run.level)!;
+  const opponent = getOpponent(run.level, run)!;
   const finished = finishRunRecord(run, 'loss');
   if (finished) storeFinishedRun(finished);
   clearGameSave();
@@ -102,7 +102,6 @@ export function showDefeat(): void {
       <p class="result-sub" style="font-size:10px">卷土重来会保留骰子、骰桶与物品，但会失去一半银币。</p>
       <div class="modal-actions">
         <button class="secondary-button" data-action="confirm-home">离开赌桌</button>
-        <button class="secondary-button" data-action="restart-run">重新开始</button>
         <button class="primary-button" data-action="retry-level">卷土重来 <svg><use href="#i-restart"></use></svg></button>
       </div>
     </div>

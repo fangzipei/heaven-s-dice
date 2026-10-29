@@ -96,7 +96,7 @@ export function showBustNotice(lost: number) {
 
 export function renderOpponentPlate() {
   const run = app.run!;
-  const opponent = getOpponent(run.level)!;
+  const opponent = getOpponent(run.level, run)!;
   const isBoss = Boolean(getLevelConfig(run.level).boss);
   $('#opponent-name')!.textContent = opponent.name;
   $('#opponent-kicker')!.textContent = isBoss ? `第 ${run.level} 关 · 庄家` : opponent.title;
@@ -113,7 +113,7 @@ export function renderOpponentPlate() {
 
 export function renderRail() {
   const run = app.run!;
-  const opponent = getOpponent(run.level)!;
+  const opponent = getOpponent(run.level, run)!;
   const isBoss = Boolean(getLevelConfig(run.level).boss);
   $('#objective-level')!.textContent = `第 ${run.level} 关`;
   $('#objective-name')!.textContent = opponent.name;

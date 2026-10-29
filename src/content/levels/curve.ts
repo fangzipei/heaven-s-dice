@@ -5,15 +5,23 @@ import type { BossDef, LevelCurveDef, LevelRow } from '../../core/types.ts';
 /* ── 关卡曲线：目标与赏金是算出来的，不是抄出来的 ──────────────────────
    一条指数曲线负责“越往后越贵”，庄家用 bosses/<id>.ts 里的 curve 系数把
    自己那一档抬起来。改难度只要动 curve、改曲线只要动 LEVEL_CURVE，
-   不用再手改 33 行数字（改一行忘三行才是真正的 bug 来源）。 */
+   不用再手改每一关的数字（改一行忘三行才是真正的 bug 来源）。 */
 export const LEVEL_CURVE: LevelCurveDef = {
-  targetBase: 500,      // 第 1 关目标分
-  targetGrowth: 1.05,   // 每关目标 ×1.05
-  targetAfterFirst: 2,  // 第 2 关起再 ×2
-  rewardBase: 55,       // 第 1 关基础赏金
-  rewardGrowth: 1.055,  // 每关赏金 ×1.055
-  targetStep: 10,       // 目标取整到 10
-  rewardStep: 5,        // 赏金取整到 5
+  targetBase: 500,
+  targetGrowth: 1.06,
+  targetAfterFirst: 1,
+  rewardBase: 55,
+  rewardGrowth: 1.06,
+  targetStep: 10,
+  rewardStep: 5,
+  /* Percentage bands, not flat steps. The growth rates are set from the
+     expected shop upgrade at each rarity band: 1-7 common-heavy, 8-15
+     rare/epic, 16-24 epic/legendary. */
+  targetSegments: [
+    { untilLevel: 7, growth: 0.07 },
+    { untilLevel: 15, growth: 0.09 },
+    { untilLevel: 24, growth: 0.11 },
+  ],
 };
 
 const roundTo = (value: number, step: number) => Math.max(step, Math.round(value / step) * step);
@@ -27,22 +35,25 @@ export function buildLevelTable(bosses: BossDef[] = BOSSES, curve: LevelCurveDef
   const at = new Map(bosses.map((boss) => [boss.level, boss]));
   const total = bosses.length ? Math.max(...bosses.map((boss) => boss.level)) : 0;
   const rows: LevelRow[] = [];
+  let curveTarget = curve.targetBase;
   for (let level = 1; level <= total; level += 1) {
-    const baseTarget = curve.targetBase * curve.targetGrowth ** (level - 1);
+    if (level > 1) {
+      const band = curve.targetSegments?.find((entry) => level <= entry.untilLevel);
+      const growth = band?.growth ?? (curve.targetGrowth - 1);
+      curveTarget *= 1 + growth;
+    }
+    const baseTarget = curveTarget;
     const baseReward = curve.rewardBase * curve.rewardGrowth ** (level - 1);
     const boss = at.get(level) || null;
     const scale = boss?.curve || { target: 1, reward: 1 };
-    const curveTarget = roundTo(baseTarget, curve.targetStep);
+    const roundedCurveTarget = roundTo(baseTarget, curve.targetStep);
     const scaledTarget = roundTo(baseTarget * (scale.target ?? 1), curve.targetStep);
-    // Levels 2+ are exactly twice the old curve target (after boss scaling and
-    // rounding), so no level can accidentally fall just under 2×.
-    const afterFirst = level === 1 ? 1 : (curve.targetAfterFirst ?? 1);
     const row: LevelRow = {
       level,
-      target: scaledTarget * afterFirst,
+      target: scaledTarget,
       reward: roundTo(baseReward * (scale.reward ?? 1), curve.rewardStep),
       curve: {
-        target: curveTarget * afterFirst,
+        target: roundedCurveTarget,
         reward: roundTo(baseReward, curve.rewardStep),
       },
     };

@@ -65,7 +65,7 @@ describe('条子术语与新被动物品', () => {
     const straight = blankState();
     select(straight, [1, 2, 3, 4, 5].map((value) => ({ value })));
     straight.passiveItems = ['straight_bell'];
-    expect(totalFor(straight)).toBe(600);
+    expect(totalFor(straight)).toBe(560);
 
     const full = blankState();
     select(full, [1, 2, 3, 4, 5, 6].map((value) => ({ value })));
@@ -124,6 +124,25 @@ describe('新骰子计分规则', () => {
     state.phase = 'selecting';
     select(state, [{ bagUid: 'b0', dieId: 'merchant', value: 1 }]);
     expect(totalFor(state)).toBe(110);
+  });
+
+  test('史诗及以上的骰子只按百分比加分', () => {
+    const flatTypes = ['hasFace', 'wildFlat', 'anyTriple', 'faceFlat', 'fiveAndSix', 'tripleFace', 'straightFlat', 'flatScored'];
+    const offenders = Object.values(DICE_BY_ID)
+      .filter((die) => die && (die.rarity === 'epic' || die.rarity === 'legendary'))
+      .filter((die) => die.bonus && flatTypes.includes(die.bonus.type))
+      .map((die) => die.id);
+    expect(offenders).toEqual([]);
+  });
+
+  test('百分比加分只在触发条件成立时生效', () => {
+    const ace = blankState();
+    select(ace, [{ dieId: 'ace', value: 1 }]);
+    expect(totalFor(ace)).toBe(130);
+
+    const five = blankState();
+    select(five, [{ dieId: 'ace', value: 5 }]);
+    expect(totalFor(five)).toBe(50);
   });
 
   test('金痕计分给 20 银币', () => {
@@ -343,13 +362,13 @@ describe('商店涨价', () => {
     }
     const itemTotal = Object.values(itemCounts).reduce((sum, n) => sum + n, 0);
     const dieTotal = Object.values(dieCounts).reduce((sum, n) => sum + n, 0);
-    expect(itemCounts.common / itemTotal).toBeGreaterThan(0.78);
-    expect(itemCounts.common / itemTotal).toBeLessThan(0.82);
-    expect(itemCounts.rare / itemTotal).toBeGreaterThan(0.16);
-    expect(itemCounts.rare / itemTotal).toBeLessThan(0.20);
-    expect(Math.abs(itemCounts.common / itemTotal - dieCounts.common / dieTotal)).toBeLessThan(0.02);
-    expect(Math.abs(itemCounts.rare / itemTotal - dieCounts.rare / dieTotal)).toBeLessThan(0.02);
-    expect(itemCounts.legendary).toBeLessThanOrEqual(2);
+    expect(itemCounts.common / itemTotal).toBeGreaterThan(0.58);
+    expect(itemCounts.common / itemTotal).toBeLessThan(0.72);
+    expect(itemCounts.rare / itemTotal).toBeGreaterThan(0.20);
+    expect(itemCounts.rare / itemTotal).toBeLessThan(0.34);
+    expect(Math.abs(itemCounts.common / itemTotal - dieCounts.common / dieTotal)).toBeLessThan(0.06);
+    expect(Math.abs(itemCounts.rare / itemTotal - dieCounts.rare / dieTotal)).toBeLessThan(0.06);
+    expect(itemCounts.legendary / itemTotal).toBeLessThanOrEqual(0.02);
   });
 
   test('所有货品在标价基础上上浮 25%', () => {

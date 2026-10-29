@@ -11,7 +11,7 @@ import { DICE_SETS, DIE_PRICE_BY_RARITY } from './meta.ts';
 import { STANDARD_DIE } from './standard_die.ts';
 import { DICE_DEFS } from './dice/index.ts';
 import { BARREL_DEFS } from './barrels/index.ts';
-import { ITEM_DEFS } from './items/index.ts';
+import { ITEM_DEFS, BOSS_RELICS } from './items/index.ts';
 import { TABLE_DEFS } from './tables/index.ts';
 import { MINION_DEFS } from './minions/index.ts';
 
@@ -20,7 +20,7 @@ export {
   REROLL_BONUS_RATE, OVERSHOOT_RATIO, OVERSHOOT_BONUS_RATE, exceedsOvershoot,
 } from './meta.ts';
 export { STANDARD_DIE } from './standard_die.ts';
-export { BOSSES } from './bosses/index.ts';
+export { BOSSES, BOSS_CATALOG, BOSS_SLOTS, BOSS_BY_ID, bossForLevel, rollBossPlan, DEFAULT_BOSS_PLAN } from './bosses/index.ts';
 export {
   MINION_GAPS, LEVELS, LEVEL_COUNT, CHAPTERS, chapterForLevel, chapterLevelSpan,
   getLevelConfig, getOpponent, getTable, buildLevelTable, LEVEL_CURVE, setDifficultyConfig,
@@ -40,6 +40,7 @@ export const BARREL_BY_ID: ById<BarrelDef> = Object.fromEntries(BARRELS.map((b) 
 
 export const ITEMS: ItemDef[] = ITEM_DEFS;
 export const ITEM_BY_ID: ById<ItemDef> = Object.fromEntries(ITEMS.map((i) => [i.id, i]));
+export { BOSS_RELICS };
 
 export const TABLES: TableDef[] = TABLE_DEFS;
 export const MINIONS: MinionDef[] = MINION_DEFS;

@@ -3,7 +3,8 @@ import type { BossContentDef } from '../../core/types.ts';
 
 export default {
   id: 'suspensor', art: 'boss-scale',
-  curve: { target: 1, reward: 1.50 },
+  curve: { target: 1.35, reward: 1.85 },
+  rarity: 'epic',
   name: '悬秤人', title: '未落定之数', accent: '#c3b4e6',
   effectName: '浮筹未决', effectKey: 'floatingScore',
   effectDesc: '本关所有得分都是漂浮分：计分与重投都不会真正入账，只有离开这张桌子时才结算；一旦掷出无法计分的骰型，全部漂浮分立刻消散。',

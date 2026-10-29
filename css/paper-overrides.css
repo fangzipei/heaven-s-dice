@@ -91,7 +91,7 @@ body::before { display: none !important; }
 .panel::after, .rail-card::after, .modal::after, .shop-screen::after { display: none !important; }
 .start-screen { background: transparent !important; }
 .start-backdrop, .start-veil { display: none !important; }
-.start-grain { opacity: .1 !important; mix-blend-mode: multiply !important; }
+.start-grain { opacity: .04 !important; mix-blend-mode: multiply !important; }
 .start-main, .game-layout { max-width: 1480px; }
 .game-layout { width: 100%; margin-left: auto; margin-right: auto; }
 .start-copy h1, .home-title, .modal-title, .shop-title h2, .result-modal h2 {

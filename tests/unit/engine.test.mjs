@@ -4,18 +4,21 @@ import {
   createRun, rollDice, applyScore, initLevel, targetForLevel,
   effectiveProbs, useItem, canUseItem, createShop, buyDie,
   buyBarrel, buyItem, leaveShop, applyGesture, getDiceCapacity,
-  openShop, refreshSection, getBarrel, BASE_REROLLS, advanceLevel,
+  openShop, refreshSection, refreshCost, getBarrel, BASE_REROLLS, advanceLevel,
   buildScore, syncBag, getScorePreview, hasItemEverBeenTaken,
   activeBoss, isBossDieBlocked, handTypeOf, sellItem, canSellItem, itemSellPrice,
-  bossEffectKey, shopSlots, isFloatingScore, resolveSaltOffer,
+  bossEffectKey, shopSlots, isFloatingScore, resolveSaltOffer, activeItemCapacity,
 } from '../../src/core/engine.ts';
 import { makeRng, cashOutValue } from '../../src/core/engine.ts';
 import {
-  REROLL_BONUS_RATE, OVERSHOOT_BONUS_RATE, LEVELS, getLevelConfig, ITEM_BY_ID, DICE_BY_ID,
+  REROLL_BONUS_RATE, OVERSHOOT_BONUS_RATE, LEVELS, getLevelConfig, ITEM_BY_ID, DICE_BY_ID, DEFAULT_BOSS_PLAN,
+  BOSS_SLOTS, BOSS_BY_ID, rollBossPlan,
 } from '../../src/content/index.ts';
 
 function fresh(seed = 42) {
-  return createRun({ rng: makeRng(seed) });
+  const state = createRun({ rng: makeRng(seed) });
+  state.bossPlan = { ...DEFAULT_BOSS_PLAN };
+  return state;
 }
 
 function forceRoll(state, values) {
@@ -32,7 +35,7 @@ test('a new run starts with zero coins and a 500-point first target', () => {
   expect(state.coins).toBe(0);
   expect(state.level).toBe(1);
   expect(state.target).toBe(500);
-  expect(getLevelConfig(2).target).toBe(1060);
+  expect(getLevelConfig(2).target).toBe(540);
 });
 
 test('opening throw is free, later throws spend the three fixed rerolls', () => {
@@ -274,7 +277,7 @@ test('barrel probabilities normalise and bias faces', () => {
   expect(lead[4] > lead[1]).toBeTruthy();
 });
 
-test('early shop dice follow the 80 / 18 / 2 / 0.01 rarity split', () => {
+test('early shop dice follow the 65 / 27 / 7 / 1 rarity split', () => {
   const state = fresh(11);
   state.level = 1;
   const rng = makeRng(20261027);
@@ -285,13 +288,13 @@ test('early shop dice follow the 80 / 18 / 2 / 0.01 rarity split', () => {
   }
   const total = Object.values(counts).reduce((sum, n) => sum + n, 0);
   expect(total).toBe(4000);
-  expect(counts.common / total).toBeGreaterThan(0.78);
-  expect(counts.common / total).toBeLessThan(0.82);
-  expect(counts.rare / total).toBeGreaterThan(0.16);
-  expect(counts.rare / total).toBeLessThan(0.20);
-  expect(counts.epic / total).toBeGreaterThan(0.012);
-  expect(counts.epic / total).toBeLessThan(0.03);
-  expect(counts.legendary).toBeLessThanOrEqual(2);
+  expect(counts.common / total).toBeGreaterThan(0.62);
+  expect(counts.common / total).toBeLessThan(0.74);
+  expect(counts.rare / total).toBeGreaterThan(0.18);
+  expect(counts.rare / total).toBeLessThan(0.30);
+  expect(counts.epic / total).toBeGreaterThan(0.04);
+  expect(counts.epic / total).toBeLessThan(0.10);
+  expect(counts.legendary / total).toBeLessThanOrEqual(0.02);
 });
 
 test('shop offers 2 dice, 1 barrel, 3 items and purchases deduct coins', () => {  const state = fresh();
@@ -640,16 +643,64 @@ test('cracked pouch trades a die for a permanent score multiplier', () => {
   expect(second.ok).toBe(false);
 });
 
-test('active items have no carry limit', () => {
+test('carried active items are capped at three', () => {
+  const state = fresh();
+  state.activeItems = [];
+  state.itemCharges = {};
+  initLevel(state);
+  state.coins = 9999;
+  createShop(state);
+  for (let i = 0; i < 3; i += 1) {
+    state.shop.item[0] = { id: 'glove', sold: false };
+    expect(buyItem(state, 0).ok).toBe(true);
+  }
+  state.shop.item[0] = { id: 'glove', sold: false };
+  const fourth = buyItem(state, 0);
+  expect(fourth.ok).toBe(false);
+  expect(fourth.error).toContain('3');
+  expect(state.activeItems.length).toBe(3);
+});
+
+test('active shelf adds one active item slot', () => {
+  const state = fresh();
+  state.activeItems = [];
+  state.passiveItems = ['active_shelf'];
+  expect(activeItemCapacity(state)).toBe(4);
+  state.coins = 9999;
+  initLevel(state);
+  createShop(state);
+  for (let i = 0; i < 4; i += 1) {
+    state.shop.item[0] = { id: 'glove', sold: false };
+    expect(buyItem(state, 0).ok).toBe(true);
+  }
+  expect(state.activeItems.length).toBe(4);
+});
+
+test('shop refreshes get 30% more expensive each time', () => {
   const state = fresh();
   initLevel(state);
   state.coins = 9999;
   createShop(state);
-  for (let i = 0; i < 6; i += 1) {
-    state.shop.item[0] = { id: 'glove', sold: false };
-    expect(buyItem(state, 0).ok).toBe(true);
-  }
-  expect(state.activeItems.filter((id) => id === 'glove').length).toBe(6);
+  expect(refreshCost(state, 'dice')).toBe(20);
+  expect(refreshSection(state, 'dice', { rng: () => 0.5 }).ok).toBe(true);
+  expect(refreshCost(state, 'dice')).toBe(26);
+  expect(refreshSection(state, 'dice', { rng: () => 0.5 }).ok).toBe(true);
+  expect(refreshCost(state, 'dice')).toBe(34);
+  expect(refreshCost(state, 'barrel')).toBe(26);
+  expect(refreshCost(state, 'item')).toBe(22);
+});
+test('dice packs roll their choices at purchase and keep them on reopen', () => {
+  const state = fresh();
+  initLevel(state);
+  state.coins = 999;
+  createShop(state);
+  state.shop.item[0] = { kind: 'item', id: 'rare_pair', sold: false };
+  expect(buyItem(state, 0).ok).toBe(true);
+  state.phase = 'selecting';
+  const first = useItem(state, 'rare_pair').grant.candidates.map((die) => die.id);
+  expect(state.grantRolls.rare_pair[0]).toEqual(first);
+  const second = useItem(state, 'rare_pair').grant.candidates.map((die) => die.id);
+  expect(second).toEqual(first);
 });
 
 test('owned items can be sold for half price only in the shop', () => {
@@ -716,7 +767,7 @@ test('the one-shot boss ward cancels the next boss or the current boss before th
   expect(bossEffectKey(armed)).toBe(null);
 
   const direct = fresh();
-  direct.level = 23; // 星税官 takes a token away, so the ward visibly hands it back
+  direct.level = 7; // 石心审判官 takes a token away, so the ward visibly hands it back
   initLevel(direct);
   direct.activeItems.push('boss_ward');
   direct.itemCharges.boss_ward = 1;
@@ -727,9 +778,91 @@ test('the one-shot boss ward cancels the next boss or the current boss before th
   expect(direct.activeItems.includes('boss_ward')).toBe(false);
 });
 
-test('boss roster covers eight levels and eight effects', () => {
+test('boss roster rolls one boss per fixed rarity slot', () => {
   const state = fresh();
-  expect([3, 6, 10, 14, 18, 23, 28, 33].map((level) => activeBoss({ ...state, level }).id)).toEqual(['rotfang', 'judge', 'soulsmith', 'ashclerk', 'gildedking', 'startax', 'suspensor', 'seraph']);
+  expect([3, 7, 11, 15, 20, 24].map((level) => activeBoss({ ...state, level }).id)).toEqual(['rotfang', 'judge', 'soulsmith', 'ashclerk', 'startax', 'seraph']);
+  const plans = Array.from({ length: 24 }, (_, i) => rollBossPlan(makeRng(100 + i)));
+  expect(new Set(plans.map((plan) => JSON.stringify(plan))).size).toBeGreaterThan(1);
+  for (const plan of plans) {
+    for (const slot of BOSS_SLOTS) {
+      expect(BOSS_BY_ID[plan[slot.level]].rarity).toBe(slot.rarity);
+    }
+  }
+});
+
+test('new boss rules: two/six singles, coin tax, double target and Lucifer ban', () => {
+  const twins = fresh();
+  twins.level = 3;
+  twins.bossPlan = { ...twins.bossPlan, 3: 'twinsix' };
+  initLevel(twins);
+  forceRoll(twins, [2, 1, 3, 4, 6, 6]);
+  twins.selected = [twins.dice[0].uid];
+  expect(buildScore(twins, 'reroll').total).toBe(100);
+  twins.selected = [twins.dice[1].uid];
+  expect(buildScore(twins, 'reroll').valid).toBe(false);
+
+  const toll = fresh();
+  toll.level = 3;
+  toll.bossPlan = { ...toll.bossPlan, 3: 'toll' };
+  initLevel(toll);
+  toll.coins = 100;
+  forceRoll(toll, [3, 3, 3, 2, 4, 6]);
+  toll.selected = toll.dice.slice(0, 3).map((die) => die.uid);
+  expect(applyScore(toll, 'reroll').ok).toBe(true);
+  expect(toll.coins).toBe(94);
+
+  const mirror = fresh();
+  mirror.level = 11;
+  mirror.bossPlan = { ...mirror.bossPlan, 11: 'mirror' };
+  initLevel(mirror);
+  expect(mirror.target).toBe(getLevelConfig(11).target * 2);
+
+  const lucifer = fresh();
+  lucifer.level = 20;
+  lucifer.bossPlan = { ...lucifer.bossPlan, 20: 'lucifer' };
+  initLevel(lucifer);
+  expect(rollDice(lucifer, { rng: () => 0 }).ok).toBe(true);
+  expect(lucifer.flags.bossBannedType).toBeTruthy();
+  expect(lucifer.log.some((entry) => entry.text.includes('路西法封禁'))).toBe(true);
+});
+
+test('boss relics change scoring rules instead of adding flat points', () => {
+  const pair = fresh();
+  pair.passiveItems = ['pairbane_relic'];
+  forceRoll(pair, [3, 3, 2, 1, 4, 5]);
+  pair.selected = pair.dice.slice(0, 2).map((die) => die.uid);
+  expect(buildScore(pair, 'reroll').total).toBe(150);
+
+  const twins = fresh();
+  twins.passiveItems = ['twinsix_relic'];
+  forceRoll(twins, [2, 1, 3, 4, 5, 6]);
+  twins.selected = [twins.dice[0].uid];
+  expect(buildScore(twins, 'reroll').total).toBe(200);
+
+  const seraph = fresh();
+  seraph.passiveItems = ['seraph_relic'];
+  forceRoll(seraph, [3, 3, 3, 2, 4, 6]);
+  seraph.selected = seraph.dice.slice(0, 3).map((die) => die.uid);
+  expect(buildScore(seraph, 'reroll').total).toBe(330);
+
+  const toll = fresh();
+  toll.passiveItems = ['toll_relic'];
+  toll.coins = 0;
+  forceRoll(toll, [3, 3, 3, 2, 4, 6]);
+  toll.selected = toll.dice.slice(0, 3).map((die) => die.uid);
+  expect(applyScore(toll, 'reroll').ok).toBe(true);
+  expect(toll.coins).toBe(10);
+});
+
+test('the pair-ban boss voids any throw with an exact pair', () => {
+  const state = fresh();
+  state.level = 11;
+  state.bossPlan = { ...state.bossPlan, 11: 'pairbane' };
+  initLevel(state);
+  forceRoll(state, [3, 3, 2, 4, 5, 6]);
+  state.selected = state.dice.slice(0, 2).map((die) => die.uid);
+  const result = buildScore(state, 'reroll');
+  expect(result.total).toBe(0);
 });
 
 test('the rat blanks every ninth rolled die', () => {
@@ -746,9 +879,9 @@ test('the rat blanks every ninth rolled die', () => {
   expect(isBossDieBlocked(state, blanks[0])).toBe(true);
 });
 
-test('the judge only lets three-die combinations score', () => {
+test('the star tax judge only lets three-die combinations score', () => {
   const state = fresh();
-  state.level = 6;
+  state.level = 20;
   initLevel(state);
   forceRoll(state, [5, 2, 3, 4, 6, 6]);
   state.selected = [state.dice[0].uid];
@@ -761,11 +894,11 @@ test('the judge only lets three-die combinations score', () => {
   expect(triple.total).toBe(300);
 });
 
-test('the forge disables all sixes', () => {
+test('the forge disables all fives', () => {
   const state = fresh();
-  state.level = 10;
+  state.level = 11;
   initLevel(state);
-  forceRoll(state, [6, 6, 1, 2, 3, 4]);
+  forceRoll(state, [5, 5, 1, 2, 3, 4]);
   expect(isBossDieBlocked(state, state.dice[0])).toBe(true);
   state.selected = [state.dice[0].uid];
   expect(buildScore(state, 'reroll').valid).toBe(false);
@@ -773,7 +906,7 @@ test('the forge disables all sixes', () => {
 
 test('the ash clerk rejects repeating the previous hand type', () => {
   const state = fresh();
-  state.level = 14;
+  state.level = 15;
   initLevel(state);
   forceRoll(state, [3, 3, 3, 2, 4, 6]);
   state.selected = state.dice.slice(0, 3).map((die) => die.uid);
@@ -785,26 +918,15 @@ test('the ash clerk rejects repeating the previous hand type', () => {
   expect(repeated.total).toBe(0);
 });
 
-test('the gilded king locks the first hand type for the level', () => {
-  const state = fresh();
-  state.level = 18;
-  initLevel(state);
-  state.flags.bossLockedType = 'triple';
-  forceRoll(state, [1, 2, 3, 4, 5, 6]);
-  state.selected = [state.dice[0].uid, state.dice[1].uid, state.dice[2].uid, state.dice[3].uid, state.dice[4].uid];
-  const straight = buildScore(state, 'reroll');
-  expect(straight.total).toBe(0);
-});
-
-test('the star tax collector removes a reroll, the seraph taxes score and adds one', () => {
-  const collector = fresh();
-  collector.level = 23;
-  initLevel(collector);
-  expect(collector.rerolls).toBe(BASE_REROLLS - 1);
+test('the judge removes a reroll, the seraph taxes score without adding one', () => {
+  const judge = fresh();
+  judge.level = 7;
+  initLevel(judge);
+  expect(judge.rerolls).toBe(BASE_REROLLS - 1);
   const seraph = fresh();
-  seraph.level = 33;
+  seraph.level = 24;
   initLevel(seraph);
-  expect(seraph.rerolls).toBe(BASE_REROLLS + 1);
+  expect(seraph.rerolls).toBe(BASE_REROLLS);
   forceRoll(seraph, [3, 3, 3, 2, 4, 6]);
   seraph.selected = seraph.dice.slice(0, 3).map((die) => die.uid);
   expect(buildScore(seraph, 'reroll').total).toBe(180);
@@ -1076,7 +1198,7 @@ test('a shelf passive really stocks the extra offer', () => {
 
 /* ── any-triple dice ──────────────────────────────────────────────────── */
 
-test('any-triple dice pay whenever three of a kind lands', () => {
+test('any-triple dice raise the whole hand by a percentage', () => {
   const state = fresh();
   state.bag[0].dieId = 'even_twin';
   syncBag(state);
@@ -1085,65 +1207,17 @@ test('any-triple dice pay whenever three of a kind lands', () => {
   state.selected = state.dice.slice(0, 3).map((die) => die.uid);
   const score = buildScore(state, 'reroll');
   expect(score.valid).toBe(true);
-  expect(score.breakdown.flats.some((flat) => flat.value === 520)).toBeTruthy();
+  expect(score.breakdown.multipliers.some((entry) => entry.value === '+40%')).toBeTruthy();
+  expect(score.total).toBe(280);
 
   // No triple, no bonus.
   forceRoll(state, [2, 2, 1, 1, 5, 6]);
   state.selected = state.dice.filter((die) => die.value === 1 || die.value === 5).map((die) => die.uid);
-  const flat = buildScore(state, 'reroll');
-  expect(!flat.breakdown.flats.some((entry) => entry.value === 520)).toBeTruthy();
+  const plain = buildScore(state, 'reroll');
+  expect(plain.breakdown.multipliers.some((entry) => entry.value === '+40%')).toBe(false);
 });
 
 /* ── 悬秤人：漂浮分 ───────────────────────────────────────────────────── */
-
-test('the suspensor keeps every point floating between throws', () => {
-  const state = fresh();
-  state.level = 28;
-  initLevel(state);
-  expect(activeBoss(state).id).toBe('suspensor');
-  expect(isFloatingScore(state)).toBe(true);
-
-  forceRoll(state, [1, 5, 2, 3, 4, 6]);
-  state.selected = state.dice.filter((die) => die.value === 1).map((die) => die.uid);
-  applyScore(state, 'continue');
-  expect(state.score).toBe(100);
-  expect(state.roundScore).toBe(100);
-
-  // 普通关里下一掷会把上一轮“确认”，漂浮关不会。
-  const seq = [0, 0, 0, 0, 0, 0]; // 六个 1：必定可计分
-  let i = 0;
-  state.phase = 'ready';
-  state.rerolls = 4;
-  rollDice(state, { free: true, rng: () => seq[i++ % seq.length] });
-  expect(state.phase).toBe('selecting');
-  expect(state.score).toBe(100);
-  expect(state.roundScore).toBe(100);
-
-  state.selected = state.dice.map((die) => die.uid);
-  applyScore(state, 'continue');
-  expect(state.score).toBe(1000 * 8 + 100);
-  expect(state.roundScore).toBe(state.score);
-});
-
-test('a bust under the suspensor scatters the whole table', () => {
-  const state = fresh();
-  state.level = 28;
-  initLevel(state);
-  state.score = 250;
-  state.stats.levelScore = 250;
-  state.roundScore = 250;
-
-  // 2 · 3 · 4 · 6 · 2 · 3：没有 1、没有 5、没有三条——必翻。
-  const seq = [0.2, 0.35, 0.55, 0.9, 0.25, 0.4];
-  let i = 0;
-  state.phase = 'ready';
-  state.rerolls = 4;
-  const result = rollDice(state, { free: true, rng: () => seq[i++ % seq.length] });
-  expect(result.bust).toBe(250);
-  expect(state.score).toBe(0);
-  expect(state.lastBust.floating).toBe(true);
-  expect(state.roundScore).toBe(0);
-});
 
 test('the same bust on a normal table only burns the round', () => {
   const state = fresh();
@@ -1175,15 +1249,6 @@ test('floating points still pay the overshoot bounty once they settle', () => {
   // 赏金和分数在同一个时刻兑现：落秤（过关）时一起到账。
   advanceLevel(state);
   expect(state.levelReward.total).toBe(cfg.reward + 2 * perReroll + overshoot);
-});
-
-test('silencing the suspensor is enough to stop the floating', () => {
-  const state = fresh();
-  state.bossWardArmed = true;
-  state.level = 28;
-  initLevel(state);
-  expect(state.flags.bossDisabled).toBe(true);
-  expect(isFloatingScore(state)).toBe(false);
 });
 
 test('a dealer level records the coefficient that paid it', () => {

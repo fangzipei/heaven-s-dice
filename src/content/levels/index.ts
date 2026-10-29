@@ -1,11 +1,11 @@
 // content/levels/index.ts — 关卡表与“这一关是谁、在哪张桌子”的查询。
 // 这里的数据全部由 structure.ts 的节奏 + curve.ts 的曲线 + bosses/ 的系数推出来。
-import { BOSSES } from '../bosses/index.ts';
+import { BOSSES, bossForLevel } from '../bosses/index.ts';
 import { MINION_DEFS } from '../minions/index.ts';
 import { TABLE_DEFS } from '../tables/index.ts';
 import { buildLevelTable, LEVEL_CURVE } from './curve.ts';
 import { chapterForLevel } from './structure.ts';
-import type { ChapterInfo, LevelRow, MinionDef, Opponent, TableDef } from '../../core/types.ts';
+import type { ChapterInfo, LevelRow, MinionDef, Opponent, RunState, TableDef } from '../../core/types.ts';
 
 export const LEVELS: LevelRow[] = buildLevelTable();
 
@@ -44,11 +44,11 @@ export function getLevelConfig(level: number): LevelRow {
   return target === base.target ? base : { ...base, target, curve: { ...base.curve, target } };
 }
 
-export function getOpponent(level: number): Opponent | null {
+export function getOpponent(level: number, run?: RunState | null): Opponent | null {
   const group = chapterForLevel(level);
   const cfg = getLevelConfig(level);
   if (!cfg.boss) return MINION_DEFS[group] ?? null;
-  return BOSSES.find((boss) => boss.level === level) || BOSSES[group] || null;
+  return bossForLevel(level, run?.bossPlan) || BOSSES.find((boss) => boss.level === level) || BOSSES[group] || null;
 }
 
 export function getTable(level: number): TableDef {

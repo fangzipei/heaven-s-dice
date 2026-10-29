@@ -21,8 +21,6 @@
   --sans: "Microsoft YaHei", "PingFang SC", "Noto Sans SC", "Segoe UI", sans-serif;
   --shadow: 0 24px 70px rgba(0, 0, 0, .55);
   --ease: cubic-bezier(.22, .8, .24, 1);
-  /* right rail width: fluid, so the notes stretch with the window */
-  --rail-w: clamp(288px, 19vw, 360px);
 }
 
 * { box-sizing: border-box; }
@@ -35,8 +33,6 @@ body {
   font-size: 14px;
   line-height: 1.55;
   overflow: hidden;
-  -webkit-font-smoothing: antialiased;
-  text-rendering: optimizeLegibility;
 }
 button, input, select, textarea { font: inherit; color: inherit; }
 button { border: 0; background: none; cursor: pointer; }
@@ -438,7 +434,7 @@ svg { width: 1em; height: 1em; display: block; }
   .history-loadout { grid-template-columns: 1fr 1fr; }
 }
 
-.game-layout { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) var(--rail-w); }
+.game-layout { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) 288px; }
 .scene {
   position: relative; min-width: 0; overflow: hidden;
   background: #050403;
@@ -1910,8 +1906,7 @@ svg { width: 1em; height: 1em; display: block; }
    RESPONSIVE
    ═══════════════════════════════════════════════════════════════════ */
 @media (max-width: 1240px) {
-  :root { --rail-w: clamp(272px, 23vw, 300px); }
-  .game-layout { grid-template-columns: minmax(0, 1fr) var(--rail-w); }
+  .game-layout { grid-template-columns: minmax(0, 1fr) 264px; }
   .rail { padding: 11px 10px 16px; }
   .rail-card { padding: 11px 11px; }
   .speech-bubble, .boss-effect-card { width: 205px; left: calc(100% - 20px); }
@@ -2321,8 +2316,6 @@ body.is-resizing-rail { cursor: col-resize; user-select: none; }
 }
 body, button, input, textarea, .rail, .score-panel, .action-dock, .shop-card, .modal {
   font-family: "Microsoft YaHei", "PingFang SC", "Segoe UI", sans-serif !important;
-  -webkit-font-smoothing: antialiased;
-  text-rendering: optimizeLegibility;
 }
 body { font-size: 16px; }
 .rail-card-head { font-size: 15px !important; letter-spacing: .06em !important; }

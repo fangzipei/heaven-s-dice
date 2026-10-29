@@ -16,7 +16,7 @@ import { dirname, join } from 'node:path';
 import {
   DICE, STANDARD_DIE, DICE_SETS, BARRELS, ITEMS, LEVELS,
   RARITIES, SHOP_RARITY_WEIGHTS, REROLL_BONUS_RATE, OVERSHOOT_RATIO, OVERSHOOT_BONUS_RATE,
-  BOSSES, LEVEL_CURVE, rarityShopWeight,
+  BOSSES, BOSS_CATALOG, LEVEL_CURVE, rarityShopWeight,
 } from '../src/content/index.ts';
 import { dieSkinStyle, dieMotifSvg } from '../src/render/dice-skins.ts';
 import { pipPoints } from '../src/render/pip-layout.ts';
@@ -159,9 +159,9 @@ function barrelCard(barrel) {
 function itemCard(item) {
   const rarity = RARITIES[item.rarity] || RARITIES.common;
   const kind = item.type === 'active' ? '主动 · 每关恢复 1 次' : '被动 · 永久生效';
-  const extra = [item.unique ? '整局限一次' : '', item.consumable ? '一次性消耗' : ''].filter(Boolean);
+  const extra = [item.bossOnly ? '庄家专属掉落 · 商店不刷新' : '', item.unique ? '整局限一次' : '', item.consumable ? '一次性消耗' : ''].filter(Boolean);
   return `<article class="card item-card" data-rarity="${item.rarity}" data-name="${esc(item.name)}" style="--rarity:${rarity.color};--glow:${rarity.glow}">
-    <div class="top"><span class="rarity">${rarity.name}</span><span class="price">${item.price} 银币</span></div>
+    <div class="top"><span class="rarity">${rarity.name}</span><span class="price">${item.bossOnly ? '庄家掉落' : `${item.price} 银币`}</span></div>
     <div class="art icon">${inlineSvg(`assets/art/items/${item.id}-full.svg`, item.id)}</div>
     <h4>${esc(item.name)}</h4>
     <p class="desc">${esc(item.desc)}</p>
@@ -201,13 +201,14 @@ function itemStrength(item) {
   return Math.round(40 + (RORDER[item.rarity] * 7) + item.price / 9 + kind + (item.consumable ? -3 : 0) + (item.unique ? 5 : 0));
 }
 function bossStrength(boss) {
-  return Math.round(45 + boss.level * 0.9 + boss.curve.reward * 18 + boss.curve.target * 12);
+  return Math.round(45 + (boss.level ?? 0) * 0.9 + boss.curve.reward * 18 + boss.curve.target * 12);
 }
-const bossRarity = (boss) => (boss.level <= 6 ? 'rare' : boss.level <= 14 ? 'epic' : 'legendary');
+const bossRarity = (boss) => boss.rarity;
 
 const dicePool = (rarity) => DICE.filter((d) => d.rarity === rarity).length;
 const barrelPool = (rarity) => BARRELS.filter((b) => b.rarity === rarity).length;
-const itemPool = (rarity) => ITEMS.filter((i) => i.rarity === rarity).length;
+const itemPool = (rarity) => ITEMS.filter((i) => !i.bossOnly && i.rarity === rarity).length;
+const shopItems = ITEMS.filter((item) => !item.bossOnly);
 
 const ovRow = ({ name, rarity, price, effect, within, chance, strength, probabilities = '—' }) => `<tr>
   <td>${esc(name)}</td><td><span class="ov-r" style="--c:${RARITIES[rarity]?.color || '#aaa'}">${RARITIES[rarity]?.name || rarity}</span></td>
@@ -215,7 +216,10 @@ const ovRow = ({ name, rarity, price, effect, within, chance, strength, probabil
 
 const ovDice = [...DICE].sort(byRarity).map((die) => {
   const pool = dicePool(die.rarity);
-  const shopChance = (rarityShopWeight(die.rarity, 1) / 100) / Math.max(1, pool) * 100;
+  const demonPool = DICE.filter((d) => d.rarity === die.rarity && d.setId === 'demon').length;
+  const weightUnits = pool - demonPool * 0.5;
+  const demonPenalty = die.setId === 'demon' ? 0.5 : 1;
+  const shopChance = (rarityShopWeight(die.rarity, 1) / 100) * (demonPenalty / Math.max(0.5, weightUnits)) * 100;
   return ovRow({
     name: die.name, rarity: die.rarity, price: `${die.price} 银币`,
     effect: die.bonus?.label || die.desc, within: `1 / ${pool}`,
@@ -230,19 +234,19 @@ const ovBarrels = [...BARRELS].sort(byRarity).map((barrel) => ovRow({
   chance: `${pctText(100 / BARRELS.length)} / 格`, strength: barrelStrength(barrel),
 })).join('');
 const ovItems = [...ITEMS].sort(byRarity).map((item) => ovRow({
-  name: item.name, rarity: item.rarity, price: `${item.price} 银币`,
-  effect: item.desc, within: `1 / ${itemPool(item.rarity)}`,
-  chance: `${pctText(100 / ITEMS.length)} / 格`, strength: itemStrength(item),
+  name: item.name, rarity: item.rarity,
+  price: item.bossOnly ? '庄家掉落' : `${item.price} 银币`,
+  effect: item.desc,
+  within: item.bossOnly ? 'Boss 专属' : `1 / ${itemPool(item.rarity)}`,
+  chance: item.bossOnly ? '商店不掉落' : `${pctText(100 / shopItems.length)} / 格`,
+  strength: itemStrength(item),
 })).join('');
-const ovBosses = [...BOSSES].sort((a, b) => a.level - b.level).map((boss) => {
-  const r = bossRarity(boss);
-  return ovRow({
-    name: `${boss.name}（第 ${boss.level} 关）`, rarity: r,
-    price: `${LEVELS[boss.level - 1]?.reward || 0} 基础银币`,
-    effect: `${boss.effectName}：${boss.effectDesc}`, within: '固定关卡',
-    chance: '非商店刷新', strength: bossStrength(boss),
-  });
-}).join('');
+const ovBosses = [...BOSS_CATALOG].sort(byRarity).map((boss) => ovRow({
+  name: boss.name, rarity: boss.rarity,
+  price: '随机池',
+  effect: `${boss.effectName}：${boss.effectDesc}`, within: `${RARITIES[boss.rarity].name}池`,
+  chance: '每局随机', strength: bossStrength(boss),
+})).join('');
 
 /* The live roller needs each die's six face drawings, its skin variables and
    the real post-barrel probabilities. Baking them in keeps the page a single
@@ -311,8 +315,10 @@ const shopTable = SHOP_RARITY_WEIGHTS.map((band, i) => {
 const bossAtLevel = Object.fromEntries(BOSSES.map((boss) => [boss.level, boss]));
 const levelTable = LEVELS.map((l) => {
   const boss = bossAtLevel[l.level];
-  const kind = boss ? `${esc(boss.name)} ×${boss.curve.reward.toFixed(2)}` : '小兵关';
-  return `<tr${boss ? ' class="is-boss"' : ''}><td>${l.level}</td><td>${l.target}</td><td>${l.reward}</td><td>${kind}</td></tr>`;
+  const kind = boss
+    ? `${esc(boss.name)} · ${RARITIES[boss.rarity].name} · 目标 ×${boss.curve.target.toFixed(2)} / 赏金 ×${boss.curve.reward.toFixed(2)}`
+    : '小兵关';
+  return `<tr${boss ? ' class="is-boss"' : ''}><td>${l.level}</td><td>${l.curve.target}</td><td>${l.target}</td><td>${l.reward}</td><td>${kind}</td></tr>`;
 }).join('');
 
 const now = new Date();
@@ -596,7 +602,7 @@ footer code{color:#93836b;font-family:Consolas,monospace;font-size:9.5px}
 <header class="hero">
   <p class="kicker">HEAVEN'S DICE · THE GAMBLER'S ARCHIVE</p>
   <h1>天国骰局 · 内容总览</h1>
-  <p class="lede">骰子 ${diceList.length} 枚（${SET_IDS.map((id) => `${DICE_SETS[id].name} ${diceBySet[id].length}`).join(' / ')} / 无套组 ${diceBySet.none.length} / 标准 1）、骰桶 ${BARRELS.length} 只、物品 ${ITEMS.length} 件（含一次性 ${ITEMS.filter((i) => i.consumable).length} 件）、庄家 ${BOSSES.length} 位。骰面立绘取自游戏真实皮肤（材质渐变 + 刻纹 + 点数），骰桶与物品为仓库 <code>assets/</code> 内的原始矢量图；所有数值由 <code>src/content/</code> 与 <code>src/core/engine.ts</code> 直接生成，不会与游戏脱节。</p>
+  <p class="lede">骰子 ${diceList.length} 枚（${SET_IDS.map((id) => `${DICE_SETS[id].name} ${diceBySet[id].length}`).join(' / ')} / 无套组 ${diceBySet.none.length} / 标准 1）、骰桶 ${BARRELS.length} 只、物品 ${ITEMS.length} 件（含一次性 ${ITEMS.filter((i) => i.consumable).length} 件）、庄家 ${BOSS_CATALOG.length} 位。骰面立绘取自游戏真实皮肤（材质渐变 + 刻纹 + 点数），骰桶与物品为仓库 <code>assets/</code> 内的原始矢量图；所有数值由 <code>src/content/</code> 与 <code>src/core/engine.ts</code> 直接生成，不会与游戏脱节。</p>
   <div class="legend">
     ${Object.values(RARITIES).map((r) => `<span style="--c:${r.color}"><i></i>${r.name}</span>`).join('')}
     <span style="--c:#8a6d3d"><i></i>普通 ${rarityCount.common || 0} · 稀有 ${rarityCount.rare || 0} · 史诗 ${rarityCount.epic || 0} · 传说 ${rarityCount.legendary || 0}</span>
@@ -614,7 +620,7 @@ footer code{color:#93836b;font-family:Consolas,monospace;font-size:9.5px}
 </header>
 
 <section id="overview">
-  <div class="sec-head"><span class="sec-no">00</span><h2>全内容强度总览</h2><span class="count">骰子 ${DICE.length} · 骰桶 ${BARRELS.length} · 物品 ${ITEMS.length} · 庄家 ${BOSSES.length}</span></div>
+  <div class="sec-head"><span class="sec-no">00</span><h2>全内容强度总览</h2><span class="count">骰子 ${DICE.length} · 骰桶 ${BARRELS.length} · 物品 ${ITEMS.length} · 庄家 ${BOSS_CATALOG.length}</span></div>
   <p class="sec-intro">所有内容按稀有度升序排列。价格/收入、效果、档内数量、刷新概率和强度值都来自当前内容表。<b>强度值</b>是用于横向比较的启发式评分：骰子看期望点数、最高面概率、稀有度、价格和附加特性；骰桶/物品看稀有度、价格、类型与消耗/唯一性；庄家看关卡、目标系数和赏金系数。它不是胜率。</p>
 
   <h3 class="ov-sub">骰子 <span>稀有度升序 · 刷新概率按 1 级商店、每格单枚骰子计算</span></h3>
@@ -755,10 +761,10 @@ footer code{color:#93836b;font-family:Consolas,monospace;font-size:9.5px}
     </div>
     <div class="market-card">
       <h4>关卡目标与基础奖励（★ 庄家关）</h4>
-      <p style="color:#8d7e66;font-size:10px;line-height:1.7;margin:0 0 8px">数值不是手写的：目标 = ${LEVEL_CURVE.targetBase} × ${LEVEL_CURVE.targetGrowth}<sup>关-1</sup>，赏金 = ${LEVEL_CURVE.rewardBase} × ${LEVEL_CURVE.rewardGrowth}<sup>关-1</sup>，庄家的桌子再乘上他自己的系数。</p>
-      <table><thead><tr><th>关</th><th>目标</th><th>基础</th><th>庄家 / 类型</th></tr></thead><tbody>${levelTable}</tbody></table>
-      <div class="m-line" style="margin-top:10px"><span>庄家</span><b>${BOSSES.length} 位</b></div>
-      <div class="m-line"><span>悬赏系数</span><b>×${Math.min(...BOSSES.map((b) => b.curve.reward)).toFixed(2)} – ×${Math.max(...BOSSES.map((b) => b.curve.reward)).toFixed(2)}</b></div>
+      <p style="color:#8d7e66;font-size:10px;line-height:1.7;margin:0 0 8px">无庄家目标按百分比增长：1–7 关每关 +${((LEVEL_CURVE.targetSegments?.[0]?.growth ?? 0) * 100).toFixed(0)}%，8–15 关 +${((LEVEL_CURVE.targetSegments?.[1]?.growth ?? 0) * 100).toFixed(0)}%，16–24 关 +${((LEVEL_CURVE.targetSegments?.[2]?.growth ?? 0) * 100).toFixed(0)}%。Boss 只把自己那一行的“无 Boss 目标”乘上目标系数，不会抬高下一关。赏金 = ${LEVEL_CURVE.rewardBase} × ${LEVEL_CURVE.rewardGrowth}<sup>关-1</sup> × Boss 赏金系数。</p>
+      <div class="ov-wrap"><table><thead><tr><th>关</th><th>无 Boss 目标</th><th>实际目标</th><th>基础赏金</th><th>Boss / 类型</th></tr></thead><tbody>${levelTable}</tbody></table></div>
+      <div class="m-line" style="margin-top:10px"><span>庄家</span><b>${BOSS_CATALOG.length} 位</b></div>
+      <div class="m-line"><span>悬赏系数</span><b>×${Math.min(...BOSS_CATALOG.map((b) => b.curve.reward)).toFixed(2)} – ×${Math.max(...BOSS_CATALOG.map((b) => b.curve.reward)).toFixed(2)}</b></div>
     </div>
   </div>
   <ul class="notes">
@@ -768,7 +774,7 @@ footer code{color:#93836b;font-family:Consolas,monospace;font-size:9.5px}
     <li><b>镀金袖扣</b>让刷新费用 −20%，并让每关胜利 +15 银币。</li>
     <li>失败后「卷土重来」保留骰袋、骰桶与物品，失去一半银币。</li>
     <li>每关基础 <b>3 次重投</b>，击败庄家不再累积上限；烈酒 / 时间沙漏 / 加注契约 / 旋涡桶仪式可以临时 +1。</li>
-    <li><b>悬秤人</b>（第 ${BOSSES.find((b) => b.effectKey === 'floatingScore')?.level} 关）把整桌分数变成漂浮分：计分与重投都不会真正入账，掷出无法计分的骰型就整桌清零；只有落秤（过关）时分数与赏金才一起兑现。</li>
+    <li><b>悬秤人</b>（传说池）把整桌分数变成漂浮分：计分与重投都不会真正入账，掷出无法计分的骰型就整桌清零；只有落秤（过关）时分数与赏金才一起兑现。</li>
     <li>骰子期望分数可用 <b>npm run dice:ev</b> 重新评估。</li>
   </ul>
 </section>

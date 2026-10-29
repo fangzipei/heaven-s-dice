@@ -235,15 +235,15 @@ describe('WebGL 骰桌：建桌、签名缓存与无障碍行', () => {
     expect(html).toMatch(/data-die-uid="d5"[^>]*disabled/);
   });
 
-  test('铁面铸魂师的六点回炉：6 点骰子禁用并说明原因', () => {
-    // level 10 是 soulsmith（effectKey noSix）；换了节奏表这条会先在这里失败，
+  test('铁面铸魂师的五点回炉：5 点骰子禁用并说明原因', () => {
+    // level 11 是 soulsmith（effectKey noFive）；换了节奏表这条会先在这里失败，
     // 而不是让断言静默跳过。
-    app.run.level = 10;
+    app.run.level = 11;
     setBoard({ phase: 'selecting', selected: ['d1'] });
-    expect(app.run.dice[3].value).toBe(6);
+    app.run.dice[3].value = 5;
     renderDiceTray();
     const html = nodes.get('#dice-a11y').innerHTML;
-    expect(html).toContain('aria-label="六点被庄家禁用"');
+    expect(html).toContain('aria-label="5 点被庄家禁用"');
     expect(html).toMatch(/data-die-uid="d4"[^>]*disabled/);
     app.run.level = 1;
   });

@@ -43,8 +43,8 @@ describe('结算弹窗搬到 ui/screens/result.ts 之后仍然写同样的文案
 
   test('庄家关：换标题但不再承诺重投上限 +1', () => {
     const run = app.run;
-    run.level = 10;
-    expect(getLevelConfig(10).boss, '第 10 关是庄家关').toBeTruthy();
+    run.level = 11;
+    expect(getLevelConfig(11).boss, '第 11 关是庄家关').toBeTruthy();
     run.score = run.target;
     showVictory();
     const html = overlay();
@@ -53,7 +53,7 @@ describe('结算弹窗搬到 ui/screens/result.ts 之后仍然写同样的文案
     expect(html).not.toContain('重投上限 +1');
   });
 
-  test('终局：通关摘要与再来一局', () => {
+  test('终局：通关摘要与返回首页', () => {
     const run = app.run;
     run.level = LEVEL_COUNT;
     run.phase = 'run-won';
@@ -64,10 +64,11 @@ describe('结算弹窗搬到 ui/screens/result.ts 之后仍然写同样的文案
     expect(html).toContain('你击败了钻石天使，赢下了整座天国骰局。');
     expect(html).toContain(`<span>通关关卡</span><b>${LEVEL_COUNT} / ${LEVEL_COUNT}</b>`);
     expect(html).toContain('data-action="confirm-home">返回首页');
-    expect(html).toContain('data-action="restart-run">再来一局');
+    expect(html).not.toContain('restart-run');
+    expect(html).not.toContain('再来一局');
   });
 
-  test('失败：三条去向与半价银币的警告', () => {
+  test('失败：两条去向与半价银币的警告', () => {
     app.run.score = 10;
     showDefeat();
     const html = overlay();
@@ -77,7 +78,8 @@ describe('结算弹窗搬到 ui/screens/result.ts 之后仍然写同样的文案
     expect(html).toContain('卷土重来会保留骰子、骰桶与物品，但会失去一半银币。');
     expect(html).toContain('data-action="retry-level">卷土重来');
     expect(html).toContain('data-action="confirm-home">离开赌桌');
-    expect(html).toContain('data-action="restart-run">重新开始');
+    expect(html).not.toContain('restart-run');
+    expect(html).not.toContain('重新开始');
   });
 
   test('一局只弹一次：resultShown 挡住第二次调用', () => {

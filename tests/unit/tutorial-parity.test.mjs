@@ -6,7 +6,7 @@ import { beforeAll, describe, expect, test } from 'vitest';
 
 import { app } from '../../src/ui/state.ts';
 import { openRules, openTutorial, scrollTutorial, showStartPrompt } from '../../src/ui/screens/tutorial.ts';
-import { BOSSES, DICE, ITEMS, LEVEL_COUNT, REROLL_BONUS_RATE, TABLES } from '../../src/content/index.ts';
+import { BOSS_CATALOG, DICE, ITEMS, LEVEL_COUNT, REROLL_BONUS_RATE, TABLES } from '../../src/content/index.ts';
 import { SCORING_ROWS } from '../../src/core/scoring.ts';
 import { installDomStub } from '../helpers/stub-dom.mjs';
 import { assemblySource, legacyAppSource } from '../helpers/legacy-app.mjs';
@@ -54,13 +54,13 @@ describe('图解教程搬到 ui/screens/tutorial.ts 之后仍然写同样的正�
   test('目标与装备页引用真实内容数量', () => {
     openTutorial();
     const html = overlay();
-    expect(html).toContain(`${LEVEL_COUNT} 关 · ${BOSSES.length} 位庄家`);
+    expect(html).toContain(`${LEVEL_COUNT} 关 · ${BOSS_CATALOG.length} 位庄家`);
     expect(html).toContain(`骰子 · ${DICE.length} 枚 · 两套 + 无套`);
     expect(html).toContain(`物品 · ${ITEMS.length} 件`);
     expect(html).toContain(`赌桌 · ${TABLES.length} 张`);
     expect(html).toContain(`基础赏金的 ${Math.round(REROLL_BONUS_RATE * 100)}%`);
-    expect(html).toContain(`${BOSSES.length} 位庄家的桌规`);
-    expect(html).toContain('六点回炉');
+    expect(html).toContain(`${BOSS_CATALOG.length} 位庄家的桌规`);
+    expect(html).toContain('五点回炉');
   });
 
   test('scrollTutorial 把章节滚到视口顶部并收起偏差', () => {
@@ -81,7 +81,7 @@ describe('规则表与开始页提示', () => {
     expect(html).toContain('THE RULES OF THE TABLE');
     expect(html).toContain('<h2>赌桌规矩</h2>');
     expect((html.match(/<tr><td>/g) || []).length).toBe(SCORING_ROWS.length);
-    expect(html).toContain(`<h3>${BOSSES.length} 位庄家</h3>`);
+    expect(html).toContain(`<h3>${BOSS_CATALOG.length} 位庄家</h3>`);
     expect(html).toContain(`${DICE.length} 枚秘骰分为普通、稀有、史诗、传说`);
     expect(html).toContain('运气是赌桌上唯一诚实的谎言。');
     expect(html).toContain('data-action="close-overlay">看懂了');

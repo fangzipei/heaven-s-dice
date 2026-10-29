@@ -32,6 +32,16 @@ export interface DiceSetDef {
   bonuses: SetBonusDef[];
 }
 
+/** What has to land for a percentage bonus to pay out. */
+export type ScoreCondition =
+  | { kind: 'wild' }
+  | { kind: 'face'; face: number }
+  | { kind: 'hasFace'; face: number }
+  | { kind: 'faceTriple'; face: number }
+  | { kind: 'anyTriple' }
+  | { kind: 'fiveAndSix' }
+  | { kind: 'straight' };
+
 export type DieBonus =
   | { type: 'hasFace'; face: number; value: number; label: string }
   | { type: 'demon'; included: number; missing: number; label: string }
@@ -44,6 +54,8 @@ export type DieBonus =
   | { type: 'straightFlat'; value: number; label: string }
   /* Flat points whenever this die is part of the scoring selection. */
   | { type: 'flatScored'; value: number; label: string }
+  /* Percentage of the whole hand, added when this die is scored. */
+  | { type: 'scorePercent'; percent: number; label: string; when?: ScoreCondition }
   /* Scores one extra share when this die is part of a 条子 (3+ identical). */
   | { type: 'retriggerKind'; label: string }
   /* Coins paid each time this die is scored. */
@@ -134,6 +146,7 @@ export type ItemDef =
       id: string; name: string; type: 'active'; icon: string; rarity: RarityId;
       price: number; charges: number; desc: string; flavor: string;
       consumable?: boolean; unique?: boolean;
+      bossOnly?: string;
       /** Consumable dice-granting items: roll N dice of a rarity, choose one. */
       grant?: { rarity: RarityId; count: number; choose: number };
     }
@@ -141,6 +154,8 @@ export type ItemDef =
       id: string; name: string; type: 'passive'; icon: string; rarity: RarityId;
       price: number; charges: number; desc: string; flavor: string;
       consumable?: boolean; unique?: boolean;
+      /** Drop-only boss relic; value is the owning boss id. */
+      bossOnly?: string;
       /** Passive hand-type multipliers, applied to the whole score. */
       scoreRule?: ItemScoreRule;
     };
@@ -178,6 +193,7 @@ export interface BossDef {
   id: string;
   art: string;
   curve: BossCurve;
+  rarity: RarityId;
   name: string;
   title: string;
   accent: string;
@@ -202,6 +218,10 @@ export interface LevelCurveDef {
   targetGrowth: number;
   /** Multiplier applied to every level after the first (1 = old curve). */
   targetAfterFirst?: number;
+  /** Explicit no-boss target for each level; takes precedence over the formula. */
+  nonBossTargets?: number[];
+  /** Percentage growth bands for the no-boss curve. */
+  targetSegments?: { untilLevel: number; growth: number }[];
   rewardBase: number;
   rewardGrowth: number;
   targetStep: number;
@@ -264,7 +284,7 @@ export interface BoardDie {
   extra?: boolean;
 }
 
-export type HandType = 'single' | 'triple' | 'quad' | 'quint' | 'sext' | 'straight' | 'mixed';
+export type HandType = 'single' | 'pair' | 'triple' | 'quad' | 'quint' | 'sext' | 'straight' | 'mixed';
 
 export interface RunFlags {
   hunterMark?: boolean;
@@ -283,6 +303,12 @@ export interface RunFlags {
   rerollAll?: boolean;
   bossLastType?: HandType | null;
   bossLockedType?: HandType | null;
+  bossBannedType?: HandType | null;
+  ratCrownProc?: boolean;
+  judgeRelicUsed?: boolean;
+  ashTypes?: string[];
+  suspensorRelicUsed?: boolean;
+  luciferRelicUsed?: boolean;
   bossDisabled?: boolean;
   /** 独注桶：this round has only scored single-die combinations so far. */
   roundSinglesOnly?: boolean;
@@ -304,6 +330,7 @@ export interface LevelRewardInfo {
   bossPremium: number;
   bossName: string | null;
   bossScale: number;
+  relic?: { id: string; name: string } | null;
   bonuses: { label: string; value: number }[];
   total: number;
 }
@@ -398,5 +425,11 @@ export interface RunState {
   levelReward: LevelRewardInfo | null;
   pendingReward: LevelRewardInfo | null;
   pendingCoinGain: LevelRewardInfo | null;
+  /** Boss id assigned to each boss level when this run started. */
+  bossPlan?: Record<number, string>;
+  /** Pre-rolled dice choices for purchased dice packs; first array is the active pack. */
+  grantRolls?: Record<string, string[][]>;
+  /** 双倍镜片 carry-over, spent on the next level. */
+  carryScore?: number;
   runWon?: boolean;
 }

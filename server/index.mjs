@@ -240,7 +240,7 @@ async function saveRun(conn, userId, run) {
   const durationMs = Math.max(0, Math.min(Number(run.durationMs) || 0, 7 * 24 * 3600 * 1000));
   const started = asDate(run.startedAt, new Date(ended.getTime() - durationMs));
   const summary = run.summary && typeof run.summary === 'object' ? run.summary : {};
-  const levelReached = Math.max(1, Math.min(Number(run.levelReached) || 1, 33));
+  const levelReached = Math.max(1, Math.min(Number(run.levelReached) || 1, 24));
   const luckIndex = calculateLuckIndex({ ...run, result, levelReached, summary });
   const [inserted] = await conn.query(
     `INSERT INTO hd_runs
@@ -254,7 +254,7 @@ async function saveRun(conn, userId, run) {
   const runId = inserted.insertId;
   const levels = Array.isArray(run.levels) ? run.levels : [];
   for (const level of levels) {
-    const levelNo = Math.max(1, Math.min(Number(level.level) || 1, 33));
+    const levelNo = Math.max(1, Math.min(Number(level.level) || 1, 24));
     await conn.query(
       `INSERT INTO hd_run_levels
         (run_id, level, opponent, table_name, target, score, started_at, ended_at, loadout, throws)

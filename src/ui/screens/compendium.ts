@@ -3,7 +3,7 @@
 // 从 app.js「Compendium」一节原样搬出。卡片 markup 与文案是 tools/codex-test.mjs
 // 与截图比对依赖的，这里只允许改 import、类型标注和已知的索引写法。
 import {
-  BARRELS, BOSSES, DICE, DICE_SETS, ITEMS, MINIONS, MINION_GAPS, TABLES, chapterLevelSpan, rarityOf,
+  BARRELS, BOSS_CATALOG, DICE, DICE_SETS, ITEMS, MINIONS, MINION_GAPS, TABLES, chapterLevelSpan, rarityOf,
 } from '../../content/index.ts';
 import { h } from '../../core/util.ts';
 import type { DiscoveryKind } from '../../platform/storage.ts';
@@ -99,7 +99,7 @@ function compendiumBody(tab: string): string {
         if (!isDiscovered('items', item.id)) return compendiumLockedCard('这件物品');
         const rarity = rarityOf(item);
         return `<article class="compendium-card item-compendium" style="--rarity:${rarity.color};--glow:${rarity.glow}" data-item-tip="${h(item.id)}">
-          <div class="card-topline"><span class="rarity-tag">${rarity.name}</span><span class="set-tag">${item.consumable ? '一次性' : item.type === 'active' ? '主动' : '被动'}</span></div>
+          <div class="card-topline"><span class="rarity-tag">${rarity.name}</span><span class="set-tag">${item.bossOnly ? '庄家掉落' : item.consumable ? '一次性' : item.type === 'active' ? '主动' : '被动'}</span></div>
           <div class="comp-art"><img src="assets/art/items/${item.id}-cut.svg" alt="${h(item.name)}"></div>
           <h4>${h(item.name)}</h4>
           <div class="comp-sub">${h(item.desc)}</div>
@@ -122,13 +122,13 @@ function compendiumBody(tab: string): string {
       </div>`;
   }
   if (tab === 'bosses') {
-    return `<p class="compendium-intro">每一位庄家都有一句自己的规矩。第 ${BOSSES.map((boss) => boss.level).join('、')} 关庄家亲自落座，两场之间的小兵关越拖越长（${MINION_GAPS.join('、')}）；击败他们，桌子会随章节换成下一种材质。</p>
-      <h3 style="font-family:var(--serif);font-weight:400;font-size:20px;color:var(--ink);margin:8px 0 12px;letter-spacing:.06em">${BOSSES.length} 位庄家</h3>
+    return `<p class="compendium-intro">每一位庄家都有一句自己的规矩。每局开始时，3、7 关从稀有池、11、15 关从史诗池、20、24 关从传说池随机抽签；小兵空档为 ${MINION_GAPS.join('、')}。击败他们，桌子会随章节换成下一种材质。</p>
+      <h3 style="font-family:var(--serif);font-weight:400;font-size:20px;color:var(--ink);margin:8px 0 12px;letter-spacing:.06em">${BOSS_CATALOG.length} 位庄家</h3>
       <div class="compendium-grid bosses-grid">
-        ${BOSSES.map((boss) => `<article class="compendium-card boss-compendium-card" style="--rarity:${boss.accent};--glow:${boss.accent}33">
+        ${BOSS_CATALOG.map((boss) => `<article class="compendium-card boss-compendium-card" style="--rarity:${boss.accent};--glow:${boss.accent}33">
           <img class="comp-portrait" src="assets/portraits/paper/${boss.art}.svg" alt="${h(boss.name)}">
           <div class="comp-content">
-            <div class="comp-sub">第 ${boss.level} 关 · ${h(boss.title)} · 悬赏 ×${boss.curve.reward!.toFixed(2)}</div>
+            <div class="comp-sub">${rarityOf(boss).name}庄家池 · ${h(boss.title)} · 悬赏 ×${boss.curve.reward!.toFixed(2)}</div>
             <h4>${h(boss.name)}</h4>
             <div class="effect"><b>${h(boss.effectName)}</b><p>${h(boss.effectDesc)}</p></div>
             <p style="color:var(--muted);font-size:11px">“${h(boss.intro)}”</p>

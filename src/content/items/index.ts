@@ -20,6 +20,7 @@ import dice_bag from './dice_bag.ts';
 import cracked_pouch from './cracked_pouch.ts';
 import shelf_dice from './shelf_dice.ts';
 import shelf_item from './shelf_item.ts';
+import active_shelf from './active_shelf.ts';
 import triple_charm from './triple_charm.ts';
 import straight_bell from './straight_bell.ts';
 import quad_seal from './quad_seal.ts';
@@ -29,6 +30,19 @@ import heaven_plate from './heaven_plate.ts';
 import pip_ward from './pip_ward.ts';
 import epic_chest from './epic_chest.ts';
 import rare_pair from './rare_pair.ts';
+import rotfang_relic from './rotfang_relic.ts';
+import judge_relic from './judge_relic.ts';
+import twinsix_relic from './twinsix_relic.ts';
+import toll_relic from './toll_relic.ts';
+import soulsmith_relic from './soulsmith_relic.ts';
+import ashclerk_relic from './ashclerk_relic.ts';
+import gildedking_relic from './gildedking_relic.ts';
+import suspensor_relic from './suspensor_relic.ts';
+import mirror_relic from './mirror_relic.ts';
+import startax_relic from './startax_relic.ts';
+import seraph_relic from './seraph_relic.ts';
+import lucifer_relic from './lucifer_relic.ts';
+import pairbane_relic from './pairbane_relic.ts';
 import type { ItemDef } from '../../core/types.ts';
 
 export const ITEM_DEFS: ItemDef[] = [
@@ -55,6 +69,7 @@ export const ITEM_DEFS: ItemDef[] = [
   cracked_pouch,
   shelf_dice,
   shelf_item,
+  active_shelf,
   triple_charm,
   straight_bell,
   quad_seal,
@@ -62,4 +77,35 @@ export const ITEM_DEFS: ItemDef[] = [
   sext_crown,
   heaven_plate,
   pip_ward,
+  rotfang_relic,
+  judge_relic,
+  twinsix_relic,
+  toll_relic,
+  soulsmith_relic,
+  ashclerk_relic,
+  gildedking_relic,
+  suspensor_relic,
+  mirror_relic,
+  startax_relic,
+  seraph_relic,
+  lucifer_relic,
+  pairbane_relic,
 ];
+
+
+/** Boss id -> relic item id. Boss relics never enter the shop pool. */
+export const BOSS_RELICS: Record<string, string> = {
+  rotfang: 'rotfang_relic',
+  judge: 'judge_relic',
+  twinsix: 'twinsix_relic',
+  toll: 'toll_relic',
+  soulsmith: 'soulsmith_relic',
+  ashclerk: 'ashclerk_relic',
+  gildedking: 'gildedking_relic',
+  suspensor: 'suspensor_relic',
+  mirror: 'mirror_relic',
+  startax: 'startax_relic',
+  seraph: 'seraph_relic',
+  lucifer: 'lucifer_relic',
+  pairbane: 'pairbane_relic',
+};

@@ -11,7 +11,7 @@ import {
   buyBarrel as engineBuyBarrel, buyDie as engineBuyDie,
   buyItem as engineBuyItem, canSellItem,
   getBarrel, getDiceCapacity, getDieSpec, getOwnedItemIds, itemSellPrice,
-  refreshCost, refreshSection, sectionLabel, sellItem, shopPrice, shopSlots,
+  refreshCost, refreshSection, sectionLabel, sellItem, shopPrice, shopSlots, activeItemCapacity,
 } from '../../core/engine.ts';
 import type { RunState, ShopOffer } from '../../core/types.ts';
 import { h, num } from '../../core/util.ts';
@@ -222,6 +222,7 @@ function renderItemShopCard(entry: ShopOffer, index: number): string {
   const rarity = rarityOf(item);
   const price = shopPrice(app.run!, item.price);
   const affordable = app.run!.coins >= price;
+  const activeFull = item.type === 'active' && app.run!.activeItems.length >= activeItemCapacity(app.run!);
   return `
     <article class="shop-card stock-row ${entry.sold ? 'is-sold' : ''}" style="--rarity:${rarity.color};--glow:${rarity.glow}" data-item-tip="${h(item.id)}">
       <div class="stock-art"><img src="assets/art/items/${item.id}-cut.svg" alt="${h(item.name)}"></div>
@@ -232,7 +233,7 @@ function renderItemShopCard(entry: ShopOffer, index: number): string {
       </div>
       <div class="stock-buy">
         <span class="price-tag"><svg><use href="#i-coin"></use></svg>${num(price)}</span>
-        <button class="buy-button" data-action="buy-item" data-index="${index}" ${entry.sold || !affordable ? 'disabled' : ''}>购入</button>
+        <button class="buy-button" data-action="buy-item" data-index="${index}" ${entry.sold || !affordable || activeFull ? 'disabled' : ''}>${activeFull ? '主动已满' : '购入'}</button>
       </div>
       ${entry.sold ? '<span class="sold-stamp">SOLD</span>' : ''}
     </article>`;

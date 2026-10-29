@@ -3,7 +3,7 @@
 // 从 app.js「Rules」「Tutorial / first-run briefing」两节原样搬出。教程正文、
 // 计分示例与规则表是截图脚本与新手体验的验收对象，这里只改 import、类型标注。
 import {
-  BARRELS, BOSSES, DICE, ITEMS, LEVEL_COUNT, LEVEL_CURVE, MINION_GAPS,
+  BARRELS, BOSS_CATALOG, DICE, ITEMS, LEVEL_COUNT, LEVEL_CURVE, MINION_GAPS,
   RARITIES, REROLL_BONUS_RATE, OVERSHOOT_BONUS_RATE, STANDARD_DIE, TABLES,
 } from '../../content/index.ts';
 import { SCORING_ROWS } from '../../core/scoring.ts';
@@ -47,8 +47,8 @@ function tutorialHtml(): string {
       formula: face === 1 ? '基础 1000' : `${face} × 100`,
     });
   }).join('');
-  const bosses = BOSSES.map((boss) => `<div class="tut-boss">
-    <b>${h(boss.name)}<span>第 ${boss.level} 关</span></b>
+  const bosses = BOSS_CATALOG.map((boss) => `<div class="tut-boss">
+    <b>${h(boss.name)}<span>${RARITIES[boss.rarity].name}池</span></b>
     <p><strong>${h(boss.effectName)}</strong>：${h(boss.effectDesc)}</p>
   </div>`).join('');
   return `
@@ -73,9 +73,9 @@ function tutorialHtml(): string {
         <div class="tut-section-head"><span>01</span><div><p>THE SHAPE OF A RUN</p><h3>先看目标：一关一关把分数堆上去</h3></div></div>
         <p class="tut-lede">你坐在长桌这一侧，用六颗骰子去够每关的目标分。达到目标后不会自动结束，可以继续加注；准备好了，再亲自点击「下一关」。</p>
         <div class="tut-cards three">
-          <div class="tut-card"><b>${LEVEL_COUNT} 关 · ${BOSSES.length} 位庄家</b><p>第 ${BOSSES.map((boss) => boss.level).join('、')} 关各有一位庄家，两场庄家之间的空档越拖越长：${MINION_GAPS.join('、')} 关。庄家有自己的桌规，击败他会拿到永久重投上限。</p></div>
+          <div class="tut-card"><b>${LEVEL_COUNT} 关 · ${BOSS_CATALOG.length} 位庄家</b><p>第 3、7 关从稀有池，11、15 关从史诗池，20、24 关从传说池各随机抽一位；每局开始时定下整条庄家路线。之间的小兵空档为 ${MINION_GAPS.join('、')} 关。庄家击败后拿到对应赏金，但不会永久增加重投。</p></div>
           <div class="tut-card"><b>6 颗骰子 · 3 次重投</b><p>每关第一掷免费；「计分并继续」免费重投剩余骰子，只有「计分并重投」消耗 1 次重投。骰子、骰桶、物品会改变你能走多远。</p></div>
-          <div class="tut-card"><b>目标分是算出来的</b><p>第 1 关 ${LEVEL_CURVE.targetBase} 分，之后每关 ×${LEVEL_CURVE.targetGrowth}；庄家的桌子再乘上自己的系数（赏金最高 ×${Math.max(...BOSSES.map((boss) => boss.curve.reward!)).toFixed(2)}），所以庄家关总是比隔壁贵一档。分数在左上角：大字是“已得”，本轮挂账单独显示。</p></div>
+          <div class="tut-card"><b>目标分是算出来的</b><p>第 1 关 ${LEVEL_CURVE.targetBase} 分；无庄家关按百分比增长：1–7 关每关 +${((LEVEL_CURVE.targetSegments?.[0]?.growth ?? 0) * 100).toFixed(0)}%，8–15 关 +${((LEVEL_CURVE.targetSegments?.[1]?.growth ?? 0) * 100).toFixed(0)}%，16–24 关 +${((LEVEL_CURVE.targetSegments?.[2]?.growth ?? 0) * 100).toFixed(0)}%。庄家关只把本关的曲线目标乘上对应稀有度系数（赏金最高 ×${Math.max(...BOSS_CATALOG.map((boss) => boss.curve.reward!)).toFixed(2)}），不会影响下一关。</p></div>
         </div>
         <div class="tut-flow">
           <div><i>1</i><b>摇骰</b><span>按住骰桶摇动，2 秒后落骰</span></div>
@@ -173,11 +173,11 @@ function tutorialHtml(): string {
         <div class="tut-cards">
           <div class="tut-card"><b>骰桶 · ${BARRELS.length} 只</b><p>初始橡木桶之外，概率桶偏向某些点数，点数/赖子桶奖励指定结果，还有染金、定点、补顺、增殖与单骰桶会在落骰时插手。仪式桶需要按住后沿桌面轨迹画阵，五芒星每关只能生效一次，也可点右下角「画阵」。</p></div>
           <div class="tut-card"><b>骰子 · ${DICE.length} 枚 · 两套 + 无套</b><p>${RARITIES.common.name} ${DICE.filter((d) => d.rarity === 'common').length}、${RARITIES.rare.name} ${DICE.filter((d) => d.rarity === 'rare').length}、${RARITIES.epic.name} ${DICE.filter((d) => d.rarity === 'epic').length}、${RARITIES.legendary.name} ${DICE.filter((d) => d.rarity === 'legendary').length}。每枚骰子有自己的六面概率，悬停可看真实概率；普通骰也可能带一条明确的计分规则。<b>狼裔 5 枚</b>把 3 的概率抬高，2 / 4 件分别让每颗计分的 3 加分、三条 3 大幅加分。<b>恶魔 5 枚</b>把掷出的 1 变成「恶魔赖子」——能补三条或顺子（顺子最多替 1 颗；顺子已完整时可以顶替其中一面，把该面的自然骰解放出来单独计分），但不能单独计分。剩下的 <b>${DICE.filter((d) => !d.setId).length} 枚无套组</b>走极端骰型、顺序互动与商店成长：复制第一颗、贴邻前一颗、每关换面、重随成长……它们不参与套装，但随时能买能卖。</p></div>
-          <div class="tut-card"><b>物品 · ${ITEMS.length} 件</b><p>${ITEMS.filter((i) => i.type === 'active').length} 主动、${ITEMS.filter((i) => i.type === 'passive').length} 被动，其中 <b>${ITEMS.filter((i) => i.consumable).length} 件一次性</b>——用完即消失，但效果比同价位常驻物品更直接。被动物品里有专门抬高三条/四条/五条/六条/顺子/天地顺/一点五点得分的护符，也有能随机开出史诗骰、或从两枚稀有骰里挑一枚的骰匣。主动物品每关恢复一次；被动物品永久生效。<b>三层骰架 / 双孔桶架 / 暗格货架</b>分别让市集的骰子、骰桶、物品各 +1 个货位。丰饶骰袋 +1 骰、裂痕骰袋 -1 骰但计分 +25%，这两件整局各只能获取一次。</p></div>
-          <div class="tut-card"><b>市集</b><p>每关之后进入：骰子 2 枚、骰桶 1 只、物品 3 件；带上货架类被动会各 +1。骰子按等级加权：前 6 关以普通 / 稀有为主，过了 24 关才真正放出传说。每次刷新都消耗银币；随身物品可以半价卖回，出售后不会再次上架。</p></div>
+          <div class="tut-card"><b>物品 · ${ITEMS.length} 件</b><p>${ITEMS.filter((i) => i.type === 'active').length} 主动、${ITEMS.filter((i) => i.type === 'passive').length} 被动，其中 <b>${ITEMS.filter((i) => i.consumable).length} 件一次性</b>——用完即消失。主动物品默认最多同时携带 <b>3 件</b>；<b>夹层行囊</b>（史诗）再 +1 格。被动物品永久生效。<b>三层骰架 / 双孔桶架 / 暗格货架</b>分别让市集的骰子、骰桶、物品各 +1 个货位。丰饶骰袋 +1 骰、裂痕骰袋 -1 骰但计分 +25%，这两件整局各只能获取一次。</p></div>
+          <div class="tut-card"><b>市集</b><p>每关之后进入：骰子 2 枚、骰桶 1 只、物品 3 件；带上货架类被动会各 +1。骰子按等级加权，恶魔骰在同等稀有度中只有其他骰子一半的刷新权重。每次刷新都消耗银币，同一区域连续刷新价格会累计 +30%。随身物品可以半价卖回。</p></div>
           <div class="tut-card"><b>赌桌 · ${TABLES.length} 张</b><p>木头、青石、黑铁、黄金、钻石。五张桌子平分 ${LEVEL_COUNT} 关（${LEVEL_CURVE.targetBase} 分起步），庄家按难度穿插落座：越晚的桌子越贵，也越不像人坐的地方。</p></div>
         </div>
-        <h4 class="tut-subtitle">${BOSSES.length} 位庄家的桌规</h4>
+        <h4 class="tut-subtitle">${BOSS_CATALOG.length} 位庄家的桌规</h4>
         <div class="tut-bosses">${bosses}</div>
         <div class="tut-callout">
           <b>操作速记</b>
@@ -259,17 +259,17 @@ export function openRules(): void {
           <div class="rules-note">一次计分必须把所选骰子全部纳入合法组合。1 和 5 可以单颗计分；其他点数至少三颗才能计分。所有组合取最高合法分值。</div>
           <h3 style="margin-top:18px">一掷的流程</h3>
           <p>1. 按住骰桶摇动，2 秒倒计时后落骰；或点击下方「自动投掷」。<br>2. 点击选择要计分的骰子。<br>3. 选择「计分并继续」，计分后把选中骰放一边、免费重投剩余骰子；或「计分并重投」，计分后把全部六颗骰子重新投，消耗 1 次重投。<br>4. 六颗骰子全部计分会触发「全骰」，免费重投全部骰子。<br>5. 没有重投次数时，仍可免费「计分并继续」，也可以「计分并结算」。</p>
-          <div class="rules-note">轮次：可以连续「计分并继续」累积本轮挂账；「计分并重投」结束本轮并把累计分全部落袋，再开始新一轮。若某次投掷没有任何可计分组合，本轮累计分全部清零，已落袋分保留；**下一次重投会把全部骰子放回桌上**（包括本轮先前已计分的骰子）。计分面板右下角的大号「本关重投」显示剩余 / 上限，低于 2 次变橙，耗尽变红。</div>
+          <div class="rules-note">轮次：可以连续「计分并继续」累积本轮挂账；「计分并重投」结束本轮并把累计分全部落袋，再开始新一轮。若某次投掷没有任何可计分组合，本轮累计分全部清零，已落袋分保留。计分面板右下角的大号「本关重投」显示剩余 / 上限，低于 2 次变橙，耗尽变红。</div>
           <div class="rules-note">每关基础 3 次重投；击败庄家不会累积上限。烈酒、时间沙漏、加注契约和旋涡桶仪式可以临时增加重投次数。门房还会送你一枚开局就能用的幸运币（一次性）。</div>
           <h3 style="margin-top:18px">收手换钱与超额赏金</h3>
           <p>过关结算时，每次<b style="color:var(--gold-bright)">未使用的重投奖励基础赏金的 ${Math.round(REROLL_BONUS_RATE * 100)}%</b>。此外，本关得分严格超过目标分的 <b style="color:var(--gold-bright)">2 倍</b>，再奖励基础赏金的 ${Math.round(OVERSHOOT_BONUS_RATE * 100)}%。</p>
           <div class="rules-note">达标后左上角「胜利奖励」会实时变成你现在收手能拿到的数目，悬停可看明细：继续加注可以追更高的倍数，也可能一次掷空把本轮挂账全部丢掉。</div>
         </div>
         <div class="rules-section">
-          <h3>${BOSSES.length} 位庄家</h3>
-          ${BOSSES.map((boss) => `
+          <h3>${BOSS_CATALOG.length} 位庄家</h3>
+          ${BOSS_CATALOG.map((boss) => `
             <div class="rule-boss">
-              <b>${h(boss.name)}<span>${h(boss.title)} · 第 ${boss.level} 关 · 悬赏 ×${boss.curve.reward!.toFixed(2)}</span></b>
+              <b>${h(boss.name)}<span>${h(boss.title)} · ${RARITIES[boss.rarity].name}池 · 悬赏 ×${boss.curve.reward!.toFixed(2)}</span></b>
               <p>${h(boss.effectName)}：${h(boss.effectDesc)}</p>
             </div>`).join('')}
           <h3 style="margin-top:16px">装备与市集</h3>

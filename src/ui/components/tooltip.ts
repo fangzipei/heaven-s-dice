@@ -8,7 +8,7 @@ import {
 import { effectiveProbs, getBarrel, setCounts } from '../../core/engine.ts';
 import type { BarrelDef, DiceDef } from '../../core/types.ts';
 import { h } from '../../core/util.ts';
-import { $ } from '../dom.ts';
+import { $, uiZoom } from '../dom.ts';
 import { app } from '../state.ts';
 
 const TIP_SELECTOR = '[data-die-tip],[data-item-tip],[data-set-tip],[data-barrel-tip],[data-pattern-tip],[data-rule-tip]';
@@ -20,11 +20,12 @@ let tooltipCurrent: HTMLElement | null = null;
 function positionTooltip(tip: HTMLElement, anchor: HTMLElement | null): void {
   const pad = 14;
   const gap = 9;
+  const zoom = uiZoom(tip);
   const rect = tip.getBoundingClientRect();
   const box = anchor?.getBoundingClientRect();
   if (!box || box.width < 2) {
-    tip.style.left = `${pad}px`;
-    tip.style.top = `${pad}px`;
+    tip.style.left = `${pad / zoom}px`;
+    tip.style.top = `${pad / zoom}px`;
     return;
   }
   const center = box.left + box.width / 2;
@@ -34,8 +35,8 @@ function positionTooltip(tip: HTMLElement, anchor: HTMLElement | null): void {
   const side = top < pad ? 'below' : 'above';
   if (side === 'below') top = Math.min(window.innerHeight - rect.height - pad, box.bottom + gap);
   tip.dataset.side = side;
-  tip.style.left = `${left}px`;
-  tip.style.top = `${top}px`;
+  tip.style.left = `${left / zoom}px`;
+  tip.style.top = `${top / zoom}px`;
 }
 
 /** Show arbitrary tooltip HTML (used by the legacy WebGL dice table). */
@@ -47,9 +48,10 @@ export function showTooltipHtml(html: string, x: number, y: number, anchor: HTML
   if (anchor) positionTooltip(tip, anchor);
   else {
     // Cursor mode kept for the optional WebGL path.
+    const zoom = uiZoom(tip);
     const rect = tip.getBoundingClientRect();
-    tip.style.left = `${Math.max(14, Math.min(window.innerWidth - rect.width - 14, x + 18))}px`;
-    tip.style.top = `${Math.max(14, Math.min(window.innerHeight - rect.height - 14, y + 18))}px`;
+    tip.style.left = `${Math.max(14, Math.min(window.innerWidth - rect.width - 14, x + 18)) / zoom}px`;
+    tip.style.top = `${Math.max(14, Math.min(window.innerHeight - rect.height - 14, y + 18)) / zoom}px`;
     tip.dataset.side = 'above';
   }
 }
@@ -60,9 +62,10 @@ export function positionTooltipAt(x: number, y: number): void {
   if (!tip || tip.hidden) return;
   if (tooltipCurrent) positionTooltip(tip, tooltipCurrent);
   else {
+    const zoom = uiZoom(tip);
     const rect = tip.getBoundingClientRect();
-    tip.style.left = `${Math.max(14, Math.min(window.innerWidth - rect.width - 14, x + 18))}px`;
-    tip.style.top = `${Math.max(14, Math.min(window.innerHeight - rect.height - 14, y + 18))}px`;
+    tip.style.left = `${Math.max(14, Math.min(window.innerWidth - rect.width - 14, x + 18)) / zoom}px`;
+    tip.style.top = `${Math.max(14, Math.min(window.innerHeight - rect.height - 14, y + 18)) / zoom}px`;
   }
 }
 

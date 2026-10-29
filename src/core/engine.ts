@@ -3,16 +3,36 @@ import {
   BARRELS, BARREL_BY_ID, DICE, DICE_BY_ID, ITEMS, ITEM_BY_ID,
   LEVEL_COUNT, STANDARD_DIE, REROLL_BONUS_RATE, OVERSHOOT_RATIO, OVERSHOOT_BONUS_RATE,
   rarityShopWeight, exceedsOvershoot, activeSetBonuses, chapterForLevel,
-  getLevelConfig, getOpponent, getTable,
+  getLevelConfig, getOpponent, getTable, rollBossPlan, BOSS_RELICS,
 } from '../content/index.ts';
 import {
   analyzeSelection, bestSelection, hasScoringSelection, comboKey, WILD_VALUE,
-  type ScoringAnalysis, type Combo, type PlayableDie, type FaceCount, type NKindCombo,
+  type ScoringAnalysis, type Combo, type PlayableDie, type FaceCount, type NKindCombo, type ScoringOptions,
 } from './scoring.ts';
 import type {
   RunState, BoardDie, BagEntry, DiceDef, PricedDie, BarrelDef, ItemDef, BossDef,
-  MinionDef, Opponent, HandType, LevelRewardInfo, ShopOffer, ShopState, ById,
+  MinionDef, Opponent, HandType, LevelRewardInfo, ShopOffer, ShopState, ById, ScoreCondition,
 } from './types.ts';
+
+function percentConditionMet(
+  when: ScoreCondition | undefined,
+  die: PlayableDie,
+  analysis: ScoringAnalysis,
+  counts: FaceCount,
+  hasTriple: boolean,
+): boolean {
+  if (!when) return true;
+  switch (when.kind) {
+    case 'wild': return Boolean(die.wild);
+    case 'face': return die.value === when.face;
+    case 'hasFace': return (counts[when.face] || 0) >= 1;
+    case 'faceTriple':
+      return analysis.combos.some((combo) => combo.type === 'nkind' && combo.face === when.face && combo.count >= 3);
+    case 'anyTriple': return hasTriple;
+    case 'fiveAndSix': return counts[5] >= 1 && counts[6] >= 1;
+    case 'straight': return analysis.straight;
+  }
+}
 
 export interface RunScoreBreakdown {
   base: number;
@@ -180,14 +200,20 @@ function resetLevelFlags(state: RunState) {
     rerollAll: false,
     bossLastType: null,
     bossLockedType: null,
+    bossBannedType: null,
     bossDisabled: false,
+    ratCrownProc: false,
+    judgeRelicUsed: false,
+    ashTypes: [],
+    suspensorRelicUsed: false,
+    luciferRelicUsed: false,
     roundSinglesOnly: true,
   };
 }
 
 export function activeBoss(state: RunState | null): BossDef | null {
   if (!state || !getLevelConfig(state.level).boss) return null;
-  return getOpponent(state.level) as BossDef | null;
+  return getOpponent(state.level, state) as BossDef | null;
 }
 
 export function bossEffectKey(state: RunState): string | null {
@@ -207,7 +233,8 @@ export function isFloatingScore(state: RunState): boolean {
 export function isBossDieBlocked(state: RunState, die: BoardDie | null | undefined): boolean {
   if (!die) return true;
   if (die.blank) return true;
-  return bossEffectKey(state) === 'noSix' && die.value === 6;
+  if (bossEffectKey(state) !== 'noFive' || die.value !== 5) return false;
+  return !state.passiveItems.includes('soulsmith_relic');
 }
 
 function scorableDice(state: RunState): BoardDie[] {
@@ -216,6 +243,7 @@ function scorableDice(state: RunState): BoardDie[] {
 
 const HAND_TYPE_NAMES: Record<string, string> = {
   single: '单骰',
+  pair: '对子',
   triple: '三条',
   quad: '四条',
   quint: '五条',
@@ -231,13 +259,48 @@ export function handTypeOf(analysis: ScoringAnalysis | null | undefined): HandTy
   if (combo.type === 'straight') return 'straight';
   if (combo.type === 'single') return 'single';
   if (combo.type === 'nkind') {
-    return (({ 3: 'triple', 4: 'quad', 5: 'quint', 6: 'sext' } as Record<number, HandType>)[combo.count]) || 'mixed';
+    return (({ 2: 'pair', 3: 'triple', 4: 'quad', 5: 'quint', 6: 'sext' } as Record<number, HandType>)[combo.count]) || 'mixed';
   }
   return 'mixed';
 }
 
 export function handTypeName(type: string | null | undefined): string {
   return HAND_TYPE_NAMES[type ?? ''] || '尚未计分';
+}
+
+function mostUsedHandType(state: RunState): HandType | null {
+  const counts = new Map<HandType, number>();
+  for (const [key, count] of Object.entries(state.comboUsage || {})) {
+    const type: HandType | null = key.startsWith('single:') ? 'single'
+      : key.startsWith('straight:') ? 'straight'
+        : key.startsWith('nkind:') ? (Number(key.split(':')[2]) === 2 ? 'pair'
+          : Number(key.split(':')[2]) === 3 ? 'triple'
+            : Number(key.split(':')[2]) === 4 ? 'quad'
+              : Number(key.split(':')[2]) === 5 ? 'quint' : 'sext')
+          : null;
+    if (type) counts.set(type, (counts.get(type) || 0) + count);
+  }
+  let best: HandType | null = null;
+  let bestCount = 0;
+  for (const [type, count] of counts) {
+    if (count > bestCount) { best = type; bestCount = count; }
+  }
+  return best;
+}
+
+function scoringOptions(state: RunState): ScoringOptions {
+  const relicTwins = state.passiveItems.includes('twinsix_relic');
+  const bossTwins = bossEffectKey(state) === 'singlesTwoSix';
+  const options: ScoringOptions = {};
+  if (relicTwins) {
+    options.singleFaces = [2, 6];
+    options.singlePoints = { 2: 200, 6: 100 };
+  } else if (bossTwins) {
+    options.singleFaces = [2, 6];
+    options.singlePoints = { 2: 100, 6: 50 };
+  }
+  if (state.passiveItems.includes('pairbane_relic')) options.allowPairs = true;
+  return options;
 }
 
 export function bossTypeStatus(state: RunState, type: HandType | null): { blocked: boolean; note: string } {
@@ -256,6 +319,16 @@ export function bossTypeStatus(state: RunState, type: HandType | null): { blocke
     return {
       blocked: Boolean(locked && locked !== type),
       note: locked ? `本关已锁定「${handTypeName(locked)}」。` : '第一次计分会锁定本关骰型。',
+    };
+  }
+  if (effectKey === 'banTypeEachThrow') {
+    const banned = state.flags?.bossBannedType;
+    if (banned === type && state.passiveItems.includes('lucifer_relic') && !state.flags.luciferRelicUsed) {
+      return { blocked: false, note: '晨星角：本关第一次封禁被豁免。' };
+    }
+    return {
+      blocked: Boolean(banned && banned === type),
+      note: banned ? `本投封禁「${handTypeName(banned)}」。` : '本投尚未封禁骰型。',
     };
   }
   return { blocked: false, note: '' };
@@ -280,6 +353,13 @@ export function bossStatusText(state: RunState): string {
   if (effectKey === 'singleTypeOnly') {
     return state.flags?.bossLockedType ? `已锁定：${handTypeName(state.flags.bossLockedType)}` : '尚未锁定骰型';
   }
+  if (effectKey === 'banTypeEachThrow') {
+    return state.flags?.bossBannedType ? `本投封禁：${handTypeName(state.flags.bossBannedType)}` : '本投尚未封禁';
+  }
+  if (effectKey === 'singlesTwoSix') return '单骰只计 2 / 6';
+  if (effectKey === 'coinTaxPerDie') return '每颗计分骰抽 2 银币';
+  if (effectKey === 'doubleTarget') return '本关目标 ×2';
+  if (effectKey === 'banPairs') return '本投出现对子即无法计分';
   return '';
 }
 
@@ -289,7 +369,8 @@ export function initLevel(state: RunState): RunState {
   const config = getLevelConfig(state.level);
   state.targetBase = targetForLevel(state);
   state.target = state.targetBase;
-  state.score = 0;
+  state.score = state.carryScore || 0;
+  state.carryScore = 0;
   state.roundScore = 0;
   state.targetReached = false;
   state.overshootTierKey = null;
@@ -300,25 +381,27 @@ export function initLevel(state: RunState): RunState {
   state.dice = makeBoard(state.bag);
   state.throwNumber = 0;
   state.bossDiceRolled = 0;
-  state.flags.bossLastType = null;
-  state.flags.bossLockedType = null;
   resetLevelFlags(state);
   state.itemCharges = {};
   for (const itemId of state.activeItems) {
     state.itemCharges[itemId] = ITEM_BY_ID[itemId]?.charges ?? 1;
   }
-  const opponent = getOpponent(state.level);
+  const opponent = getOpponent(state.level, state);
   if (config.boss && state.bossWardArmed && opponent && 'effectName' in opponent) {
     state.bossWardArmed = false;
     state.flags.bossDisabled = true;
     pushLog(state, `静默赦令生效：${opponent.name} 的「${opponent.effectName}」被消除。`, 'good');
   }
   const effectKey = state.flags.bossDisabled ? null : opponent && 'effectKey' in opponent ? opponent.effectKey : null;
+  if (config.boss && effectKey === 'doubleTarget') {
+    state.targetBase *= 2;
+    state.target = state.targetBase;
+    pushLog(state, '双倍镜把本关目标翻了一倍。', 'system');
+  }
   // The base budget never grows between levels (no boss-boon carry-over), but
   // the two boss effects and a handful of items may still shift this level.
   let rerolls = BASE_REROLLS;
   if (config.boss && effectKey === 'rerollMinus') rerolls -= 1;
-  if (config.boss && effectKey === 'scoreTaxReroll') rerolls += 1;
   state.rerolls = Math.max(1, rerolls);
   state.maxRerolls = state.rerolls;
   state.levelStartRerolls = rerolls;
@@ -372,6 +455,7 @@ export function createRun({ rng = Math.random }: { rng?: () => number } = {}): R
     pendingReward: null,
     pendingCoinGain: null,
     lastScore: null,
+    bossPlan: rollBossPlan(rng),
   };
   state.stats.wins = 0;
   initLevel(state);
@@ -411,7 +495,7 @@ export function clearSelection(state: RunState) {
 
 export function getComboAnalysis(state: RunState): ScoringAnalysis {
   const dice = selectedDice(state);
-  return analyzeSelection(dice.map((d) => (d.wild ? WILD_VALUE : d.value as number)));
+  return analyzeSelection(dice.map((d) => (d.wild ? WILD_VALUE : d.value as number)), scoringOptions(state));
 }
 
 export interface BuildScoreResult {
@@ -439,7 +523,7 @@ export function buildScore(state: RunState, action = 'reroll'): BuildScoreResult
       breakdown: null,
     };
   }
-  const analysis = analyzeSelection(selected.map((d) => (d.wild ? WILD_VALUE : d.value as number)));
+  const analysis = analyzeSelection(selected.map((d) => (d.wild ? WILD_VALUE : d.value as number)), scoringOptions(state));
   if (!analysis.valid) {
     return {
       valid: false,
@@ -455,11 +539,19 @@ export function buildScore(state: RunState, action = 'reroll'): BuildScoreResult
   let scoringBase = analysis.base;
   let bossNote = '';
   let voided = false;
-  if (bossEffect === 'minTripleScore') {
+  if (bossEffect === 'banPairs') {
+    const boardCounts = Array.from({ length: 7 }, () => 0);
+    for (const die of state.dice) if (!die.scored && !die.blank && die.value) boardCounts[die.value] = (boardCounts[die.value] || 0) + 1;
+    if (boardCounts.some((count) => count === 2)) {
+      voided = true;
+      scoringBase = 0;
+      bossNote = '本投出现了对子；成双之忌让整次投掷无法计分。';
+    }
+  } else if (bossEffect === 'minTripleScore') {
     const eligible = analysis.combos.filter((combo) => combo.type === 'straight' || (combo.type === 'nkind' && combo.count >= 3));
     scoringBase = eligible.reduce((sum, combo) => sum + combo.points, 0);
     if (!eligible.length) bossNote = '本关只有 3 颗及以上骰子的组合计分；这一手得 0 分。';
-  } else if (bossEffect === 'noRepeatType' || bossEffect === 'singleTypeOnly') {
+  } else if (bossEffect === 'noRepeatType' || bossEffect === 'singleTypeOnly' || bossEffect === 'banTypeEachThrow') {
     const type = handTypeOf(analysis);
     const status = bossTypeStatus(state, type);
     if (status.blocked) {
@@ -517,6 +609,10 @@ export function buildScore(state: RunState, action = 'reroll'): BuildScoreResult
     } else if (bonus.type === 'flatScored') {
       flatAdd += bonus.value;
       flats.push({ label: `${spec.name} · ${bonus.label}`, value: bonus.value });
+    } else if (bonus.type === 'scorePercent') {
+      if (!percentConditionMet(bonus.when, die, analysis, counts, hasTriple)) continue;
+      multiplier *= 1 + bonus.percent / 100;
+      multipliers.push({ label: `${spec.name} · ${bonus.label}`, value: `+${bonus.percent}%` });
     } else if (bonus.type === 'retriggerKind') {
       const kind = analysis.combos.find(
         (combo): combo is NKindCombo => combo.type === 'nkind' && combo.face === die.value && combo.count >= 3,
@@ -611,6 +707,36 @@ export function buildScore(state: RunState, action = 'reroll'): BuildScoreResult
     if (!matches) continue;
     multiplier *= rule.multiplier;
     multipliers.push({ label: `${item.name} · ${rule.label}`, value: rule.multiplier });
+  }
+
+  const currentType = handTypeOf(analysis);
+  if (state.passiveItems.includes('rotfang_relic') && state.flags.ratCrownProc) {
+    multiplier *= 1.1;
+    multipliers.push({ label: '鼠王牙冠 · 本次计分 +10%', value: 1.1 });
+  }
+  if (state.passiveItems.includes('gildedking_relic') && currentType && currentType === mostUsedHandType(state)) {
+    multiplier *= 1.2;
+    multipliers.push({ label: '无冕金冠 · 最常用骰型 +20%', value: 1.2 });
+  }
+  if (state.passiveItems.includes('startax_relic')
+    && analysis.combos.some((combo) => (combo.type === 'nkind' && combo.count >= 3) || combo.type === 'straight')) {
+    multiplier *= 1.25;
+    multipliers.push({ label: '三证铜印 · 3 颗以上 +25%', value: 1.25 });
+  }
+  if (state.passiveItems.includes('ashclerk_relic') && currentType && !(state.flags.ashTypes || []).includes(currentType)) {
+    multiplier *= 1.25;
+    multipliers.push({ label: '复写灰烬 · 新骰型 +25%', value: 1.25 });
+  }
+  if (state.passiveItems.includes('soulsmith_relic')) {
+    const fives = selected.filter((die) => !die.wild && die.value === 5).length;
+    if (fives) {
+      flatAdd += fives * 25;
+      flats.push({ label: '熔炉余烬 · 5 点回火', value: fives * 25 });
+    }
+  }
+  if (state.passiveItems.includes('seraph_relic')) {
+    multiplier *= 1.1;
+    multipliers.push({ label: '天使羽 · 总得分 +10%', value: 1.1 });
   }
 
   if (barrel.type === 'singlesBonus'
@@ -730,9 +856,22 @@ function addScore(state: RunState, amount: number, { round = false }: { round?: 
  * Only the current round is lost; previously secured score stays.
  */
 function bustRound(state: RunState): number {
-  const lost = Math.max(0, state.roundScore || 0);
+  let lost = Math.max(0, state.roundScore || 0);
   if (!lost) return 0;
   const floating = isFloatingScore(state);
+  if (floating && state.passiveItems.includes('suspensor_relic') && !state.flags.suspensorRelicUsed) {
+    state.flags.suspensorRelicUsed = true;
+    const kept = Math.floor(lost / 2);
+    const forfeited = lost - kept;
+    state.score = Math.max(0, state.score - forfeited);
+    state.stats.levelScore = Math.max(0, state.stats.levelScore - forfeited);
+    state.roundScore = kept;
+    state.targetReached = state.score >= state.target;
+    state.lastBust = { lost: forfeited, floating, saved: kept };
+    state.flags.roundSinglesOnly = true;
+    pushLog(state, `悬秤砣压住一半：${kept} 分留在桌上，${forfeited} 分散去。`, 'good');
+    return forfeited;
+  }
   state.score = Math.max(0, state.score - lost);
   state.stats.levelScore = Math.max(0, state.stats.levelScore - lost);
   state.roundScore = 0;
@@ -787,7 +926,7 @@ function awardLevel(state: RunState): LevelRewardInfo {
   let total = cfg.reward;
   // 庄家赏金系数：目标分与基础赏金都由曲线 × 系数算出来，这里把系数本身
   // 记进结算，界面才能说清“这一关为什么比上一关贵”。
-  const boss = cfg.boss ? getOpponent(state.level) as BossDef | null : null;
+  const boss = cfg.boss ? getOpponent(state.level, state) as BossDef | null : null;
   const curveReward = cfg.curve?.reward ?? cfg.reward;
   const bossPremium = boss ? cfg.reward - curveReward : 0;
   if (state.passiveItems.includes('gold_cuff')) {
@@ -822,8 +961,22 @@ function awardLevel(state: RunState): LevelRewardInfo {
   if (bossPremium > 0 && boss) {
     pushLog(state, `${boss.name} 悬赏 ×${(boss.curve?.reward ?? 1).toFixed(2)}：基础赏金 ${curveReward} → ${cfg.reward}。`, 'reward');
   }
+  if (boss) {
+    const relicId = BOSS_RELICS[boss.id];
+    const relic = relicId ? ITEM_BY_ID[relicId] : undefined;
+    if (relic && !state.passiveItems.includes(relic.id)) {
+      state.passiveItems.push(relic.id);
+      if (!getAcquiredItemIds(state).includes(relic.id)) getAcquiredItemIds(state).push(relic.id);
+      state.levelReward.relic = { id: relic.id, name: relic.name };
+      pushLog(state, `${boss.name} 掉落专属物品「${relic.name}」。`, 'good');
+    }
+  }
   if (cash.spare > 0) {
     pushLog(state, `收手带走 ${cash.spare} 次未用重投，折 ${cash.refund} 银币。`, 'reward');
+  }
+  if (state.passiveItems.includes('mirror_relic')) {
+    state.carryScore = Math.min(800, Math.max(0, state.score - state.target));
+    if (state.carryScore > 0) pushLog(state, `双倍镜片：${state.carryScore} 分带入下一关。`, 'good');
   }
   if (cash.overshoot) {
     const times = ((state.score || 0) / (state.target || 1)).toFixed(1);
@@ -1072,7 +1225,18 @@ export function rollDice(state: RunState, { free = false, rng = getRng(state), f
   if (!freeThrow && state.rerolls <= 0) {
     return { ok: false, error: '没有剩余重投次数。' };
   }
-  if (!freeThrow) state.rerolls -= 1;
+  if (!freeThrow) {
+    const pardon = state.flags.rerollAll
+      && state.passiveItems.includes('judge_relic')
+      && !state.flags.judgeRelicUsed
+      && rng() < 0.25;
+    if (pardon) {
+      state.flags.judgeRelicUsed = true;
+      pushLog(state, '停审令牌：这次「计分并重投」不消耗重投。', 'good');
+    } else {
+      state.rerolls -= 1;
+    }
+  }
 
   // A new throw always discards the previous throw's gesture buff unless a new
   // gesture was armed before this roll.
@@ -1150,6 +1314,16 @@ export function rollDice(state: RunState, { free = false, rng = getRng(state), f
   applyBarrelRollEffects(state, rolledNow, barrel, rng);
   shuffleTable(state, rng);
   applyOrderedDieEffects(state, rng);
+  if (bossEffectKey(state) === 'banTypeEachThrow') {
+    const types: HandType[] = ['single', 'triple', 'quad', 'quint', 'sext', 'straight'];
+    state.flags.bossBannedType = types[Math.floor(rng() * types.length)]!;
+    pushLog(state, `路西法封禁「${handTypeName(state.flags.bossBannedType)}」：本投该骰型不计分。`, 'bad');
+  }
+  state.flags.ratCrownProc = false;
+  if (state.passiveItems.includes('rotfang_relic') && rng() < 0.05) {
+    state.flags.ratCrownProc = true;
+    pushLog(state, '鼠王牙冠发亮：本次投掷计分 +10%。', 'good');
+  }
 
   state.selected = [];
   state.phase = 'selecting';
@@ -1158,7 +1332,7 @@ export function rollDice(state: RunState, { free = false, rng = getRng(state), f
   state.stats.levelRolls += 1;
   state.lastRoll = state.dice.map((d) => (d.blank ? 0 : d.wild ? '魔' : d.value ?? 0));
 
-  const scoring = bestSelection(scorableDice(state));
+  const scoring = bestSelection(scorableDice(state), scoringOptions(state));
   let bust = 0;
   if (!scoring) {
     state.phase = 'dead';
@@ -1235,6 +1409,21 @@ export function applyScore(state: RunState, action: ScoreAction): ApplyScoreResu
   } else if (bossEffect === 'singleTypeOnly' && !state.flags.bossLockedType) {
     state.flags.bossLockedType = handTypeOf(chosen.analysis);
   }
+  const currentType = handTypeOf(chosen.analysis);
+  if (bossEffect === 'banTypeEachThrow'
+    && state.flags.bossBannedType === currentType
+    && state.passiveItems.includes('lucifer_relic')
+    && !state.flags.luciferRelicUsed) {
+    state.flags.luciferRelicUsed = true;
+    pushLog(state, '晨星角：本次封禁被豁免。', 'good');
+  }
+  if (state.passiveItems.includes('ashclerk_relic') && currentType) {
+    state.flags.ashTypes = [...(state.flags.ashTypes || []), currentType];
+  }
+  if (state.passiveItems.includes('toll_relic') && scoringDice.length >= 3) {
+    state.coins += 10;
+    pushLog(state, '抽头账簿：这一手有 3 颗以上骰子，+10 银币。', 'reward');
+  }
   addScore(state, total, { round: true });
   state.comboUsage = state.comboUsage || {};
   state.scoreHistory = state.scoreHistory || [];
@@ -1284,6 +1473,11 @@ export function applyScore(state: RunState, action: ScoreAction): ApplyScoreResu
   if (coinGain > 0) {
     state.coins += coinGain;
     pushLog(state, `骰子结算：+${coinGain} 银币。`, 'reward');
+  }
+  if (bossEffect === 'coinTaxPerDie') {
+    const tax = scoringDice.length * 2;
+    state.coins = Math.max(0, state.coins - tax);
+    pushLog(state, `抽头鬼按 ${scoringDice.length} 颗计分骰抽税：-${tax} 银币。`, 'bad');
   }
 
   // Die-specific trigger effects.
@@ -1403,12 +1597,14 @@ function disableBossEffectNow(state: RunState) {
   if (boss.effectKey === 'rerollMinus') {
     state.rerolls += 1;
     state.maxRerolls += 1;
-  } else if (boss.effectKey === 'scoreTaxReroll') {
-    state.rerolls = Math.max(1, state.rerolls - 1);
-    state.maxRerolls = Math.max(1, state.maxRerolls - 1);
   } else if (boss.effectKey === 'floatingScore') {
     // 秤被按下去了：桌上的分从此落袋，不再随着掷空消散。
     state.roundScore = 0;
+  } else if (boss.effectKey === 'doubleTarget') {
+    state.target = Math.max(1, Math.round(state.target / 2));
+    state.targetBase = Math.max(1, Math.round(state.targetBase / 2));
+  } else if (boss.effectKey === 'banTypeEachThrow') {
+    state.flags.bossBannedType = null;
   }
   state.flags.bossDisabled = true;
   pushLog(state, `静默赦令：${boss.name} 的「${boss.effectName}」被消除。`, 'good');
@@ -1420,6 +1616,15 @@ export interface ItemResult {
   item?: ItemDef;
   rerollFree?: boolean;
   grant?: { candidates: PricedDie[]; choose: number; itemId: string };
+}
+
+function rollGrantIds(state: RunState, item: ItemDef): string[] {
+  if (!('grant' in item) || !item.grant) return [];
+  const grant = item.grant;
+  const all = DICE.filter((die) => die.rarity === grant.rarity);
+  const owned = new Set(state.bag.map((entry) => entry.dieId));
+  const fresh = all.filter((die) => !owned.has(die.id));
+  return pickMany(fresh.length >= grant.count ? fresh : all, grant.count, getRng(state)).map((die) => die.id);
 }
 
 export function canUseItem(state: RunState, itemId: string): ItemResult {
@@ -1457,10 +1662,12 @@ export function useItem(state: RunState, itemId: string): ItemResult {
 
   if ('grant' in item && item.grant) {
     const grant = item.grant;
-    const all = DICE.filter((die) => die.rarity === grant.rarity);
-    const owned = new Set(state.bag.map((entry) => entry.dieId));
-    const fresh = all.filter((die) => !owned.has(die.id));
-    const candidates = pickMany(fresh.length >= grant.count ? fresh : all, grant.count, getRng(state));
+    state.grantRolls = state.grantRolls || {};
+    const queue = state.grantRolls[itemId] = state.grantRolls[itemId] || [];
+    if (!queue.length) queue.push(rollGrantIds(state, item));
+    const candidates = (queue[0] || [])
+      .map((id) => DICE_BY_ID[id])
+      .filter((die): die is PricedDie => Boolean(die));
     return { ok: true, item, grant: { candidates, choose: grant.choose, itemId } };
   }
 
@@ -1578,6 +1785,9 @@ export function applyItemGrant(
   } else {
     state.itemCharges[itemId] = 0;
   }
+  const queue = state.grantRolls?.[itemId];
+  if (queue?.length) queue.shift();
+  if (queue && !queue.length) delete state.grantRolls![itemId];
   pushLog(state, replaced
     ? `「${item.name}」开出「${die.name}」，替换了「${replaced.name}」。`
     : `「${item.name}」开出「${die.name}」，加入骰袋。`, 'item');
@@ -1615,8 +1825,9 @@ export function shopPrice(state: RunState, base: number): number {
 }
 
 export function refreshCost(state: RunState, section: string): number {
-  const base = ({ dice: 10, barrel: 14, item: 12 } as Record<string, number>)[section] ?? 10;
-  let value = base;
+  const base = ({ dice: 20, barrel: 26, item: 22 } as Record<string, number>)[section] ?? 20;
+  const refreshes = state.shop?.refreshes?.[section] ?? 0;
+  let value = base * 1.3 ** refreshes;
   if (state.passiveItems.includes('gold_cuff')) value *= 0.8;
   return Math.max(1, Math.round(value));
 }
@@ -1635,7 +1846,7 @@ function itemPool(state: RunState): ItemDef[] {
   const uniqueTaken = new Set(
     getAcquiredItemIds(state).filter((id) => ITEM_BY_ID[id]?.unique),
   );
-  return ITEMS.filter((item) => !owned.has(item.id) && !(item.unique && uniqueTaken.has(item.id)));
+  return ITEMS.filter((item) => !item.bossOnly && !owned.has(item.id) && !(item.unique && uniqueTaken.has(item.id)));
 }
 
 export function getOwnedItemIds(state: RunState): string[] {
@@ -1682,9 +1893,12 @@ function diceOffers(state: RunState, count: number, rng: () => number): ShopOffe
     // composition silently reweights the bands (7 rare dice would outdraw
     // 3 common ones even at 80/18).
     const share = band / (tierSize.get(die.rarity) || 1);
+    // Demon dice are deliberately half as likely as a non-demon die of the
+    // same rarity; the rest of the tier keeps its normal relative weight.
+    const demonPenalty = die.setId === 'demon' ? 0.5 : 1;
     // Nudge stock toward sets the player already owns so 2/4-piece bonuses
     // stay reachable without removing shop randomness.
-    return die.setId != null && ownedSets.has(die.setId) ? share * 1.5 : share;
+    return (die.setId != null && ownedSets.has(die.setId) ? share * 1.5 : share) * demonPenalty;
   };
   while (chosen.length < count) {
     const left = remaining();
@@ -1901,6 +2115,10 @@ export function buyBarrel(state: RunState, index: number): BuyResult {
   return { ok: true, barrel, price };
 }
 
+export function activeItemCapacity(state: RunState): number {
+  return 3 + (state.passiveItems.includes('active_shelf') ? 1 : 0);
+}
+
 export function buyItem(state: RunState, index: number): BuyResult {
   const item = shopEntry(state, 'item', index);
   if (!item) return { ok: false, error: '这件物品已经售出。' };
@@ -1910,12 +2128,19 @@ export function buyItem(state: RunState, index: number): BuyResult {
     return { ok: false, error: '这件物品整局只能获取一次。' };
   }
   const entry = state.shop!.item[index]!;
+  if (item.type === 'active' && state.activeItems.length >= activeItemCapacity(state)) {
+    return { ok: false, error: `主动物品最多同时携带 ${activeItemCapacity(state)} 件，请先使用或出售一件。` };
+  }
   const price = shopPrice(state, item.price);
   if (state.coins < price) return { ok: false, error: `需要 ${price} 银币。` };
   state.coins -= price;
   if (item.type === 'active') {
     state.activeItems.push(item.id);
     state.itemCharges[item.id] = item.charges;
+    if ('grant' in item && item.grant) {
+      state.grantRolls = state.grantRolls || {};
+      (state.grantRolls[item.id] = state.grantRolls[item.id] || []).push(rollGrantIds(state, item));
+    }
   } else {
     state.passiveItems.push(item.id);
     if (item.id === 'dice_bag' || item.id === 'cracked_pouch') syncBag(state);
@@ -1937,6 +2162,9 @@ export function canSellItem(state: RunState, itemId: string): { ok: boolean; err
   const item = ITEM_BY_ID[itemId];
   if (!item || !getOwnedItemIds(state).includes(itemId)) {
     return { ok: false, error: '你没有这件物品。' };
+  }
+  if (itemId === 'active_shelf' && state.activeItems.length > 3) {
+    return { ok: false, error: '先使用或出售一件主动物品，否则主动栏会超限。' };
   }
   if (itemId === 'dice_bag') {
     const capacityAfter = Math.max(4, 6 - (state.passiveItems.includes('cracked_pouch') ? 1 : 0));
@@ -1995,7 +2223,7 @@ export function explainTarget(state: RunState) {
 }
 
 export function getOpponentInfo(state: RunState): Opponent | null {
-  return getOpponent(state.level);
+  return getOpponent(state.level, state);
 }
 
 export function tableInfo(state: RunState) {

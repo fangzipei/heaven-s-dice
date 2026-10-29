@@ -351,16 +351,12 @@ async function handleAction(action: string, target: HTMLElement, _event?: MouseE
       sound.click();
       break;
     case 'toggle-rail': {
-      const rail = $('#game-screen .rail');
-      if (window.innerWidth > 1050) {
-        document.body.classList.toggle('rail-collapsed');
-        const collapsed = document.body.classList.contains('rail-collapsed');
-        target.setAttribute('aria-expanded', String(!collapsed));
-        if (!collapsed) sound.paperUnfold();
-      } else {
-        rail?.classList.toggle('is-open');
-        if (rail?.classList.contains('is-open')) sound.paperUnfold();
-      }
+      // One switch for every width: the sheet is the same floating element,
+      // and phones hide it with `body.rail-collapsed` too.
+      document.body.classList.toggle('rail-collapsed');
+      const collapsed = document.body.classList.contains('rail-collapsed');
+      target.setAttribute('aria-expanded', String(!collapsed));
+      if (!collapsed) sound.paperUnfold();
       break;
     }
     case 'auto-roll':
@@ -550,7 +546,7 @@ export function setupLevelScene(force = false): void {
   hideTooltip();
   clearToasts();
   const table = getTable(app.run.level);
-  const opponent = getOpponent(app.run.level)!;
+  const opponent = getOpponent(app.run.level, app.run)!;
   const isBoss = Boolean(getLevelConfig(app.run.level).boss);
   const boss = isBoss ? (opponent as BossDef) : null;
   const sceneArt = $('#scene-art')!;
@@ -595,7 +591,7 @@ export function setupLevelScene(force = false): void {
 export function showLevelIntro(): void {
   if (!app.run) return;
   const run = app.run;
-  const opponent = getOpponent(run.level)!;
+  const opponent = getOpponent(run.level, run)!;
   const table = getTable(run.level);
   const cfg = getLevelConfig(run.level);
   const isBoss = Boolean(cfg.boss);

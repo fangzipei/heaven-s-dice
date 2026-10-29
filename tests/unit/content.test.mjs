@@ -1,7 +1,7 @@
 import { describe, expect, test } from "vitest";
 
 import {
-  BARRELS, BOSSES, DICE, ITEMS, LEVELS, MINIONS, TABLES, DICE_SETS,
+  BARRELS, BOSSES, BOSS_CATALOG, BOSS_RELICS, DICE, ITEMS, ITEM_BY_ID, LEVELS, MINIONS, TABLES, DICE_SETS,
   SHOP_RARITY_WEIGHTS, rarityShopWeight, chapterForLevel, chapterLevelSpan,
   MINION_GAPS, buildLevelTable, LEVEL_CURVE,
 } from '../../src/content/index.ts';
@@ -11,9 +11,9 @@ const countBy = (list, key) => list.reduce((counts, entry) => {
   return counts;
 }, {});
 
-test('dice roster: 5 wolf + 5 demon + 25 free agents, rarity 13/7/9/6', () => {
+test('dice roster: 5 wolf + 5 demon + 25 free agents, rarity 11/9/9/6', () => {
   expect(DICE.length).toBe(35);
-  expect(countBy(DICE, 'rarity')).toEqual({ common: 13, rare: 7, epic: 9, legendary: 6 });
+  expect(countBy(DICE, 'rarity')).toEqual({ common: 11, rare: 9, epic: 9, legendary: 6 });
   expect(Object.keys(DICE_SETS)).toEqual(['wolf', 'demon']);
   for (const set of Object.values(DICE_SETS)) {
     expect(DICE.filter((die) => die.setId === set.id).length).toBe(5);
@@ -29,7 +29,7 @@ test('dice roster: 5 wolf + 5 demon + 25 free agents, rarity 13/7/9/6', () => {
   }
 });
 
-test('every die bonus is well-formed, and six common dice bias a face to 30%', () => {
+test('every die bonus is well-formed, and bias dice mark 1/5 rare', () => {
   for (const die of DICE) {
     if (!die.bonus) continue;
     expect(typeof die.bonus.type).toBe('string');
@@ -40,7 +40,7 @@ test('every die bonus is well-formed, and six common dice bias a face to 30%', (
   const bias = DICE.filter((die) => /^bias_/.test(die.id));
   expect(bias.length).toBe(6);
   for (const die of bias) {
-    expect(die.rarity).toBe('common');
+    expect(die.rarity).toBe(die.id === 'bias_one' || die.id === 'bias_five' ? 'rare' : 'common');
     expect(Math.max(...die.probs)).toBeCloseTo(0.30);
     expect(die.bonus).toBe(null);
   }
@@ -66,27 +66,28 @@ test('set dice actually lean on their mechanic', () => {
   }
 });
 
-test('shop rarity weights open up across five level bands', () => {
-  expect(SHOP_RARITY_WEIGHTS.length).toBe(5);
-  expect(SHOP_RARITY_WEIGHTS.map((band) => band.untilLevel)).toEqual([6, 12, 18, 24, 28]);
-  // Early shelves are mostly common; legendaries are a 1-in-10000 slot.
-  expect(rarityShopWeight('common', 1)).toBeCloseTo(80);
-  expect(rarityShopWeight('rare', 1)).toBeCloseTo(17.99);
-  expect(rarityShopWeight('epic', 1)).toBeCloseTo(2);
-  expect(rarityShopWeight('legendary', 1)).toBeCloseTo(0.01);
-  expect(rarityShopWeight('legendary', 1)).toBe(rarityShopWeight('legendary', 6));
-  expect(rarityShopWeight('legendary', 12) > 0).toBeTruthy();
-  expect(rarityShopWeight('legendary', 28) > rarityShopWeight('legendary', 12)).toBeTruthy();
-  expect(rarityShopWeight('epic', 1) < rarityShopWeight('epic', 25)).toBeTruthy();
-  expect(rarityShopWeight('common', 1) > rarityShopWeight('common', 25)).toBeTruthy();
+test('shop rarity weights open up across four level bands, legendary capped at 10%', () => {
+  expect(SHOP_RARITY_WEIGHTS.length).toBe(4);
+  expect(SHOP_RARITY_WEIGHTS.map((band) => band.untilLevel)).toEqual([6, 12, 18, 24]);
+  expect(rarityShopWeight('common', 1)).toBeCloseTo(65);
+  expect(rarityShopWeight('rare', 1)).toBeCloseTo(27);
+  expect(rarityShopWeight('epic', 1)).toBeCloseTo(7);
+  expect(rarityShopWeight('legendary', 1)).toBeCloseTo(1);
+  expect(rarityShopWeight('legendary', 6)).toBeCloseTo(1);
+  expect(rarityShopWeight('legendary', 12)).toBeCloseTo(4);
+  expect(rarityShopWeight('legendary', 18)).toBeCloseTo(9);
+  expect(rarityShopWeight('legendary', 24)).toBeCloseTo(10);
+  expect(rarityShopWeight('epic', 1) < rarityShopWeight('epic', 24)).toBeTruthy();
+  expect(rarityShopWeight('common', 1) > rarityShopWeight('common', 24)).toBeTruthy();
   for (const band of SHOP_RARITY_WEIGHTS) {
     expect(Object.values(band.weights).some((weight) => weight > 0)).toBeTruthy();
+    expect(band.weights.legendary).toBeLessThanOrEqual(10);
   }
 });
 
-test('item mix: 27 items, 14 active / 13 passive, 10 one-shot consumables', () => {
-  expect(ITEMS.length).toBe(27);
-  expect(countBy(ITEMS, 'type')).toEqual({ active: 14, passive: 13 });
+test('item mix: 41 items, 14 active / 27 passive, 10 one-shot consumables', () => {
+  expect(ITEMS.length).toBe(41);
+  expect(countBy(ITEMS, 'type')).toEqual({ active: 14, passive: 27 });
   expect(ITEMS.filter((item) => item.consumable).map((item) => item.id).sort()).toEqual([
     'boss_ward', 'courage', 'epic_chest', 'glove', 'hunter_mark', 'lucky_coin',
     'powder', 'rare_pair', 'salt', 'wager',
@@ -106,8 +107,18 @@ test('item mix: 27 items, 14 active / 13 passive, 10 one-shot consumables', () =
   ]);
 });
 
+test('every boss has a legendary drop-only relic', () => {
+  for (const boss of BOSS_CATALOG) {
+    const relic = ITEM_BY_ID[BOSS_RELICS[boss.id]];
+    expect(relic, boss.id).toBeTruthy();
+    expect(relic.rarity).toBe('legendary');
+    expect(relic.bossOnly).toBe(boss.id);
+  }
+  expect(Object.keys(BOSS_RELICS).length).toBe(BOSS_CATALOG.length);
+});
+
 test('shop prices sit in the 35–300 band', () => {
-  const prices = ITEMS.map((item) => item.price);
+  const prices = ITEMS.filter((item) => !item.bossOnly).map((item) => item.price);
   expect(Math.min(...prices)).toBe(35);
   expect(Math.max(...prices)).toBe(300);
   // 时间沙漏 is epic now and must out-price the rare tier.
@@ -150,36 +161,33 @@ test('barrel composition: starter + probability + score + interaction + gesture'
   }
 });
 
-test('33 levels with eight dealers and growing minion gaps', () => {
-  expect(BOSSES.length).toBe(8);
+test('24 levels with six dealers at 3/7/11/15/20/24', () => {
+  expect(BOSSES.length).toBe(6);
   expect(MINIONS.length).toBe(5);
   expect(TABLES.length).toBe(5);
-  expect(LEVELS.length).toBe(33);
+  expect(LEVELS.length).toBe(24);
   const dealerLevels = BOSSES.map((boss) => boss.level);
-  expect(dealerLevels).toEqual([3, 6, 10, 14, 18, 23, 28, 33]);
+  expect(dealerLevels).toEqual([3, 7, 11, 15, 20, 24]);
   expect(dealerLevels).toEqual(MINION_GAPS.reduce((acc, gap) => {
     acc.push((acc.at(-1) || 0) + gap + 1);
     return acc;
   }, []));
-  expect(new Set(BOSSES.map((boss) => boss.effectKey)).size).toBe(8);
+  expect(new Set(BOSSES.map((boss) => boss.effectKey)).size).toBe(6);
 
-  // 2, 2, 3, 3, 3, 4, 4, 4 — the run up to each dealer never shrinks.
+  // 2, 3, 3, 3, 4, 3 — the run up to each dealer.
   const gaps = [];
   let previous = 0;
   for (const level of dealerLevels) {
     gaps.push(level - previous - 1);
     previous = level;
   }
-  expect(gaps).toEqual([2, 2, 3, 3, 3, 4, 4, 4]);
-  for (let i = 1; i < gaps.length; i += 1) expect(gaps[i] >= gaps[i - 1]).toBeTruthy();
+  expect(gaps).toEqual([2, 3, 3, 3, 4, 3]);
 
   for (const level of LEVELS) {
     expect(level.target > 0).toBeTruthy();
     expect(level.reward > 0).toBeTruthy();
     expect(level.boss === true).toBe(dealerLevels.includes(level.level));
   }
-  // Minion targets climb every level; a dealer is a milestone whose target
-  // jumps above the level before it (the run eases back afterwards).
   const minions = LEVELS.filter((level) => !level.boss);
   for (let i = 1; i < minions.length; i += 1) {
     expect(minions[i].target > minions[i - 1].target).toBeTruthy();
@@ -195,28 +203,24 @@ test('33 levels with eight dealers and growing minion gaps', () => {
   for (const dealer of LEVELS.filter((level) => level.boss)) {
     const neighbours = LEVELS.filter((level) => !level.boss
       && Math.abs(level.level - dealer.level) <= 1).map((level) => level.reward);
-    for (const reward of neighbours) {
-      expect(dealer.reward > reward).toBeTruthy();
-    }
+    for (const reward of neighbours) expect(dealer.reward > reward).toBeTruthy();
   }
 });
 
-test('chapters split 7 / 7 / 7 / 6 / 6 and every table hosts a dealer', () => {
+test('24 levels split 5 / 5 / 5 / 5 / 4 across five tables', () => {
   expect([0, 1, 2, 3, 4].map((chapter) => chapterLevelSpan(chapter))).toEqual([
-    [1, 7], [8, 14], [15, 21], [22, 27], [28, 33],
+    [1, 5], [6, 10], [11, 15], [16, 20], [21, 24],
   ]);
   for (const table of TABLES) {
     const levels = LEVELS.filter((level) => chapterForLevel(level.level) === table.group);
     expect(levels.length >= 4).toBeTruthy();
-    expect(levels.some((level) => level.boss)).toBeTruthy();
   }
 });
 
-test('the level table is computed, not typed: curve × boss coefficient', () => {
+test('the level table uses the no-boss curve, then boss coefficients', () => {
   expect(buildLevelTable()).toEqual(LEVELS);
-  // 第 1 关就是曲线起点，下一关就是起点 × 增长率（取整到 10）。
   expect(LEVELS[0].target).toBe(LEVEL_CURVE.targetBase);
-  expect(LEVELS[1].target).toBe(Math.round(LEVEL_CURVE.targetBase * LEVEL_CURVE.targetGrowth / 10) * 10 * 2);
+  expect(LEVELS[1].target).toBe(Math.round(LEVEL_CURVE.targetBase * (1 + LEVEL_CURVE.targetSegments[0].growth) / 10) * 10);
   expect(LEVELS[0].reward).toBe(LEVEL_CURVE.rewardBase);
   for (const level of LEVELS) {
     const boss = BOSSES.find((entry) => entry.level === level.level);
@@ -226,12 +230,13 @@ test('the level table is computed, not typed: curve × boss coefficient', () => 
       continue;
     }
     expect(level.reward > level.curve.reward).toBeTruthy();
-    // 系数×曲线，误差只允许来自取整（一步 5 银币）。
-    const ideal = level.curve.reward * boss.curve.reward;
-    expect(Math.abs(level.reward - ideal) <= LEVEL_CURVE.rewardStep).toBeTruthy();
+    expect(level.target > level.curve.target).toBeTruthy();
+    const idealReward = level.curve.reward * boss.curve.reward;
+    const idealTarget = level.curve.target * boss.curve.target;
+    expect(Math.abs(level.reward - idealReward) <= LEVEL_CURVE.rewardStep * 2).toBeTruthy();
+    expect(Math.abs(level.target - idealTarget) <= LEVEL_CURVE.targetStep).toBeTruthy();
   }
 
-  // Adding a dealer to the roster is enough: no level numbers to hand-edit.
   const extended = [...BOSSES, {
     ...BOSSES[0], id: 'test-dealer', level: LEVELS.length + 3, curve: { target: 1, reward: 2 },
   }];

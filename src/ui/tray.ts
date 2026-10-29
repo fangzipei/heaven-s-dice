@@ -177,7 +177,7 @@ function renderDiceA11y(run: RunState) {
       const disabled = state.scored || state.blank || state.blocked || app.busy || run.phase !== 'selecting';
       const label = state.hidden ? '未掷出的骰子'
         : state.blank ? '白骰，无法计分'
-          : state.blocked ? '六点被庄家禁用'
+          : state.blocked ? `${die.value} 点被庄家禁用`
             : `${state.spec.name}，${die.value} 点`;
       return `<button type="button" class="die-a11y-button" data-die-uid="${h(die.uid)}" data-die-tip="${h(state.spec.id)}"
         aria-disabled="${disabled ? 'true' : 'false'}" aria-pressed="${state.selected}" aria-label="${h(label)}"></button>`;

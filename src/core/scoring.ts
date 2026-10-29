@@ -59,6 +59,12 @@ interface Best extends Scored { counts: FaceCount }
 const N_KIND_MULTIPLIER: Record<number, number> = { 3: 1, 4: 2, 5: 4, 6: 8 };
 const N_KIND_LABEL: Record<number, string> = { 3: '三条', 4: '四条', 5: '五条', 6: '六条' };
 const SINGLE_POINTS: Record<number, number> = { 1: 100, 5: 50 };
+const DEFAULT_SINGLE_FACES = [1, 5];
+export interface ScoringOptions {
+  singleFaces?: number[];
+  singlePoints?: Record<number, number>;
+  allowPairs?: boolean;
+}
 const STRAIGHTS = [
   { faces: [1, 2, 3, 4, 5], label: '顺子 1-5', points: 500 },
   { faces: [2, 3, 4, 5, 6], label: '顺子 2-6', points: 750 },
@@ -108,8 +114,21 @@ const memo = new Map<string, Scored | null>();
  * be consumed by a scoring combination; otherwise the result is invalid.
  * Returns the maximum-scoring legal partition, or null.
  */
-function scoreCounts(counts: FaceCount): Scored | null {
-  const key = counts.slice(1).join(',');
+function pairCombo(face: number): NKindCombo {
+  return {
+    type: 'nkind', face, count: 2,
+    points: face === 1 ? 500 : face * 50,
+    label: `对子 ${face}`,
+  };
+}
+
+function scoreCounts(
+  counts: FaceCount,
+  singleFaces: number[] = DEFAULT_SINGLE_FACES,
+  singlePoints: Record<number, number> = SINGLE_POINTS,
+  allowPairs = false,
+): Scored | null {
+  const key = `${counts.slice(1).join(',')}|${singleFaces.join('')}|${singleFaces.map((f) => singlePoints[f]).join(',')}|${allowPairs ? 'p' : ''}`;
   if (memo.has(key)) return memo.get(key) ?? null;
 
   let face = 1;
@@ -124,19 +143,31 @@ function scoreCounts(counts: FaceCount): Scored | null {
   const count = counts[face]!;
   const options: Scored[] = [];
 
-  if (face === 1 || face === 5) {
+  if (singleFaces.includes(face)) {
     for (let take = 1; take <= count; take += 1) {
       const next = cloneCounts(counts);
       next[face]! -= take;
-      const rest = scoreCounts(next);
+      const rest = scoreCounts(next, singleFaces, singlePoints, allowPairs);
       if (rest) {
         const combo: SingleCombo = {
           type: 'single',
           face,
           count: take,
-          points: take * SINGLE_POINTS[face]!,
+          points: take * (singlePoints[face] ?? 0),
           label: take === 1 ? `单 ${face}` : `单 ${face} x${take}`,
         };
+        options.push({ score: combo.points + rest.score, combos: [combo, ...rest.combos] });
+      }
+    }
+  }
+
+  if (allowPairs && count >= 2) {
+    for (let take = 2; take <= count; take += 1) {
+      const next = cloneCounts(counts);
+      next[face]! -= take;
+      const rest = scoreCounts(next, singleFaces, singlePoints, allowPairs);
+      if (rest) {
+        const combo = pairCombo(face);
         options.push({ score: combo.points + rest.score, combos: [combo, ...rest.combos] });
       }
     }
@@ -146,7 +177,7 @@ function scoreCounts(counts: FaceCount): Scored | null {
     for (let take = 3; take <= count; take += 1) {
       const next = cloneCounts(counts);
       next[face]! -= take;
-      const rest = scoreCounts(next);
+      const rest = scoreCounts(next, singleFaces, singlePoints, allowPairs);
       if (rest) {
         const combo = nKindCombo(face, take);
         options.push({ score: combo.points + rest.score, combos: [combo, ...rest.combos] });
@@ -176,8 +207,14 @@ const wildMemo = new Map<string, Best | null>();
  * Best legal partition of `counts` natural dice plus `wilds` jokers.
  * Every die - natural or wild - must be consumed.
  */
-function analyzeCounts(counts: FaceCount, wilds: number): Best | null {
-  const key = `${counts.slice(1).join(',')}|${wilds}`;
+function analyzeCounts(
+  counts: FaceCount,
+  wilds: number,
+  singleFaces: number[] = DEFAULT_SINGLE_FACES,
+  singlePoints: Record<number, number> = SINGLE_POINTS,
+  allowPairs = false,
+): Best | null {
+  const key = `${counts.slice(1).join(',')}|${wilds}|${singleFaces.join('')}|${singleFaces.map((f) => singlePoints[f]).join(',')}|${allowPairs ? 'p' : ''}`;
   if (wildMemo.has(key)) return wildMemo.get(key) ?? null;
 
   let best: Best | null = null;
@@ -190,7 +227,7 @@ function analyzeCounts(counts: FaceCount, wilds: number): Best | null {
     if (missing.length > wilds) continue;
 
     const record = (remainder: FaceCount, wildUsed: number) => {
-      const rest = analyzeCounts(remainder, wilds - wildUsed);
+      const rest = analyzeCounts(remainder, wilds - wildUsed, singleFaces, singlePoints, allowPairs);
       if (!rest) return;
       const straightCounts = emptyCounts();
       for (const face of straight.faces) straightCounts[face]! += 1;
@@ -228,7 +265,7 @@ function analyzeCounts(counts: FaceCount, wilds: number): Best | null {
     if (face === 7) {
       if (remaining !== 0) return;
       const finalCounts = addCounts(counts, add);
-      const scored = scoreCounts(finalCounts);
+      const scored = scoreCounts(finalCounts, singleFaces, singlePoints, allowPairs);
       if (!scored) return;
       best = better(best, { score: scored.score, combos: scored.combos, counts: finalCounts });
       return;
@@ -251,7 +288,7 @@ function analyzeCounts(counts: FaceCount, wilds: number): Best | null {
 /**
  * @param values dice faces (1..6, or WILD_VALUE for a demon joker)
  */
-export function analyzeSelection(values: number[]): ScoringAnalysis {
+export function analyzeSelection(values: number[], options: ScoringOptions = {}): ScoringAnalysis {
   const clean = values.filter(
     (v) => Number.isInteger(v) && ((v >= 1 && v <= 6) || v === WILD_VALUE),
   );
@@ -265,7 +302,13 @@ export function analyzeSelection(values: number[]): ScoringAnalysis {
     };
   }
 
-  const best = analyzeCounts(naturalCounts, wilds);
+  const best = analyzeCounts(
+    naturalCounts,
+    wilds,
+    options.singleFaces ?? DEFAULT_SINGLE_FACES,
+    options.singlePoints ?? SINGLE_POINTS,
+    options.allowPairs ?? false,
+  );
   if (!best) {
     return {
       valid: false, base: 0, combos: [], multi: false, straight: false,
@@ -305,7 +348,7 @@ function faceOf(die: PlayableDie): number {
  * Enumerates every non-empty selection of available dice and returns the best
  * legal one. At most 7 dice are in play, so exhaustive search is tiny.
  */
-export function bestSelection(dice: PlayableDie[]): { dice: PlayableDie[]; analysis: ScoringAnalysis } | null {
+export function bestSelection(dice: PlayableDie[], options: ScoringOptions = {}): { dice: PlayableDie[]; analysis: ScoringAnalysis } | null {
   const playable = dice.filter(
     (d) => d.wild || d.value === WILD_VALUE || ((d.value ?? 0) >= 1 && (d.value ?? 0) <= 6),
   );
@@ -317,7 +360,7 @@ export function bestSelection(dice: PlayableDie[]): { dice: PlayableDie[]; analy
     for (let i = 0; i < playable.length; i += 1) {
       if (mask & (1 << i)) chosen.push(playable[i]!);
     }
-    const analysis = analyzeSelection(chosen.map(faceOf));
+    const analysis = analyzeSelection(chosen.map(faceOf), options);
     if (!analysis.valid) continue;
     if (!best || analysis.base > best.analysis.base ||
         (analysis.base === best.analysis.base && chosen.length > best.dice.length)) {

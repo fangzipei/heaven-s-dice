@@ -6,12 +6,12 @@
   <meta name="theme-color" content="#f4ecd9">
   <meta name="description" content="天国骰局 — 堕入地狱的赌徒用六颗骰子挑战所有庄家，只为换一张进入天堂的门票。">
   <title>天国骰局 · Heaven's Dice</title>
-  <link rel="stylesheet" href="css/main.css?v=20261028-paperworld03">
-  <link rel="stylesheet" href="css/paper-overrides.css?v=20261028-paperworld01">
+  <link rel="stylesheet" href="css/main.css?v=20261029-sharp02">
+  <link rel="stylesheet" href="css/paper-overrides.css?v=20261029-sharp02">
   <link rel="stylesheet" href="css/paper-scene.css?v=20261028-paperworld05">
-  <link rel="stylesheet" href="css/paper-world.css?v=20261028-paperworld06">
-  <link rel="stylesheet" href="css/paper-shop.css?v=20261028-shop01">
-  <link rel="stylesheet" href="css/readability.css?v=20261028-read06">
+  <link rel="stylesheet" href="css/paper-world.css?v=20261029-sharp02">
+  <link rel="stylesheet" href="css/paper-shop.css?v=20261029-sharp02">
+  <link rel="stylesheet" href="css/readability.css?v=20261029-mobile4">
   <link rel="icon" href="assets/items/coin.svg" type="image/svg+xml">
   <!-- Animation + 3D stack, served locally from /vendor so the game runs offline. -->
   <script src="vendor/gsap.min.js?v=3.15.0"></script>
@@ -225,6 +225,7 @@
           <div class="action-dock" id="action-dock"></div>
 
 
+          <div class="layer-shade" id="layer-shade" aria-hidden="true"></div>
           <div class="danger-strip" id="danger-strip" hidden>
             <span>重投已耗尽。你可以先使用物品，再计分并结算本关。</span>
             <button class="mini-button" data-action="forfeit">结束本关</button>
@@ -303,6 +304,6 @@
     </article>
   </template>
 
-  <script type="module" src="src/ui/app.ts?v=20261027-identity02"></script>
+  <script type="module" src="src/ui/app.ts?v=20261029-mobile1"></script>
 </body>
 </html>

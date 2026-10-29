@@ -10,7 +10,7 @@
 import { readFileSync } from 'node:fs';
 import { beforeAll, describe, expect, test } from 'vitest';
 
-import { DICE_SETS, LEVELS, getOpponent } from '../../src/content/index.ts';
+import { BOSSES, DICE_SETS, LEVELS, LEVEL_COUNT, getOpponent } from '../../src/content/index.ts';
 import { createRun } from '../../src/core/engine.ts';
 import { num } from '../../src/core/util.ts';
 import { app } from '../../src/ui/state.ts';
@@ -41,11 +41,11 @@ const html = (selector) => dom.html(selector);
 describe('HUD 渲染器搬到 ui/hud.ts 之后仍然写同样的文案', () => {
   test('顶栏：关卡序号与进度点', () => {
     renderTopbar();
-    expect(text('#level-label')).toBe('第 1 / 33 关');
+    expect(text('#level-label')).toBe(`第 1 / ${LEVEL_COUNT} 关`);
     expect(text('#coin-value')).toBe(num(app.run.coins));
     const track = html('#level-track');
     expect((track.match(/class="level-pip/g) || []).length).toBe(LEVELS.length);
-    expect((track.match(/is-boss/g) || []).length).toBe(8);
+    expect((track.match(/is-boss/g) || []).length).toBe(BOSSES.length);
     expect((track.match(/is-current/g) || []).length).toBe(1);
     expect(track).toContain('title="第 1 关"');
   });
