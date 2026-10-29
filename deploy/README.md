@@ -77,6 +77,10 @@ systemctl reload nginx
 
 ## 更新发布
 
+### 0. 更新玩家日志
+
+每次发版先改 [src/content/changelog.ts](../src/content/changelog.ts)，在最上面加一条本次更新。首页会自动显示最新一条；文案写给玩家看，不写实现细节。
+
 ### 1. 本地构建
 
 ```powershell

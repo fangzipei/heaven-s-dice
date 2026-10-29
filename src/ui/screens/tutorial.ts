@@ -73,9 +73,9 @@ function tutorialHtml(): string {
         <div class="tut-section-head"><span>01</span><div><p>THE SHAPE OF A RUN</p><h3>先看目标：一关一关把分数堆上去</h3></div></div>
         <p class="tut-lede">你坐在长桌这一侧，用六颗骰子去够每关的目标分。达到目标后不会自动结束，可以继续加注；准备好了，再亲自点击「下一关」。</p>
         <div class="tut-cards three">
-          <div class="tut-card"><b>${LEVEL_COUNT} 关 · ${BOSS_CATALOG.length} 位庄家</b><p>第 3、7 关从稀有池，11、15 关从史诗池，20、24 关从传说池各随机抽一位；每局开始时定下整条庄家路线。之间的小兵空档为 ${MINION_GAPS.join('、')} 关。庄家击败后拿到对应赏金，但不会永久增加重投。</p></div>
+          <div class="tut-card"><b>${LEVEL_COUNT} 关 · ${BOSS_CATALOG.length} 位庄家</b><p>第 3、7 关从稀有池，11、15 关从史诗池，20、24 关从传说池各随机抽一位；第 25 关固定是撒旦。每局开始时定下整条庄家路线。之间的小兵空档为 ${MINION_GAPS.join('、')} 关。庄家击败后拿到对应赏金，但不会永久增加重投。</p></div>
           <div class="tut-card"><b>6 颗骰子 · 3 次重投</b><p>每关第一掷免费；「计分并继续」免费重投剩余骰子，只有「计分并重投」消耗 1 次重投。骰子、骰桶、物品会改变你能走多远。</p></div>
-          <div class="tut-card"><b>目标分是算出来的</b><p>第 1 关 ${LEVEL_CURVE.targetBase} 分，第 2 关 1000 分；2–7 关每关 +15%，第 8 关在 7 关基础上 +500，8–15 关每关 +20%；第 16 关在 15 关基础上 +1000，16–24 关每关 +25%。庄家关只把本关的曲线目标乘上对应稀有度系数（赏金最高 ×${Math.max(...BOSS_CATALOG.map((boss) => boss.curve.reward!)).toFixed(2)}），不会影响下一关。</p></div>
+          <div class="tut-card"><b>目标分是算出来的</b><p>第 1 关 ${LEVEL_CURVE.targetBase} 分，第 2 关 1000 分；2–7 关每关 +15%，第 8 关在 7 关基础上 +500，8–15 关每关 +15%；第 16 关在 15 关基础上 +1000，16–24 关每关 +12%；第 25 关撒旦固定 100000 分。庄家关只把本关的曲线目标乘上对应稀有度系数（赏金最高 ×${Math.max(...BOSS_CATALOG.map((boss) => boss.curve.reward!)).toFixed(2)}），不会影响下一关。</p></div>
         </div>
         <div class="tut-flow">
           <div><i>1</i><b>摇骰</b><span>按住骰桶摇动，2 秒后落骰</span></div>

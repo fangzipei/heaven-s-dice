@@ -26,4 +26,14 @@ describe('run record completeness', () => {
     expect(finished.levels[23].level).toBe(24);
     expect(finished.complete).toBe(true);
   });
+
+  test('summary keeps the run-wide hot dice count', () => {
+    const run = createRun({ rng: () => 0.5 });
+    beginRunRecord(run, 'test-user');
+    run.stats.hotDice = 5;
+    recordThrow(run, { values: [1, 1, 1, 1, 1, 1], hot: false, bust: 0 });
+    endLevelRecord(run);
+    const finished = finishRunRecord(run, 'loss');
+    expect(finished.summary.hotDice).toBe(5);
+  });
 });

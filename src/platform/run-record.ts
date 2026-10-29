@@ -82,6 +82,8 @@ export interface RunRecord {
     throws: number;
     busts: number;
     hotThrows: number;
+    /** 整局触发全骰的次数（计分时六颗骰子全部计分）。 */
+    hotDice?: number;
     shopPurchases: number;
     rerollsSpent: number;
   };
@@ -124,7 +126,7 @@ export function beginRunRecord(run: RunState, userId: string): RunRecord {
     finalScore: run.score,
     coins: run.coins,
     levels: [],
-    summary: { throws: 0, busts: 0, hotThrows: 0, shopPurchases: 0, rerollsSpent: 0 },
+    summary: { throws: 0, busts: 0, hotThrows: 0, hotDice: 0, shopPurchases: 0, rerollsSpent: 0 },
   };
   beginLevelRecord(run);
   return active;
@@ -317,6 +319,7 @@ export function finishRunRecord(run: RunState, result: RunResult): RunRecord | n
     throws: throws.length,
     busts: throws.filter((item) => item.bust > 0).length,
     hotThrows: throws.filter((item) => item.hot).length,
+    hotDice: run.stats.hotDice || 0,
     shopPurchases: active.levels.reduce((sum, item) => sum + item.shop.filter((choice) => choice.action.includes('buy')).length, 0),
     rerollsSpent: Math.max(0, run.maxRerolls - run.rerolls),
   };

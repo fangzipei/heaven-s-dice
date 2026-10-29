@@ -215,7 +215,10 @@ test('hot dice resets all six dice for a free reroll', () => {
   const result = applyScore(state, 'continue');
   expect(result.ok).toBe(true);
   expect(result.hot).toBe(true);
-  expect(result.total).toBe(8000);
+  // 六条 1 原为 8000，本关第一次全骰把这一手连乘到 9600。
+  expect(result.total).toBe(9600);
+  expect(result.hotCount).toBe(1);
+  expect(result.hotMultiplier).toBeCloseTo(1.2);
   expect(state.phase).toBe('hot');
   expect(state.dice.every((d) => !d.scored && d.value == null)).toBeTruthy();
 });
@@ -794,8 +797,8 @@ test('the one-shot boss ward cancels the next boss or the current boss before th
 
 test('boss roster rolls one boss per fixed rarity slot', () => {
   const state = fresh();
-  expect([3, 7, 11, 15, 20, 24].map((level) => activeBoss({ ...state, level }).id)).toEqual(['rotfang', 'judge', 'soulsmith', 'ashclerk', 'startax', 'seraph']);
-  const plans = Array.from({ length: 24 }, (_, i) => rollBossPlan(makeRng(100 + i)));
+  expect([3, 7, 11, 15, 20, 24, 25].map((level) => activeBoss({ ...state, level }).id)).toEqual(['rotfang', 'judge', 'soulsmith', 'ashclerk', 'startax', 'seraph', 'satan']);
+  const plans = Array.from({ length: 25 }, (_, i) => rollBossPlan(makeRng(100 + i)));
   expect(new Set(plans.map((plan) => JSON.stringify(plan))).size).toBeGreaterThan(1);
   for (const plan of plans) {
     for (const slot of BOSS_SLOTS) {
@@ -1314,6 +1317,29 @@ test('a dealer level records the coefficient that paid it', () => {
   advanceLevel(minion);
   expect(minion.levelReward.bossPremium).toBe(0);
   expect(minion.levelReward.curveBase).toBe(minion.levelReward.base);
+});
+
+test('chain-note die adds +100 after the first successful score', () => {
+  const state = fresh();
+  state.bag[0].dieId = 'chain_note';
+  syncBag(state);
+  initLevel(state);
+  forceRoll(state, [5, 2, 4, 6, 2, 4]);
+  state.selected = [state.dice[0].uid];
+  expect(buildScore(state, 'reroll').total).toBe(50);
+  state.dieStacks = { [state.dice[0].bagUid]: 1 };
+  expect(buildScore(state, 'reroll').total).toBe(150);
+  state.dieStacks = { [state.dice[0].bagUid]: 2 };
+  expect(buildScore(state, 'reroll').total).toBe(250);
+});
+
+test('satan is the fixed final boss with 100000 target and +2 rerolls', () => {
+  const state = fresh();
+  state.level = 25;
+  initLevel(state);
+  expect(activeBoss(state)?.id).toBe('satan');
+  expect(state.target).toBe(100000);
+  expect(state.rerolls).toBe(BASE_REROLLS + 2);
 });
 
 test('new barrel effects: pawn, fuse, nightwatch, twoface and loan', () => {

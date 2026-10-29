@@ -508,6 +508,7 @@ async function performCupRoll({ free = false, prepared = false, from = null }: {
     renderRail();
     renderActionDock();
     renderDangerStrip();
+    if (result.pardon) showJudgePardon();
     if (!prepared) {
       await capped(slowSpinTableDice(run), 1500);
       await capped(gatherDiceToCup(pouring), 1500);
@@ -785,8 +786,10 @@ export function handleScore(action: ScoreAction): void {
   });
   app.busy = true;
   sound.score(result.total!);
-  showScoreFloat(result.total!, rect);
+  showScoreFloat(result.total!, rect, result.hotMultiplier || 1);
+  showCoinFloat(result.coins || 0, result.pendingCoins || 0, run);
   renderGame();
+  if (result.hot) showHotComboCallout(result.hotCount || 0);
   speakOnScore(result.total!, run);
   clearTimeout(app.rollTimer ?? undefined);
   app.rollTimer = setTimeout(() => {
@@ -829,16 +832,90 @@ export function advanceCurrentLevel(): void {
   }, 260);
 }
 
-function showScoreFloat(total: number, rect: DOMRect | null | undefined) {
+/* Hand-drawn flame frames, swapped at a deliberately choppy step rate. */
+const FIRE_FRAMES = [1, 2, 3, 4].map((n) => `assets/art/fx/fire-${n}.svg`);
+const FIRE_TIERS = [
+  { min: 6000, className: 'is-blaze', flames: 3 },
+  { min: 2000, className: 'is-flame', flames: 2 },
+  { min: 1000, className: 'is-spark', flames: 1 },
+];
+
+function scoreFireHtml(flames: number): string {
+  const frames = FIRE_FRAMES.map((src) => `<img src="${src}" alt="">`).join('');
+  return Array.from({ length: flames }, (_, index) => `<span class="float-fire" style="--flux:${index}">${frames}</span>`).join('');
+}
+
+function showScoreFloat(total: number, rect: DOMRect | null | undefined, hotMultiplier = 1) {
   const el = document.createElement('div');
-  el.className = 'score-float';
+  const tier = FIRE_TIERS.find((entry) => total > entry.min);
+  el.className = `score-float${tier ? ` ${tier.className}` : ''}`;
   const x = rect ? rect.left + rect.width / 2 : window.innerWidth / 2;
   const y = rect ? rect.top - 10 : window.innerHeight / 2;
   el.style.left = `${x}px`;
   el.style.top = `${y}px`;
-  el.innerHTML = `+${num(total)}<small>SCORE</small>`;
+  el.innerHTML = `${tier ? scoreFireHtml(tier.flames) : ''}+${num(total)}<small>SCORE</small>${hotMultiplier > 1 ? `<em class="float-chain">全骰连击 ×${hotMultiplier.toFixed(2)}</em>` : ''}`;
   document.body.append(el);
   setTimeout(() => el.remove(), 1400);
+}
+
+/** The hot counter escalates: a hop at the corner, and from the third hot the
+ *  number itself slams in full-screen and shrinks onto the badge. */
+function showHotComboCallout(count: number) {
+  const badge = $('#hot-combo');
+  if (!badge) return;
+  badge.classList.remove('is-landing');
+  void badge.offsetWidth;
+  badge.classList.add('is-landing');
+  setTimeout(() => badge.classList.remove('is-landing'), 900);
+  if (count < 3) return;
+  const target = badge.getBoundingClientRect();
+  const callout = document.createElement('div');
+  callout.className = 'hot-callout';
+  callout.innerHTML = `<div class="hot-callout-body"><span>全骰</span><b>×${count}</b></div>`;
+  callout.style.setProperty('--fly-x', `${target.left + target.width / 2 - window.innerWidth / 2}px`);
+  callout.style.setProperty('--fly-y', `${target.top + target.height / 2 - window.innerHeight / 2}px`);
+  document.body.append(callout);
+  // Hold the full-screen number long enough to read, then shrink it into the badge.
+  setTimeout(() => callout.classList.add('is-flying'), 380);
+  setTimeout(() => callout.remove(), 1500);
+}
+
+/** 金痕 coins only land when the round is locked in, so a continue shows the
+ *  amount as pending next to the coin pill instead of moving the counter. */
+function showCoinFloat(paid: number, pending: number, run: RunState) {
+  if (!paid && !pending) return;
+  const pill = $('#coin-pill')?.getBoundingClientRect();
+  const el = document.createElement('div');
+  el.className = paid ? 'coin-float' : 'coin-float is-pending';
+  const x = pill ? pill.left + pill.width / 2 : window.innerWidth / 2;
+  const y = pill ? pill.bottom + 14 : 120;
+  el.style.left = `${x}px`;
+  el.style.top = `${y}px`;
+  el.innerHTML = paid
+    ? `+${num(paid)}<small>银币</small>`
+    : `待入账 +${num(run.roundCoins || 0)}<small>锁分后入账</small>`;
+  document.body.append(el);
+  setTimeout(() => el.remove(), 1500);
+}
+
+/** 停审令牌 waives this reroll: pulse the reroll badge and float a note. */
+function showJudgePardon() {
+  const badge = $('#reroll-inline');
+  if (badge) {
+    badge.classList.remove('is-pardoned');
+    void badge.offsetWidth;
+    badge.classList.add('is-pardoned');
+    setTimeout(() => badge.classList.remove('is-pardoned'), 1300);
+  }
+  const rect = badge?.getBoundingClientRect();
+  const el = document.createElement('div');
+  el.className = 'coin-float is-pardon';
+  el.style.left = `${rect ? rect.left + rect.width / 2 : window.innerWidth - 90}px`;
+  el.style.top = `${rect ? rect.bottom + 10 : 240}px`;
+  el.innerHTML = `停审令牌<small>本次重投不扣次数</small>`;
+  document.body.append(el);
+  setTimeout(() => el.remove(), 1700);
+  sound.item();
 }
 
 function showHotBurst() {

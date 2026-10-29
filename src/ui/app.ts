@@ -29,6 +29,8 @@ import {
   refreshAccountButton, setPasswordAndSync, switchAccount, syncNow,
 } from './screens/account.ts';
 import { closeOverlay, openOverlay } from './components/overlay.ts';
+import { openChangelog, refreshHomeChangelog } from './screens/changelog.ts';
+import { fightSatan, leaveHeaven } from './screens/heaven.ts';
 import { clearToasts, showToast } from './components/toast.ts';
 import { bindTooltip, hideTooltip } from './components/tooltip.ts';
 import { $, $$, setCss } from './dom.ts';
@@ -49,7 +51,7 @@ import {
   refreshShop, sellShopItem,
 } from './screens/shop.ts';
 import { openRules, openTutorial, scrollTutorial, showStartPrompt } from './screens/tutorial.ts';
-import { startTutorialGuide } from './tutorial-guide.ts';
+import { guideEvent, startTutorialGuide } from './tutorial-guide.ts';
 import { loadGameConfig } from '../platform/game-config.ts';
 import { app } from './state.ts';
 import { diceTable, ensureDiceTable, renderDiceTray, setTrayRepaint } from './tray.ts';
@@ -73,6 +75,7 @@ document.addEventListener('DOMContentLoaded', () => {
   setTrayRepaint(renderGame);
   bindSceneParallax();
   renderStartDecor();
+  refreshHomeChangelog();
   refreshAccountButton();
   refreshResumeButton();
   const profile = loadProfile();
@@ -240,6 +243,9 @@ function bindGlobalEvents(): void {
       if (Engine.toggleDie(app.run, die.dataset.dieUid!)) {
         sound.click();
         renderGame();
+        // Keyboard / screen-reader selection goes through this path, not the
+        // 3D picker, so the guide has to hear about it here too.
+        guideEvent('selection', app.run);
       }
       return;
     }
@@ -317,16 +323,23 @@ async function handleAction(action: string, target: HTMLElement, _event?: MouseE
       startRun();
       break;
     case 'start-guided':
-      void (async () => {
-        await startRun();
-        if (app.run) startTutorialGuide();
-      })();
+      void startRun({ guide: true });
       break;
     case 'restart-run':
       startRun();
       break;
     case 'open-tutorial':
       openTutorial();
+      break;
+    case 'open-changelog':
+      openChangelog();
+      break;
+    case 'heaven-fight':
+      fightSatan();
+      break;
+    case 'heaven-enter':
+    case 'heaven-leave':
+      leaveHeaven();
       break;
     case 'tutorial-nav':
       scrollTutorial(target.dataset.target!);
@@ -462,6 +475,9 @@ async function handleAction(action: string, target: HTMLElement, _event?: MouseE
       app.pendingReplace = null;
       closeOverlay();
       break;
+    // Retired: a loss now ends the run, so the defeat sheet offers
+    // "restart-run" (fresh run from level 1) instead of a half-coin retry.
+    // Kept wired for old saves/markup that still emit the action.
     case 'retry-level':
       retryLevel();
       break;
@@ -497,10 +513,10 @@ function updateSoundButtons(): void {
 /* ═══════════════════════════════════════════════════════════════════
    Run lifecycle
    ═══════════════════════════════════════════════════════════════════ */
-export async function startRun(): Promise<void> {
+export async function startRun({ guide = false }: { guide?: boolean } = {}): Promise<void> {
   const profile = loadProfile();
   if (!profile) {
-    openIdentity(() => { void startRun(); });
+    openIdentity(() => { void startRun({ guide }); });
     return;
   }
   await loadGameConfig();
@@ -522,7 +538,12 @@ export async function startRun(): Promise<void> {
     setupLevelScene(true);
     renderGame();
     saveCheckpoint();
-  }, () => showLevelIntro());
+  }, () => {
+    // The run only exists once the paper wipe commits, so the guide has to be
+    // started from this callback rather than after `await startRun()`.
+    if (guide) startTutorialGuide();
+    showLevelIntro();
+  });
   sound.unlock();
   refreshResumeButton();
 }
@@ -590,6 +611,8 @@ export function setupLevelScene(force = false): void {
   $('#boss-badge')!.hidden = !isBoss;
   $('#boss-effect-card')!.hidden = !isBoss;
   if (isBoss) {
+    $('#boss-badge')!.dataset.bossTip = boss!.id;
+    $('#boss-effect-card')!.dataset.bossTip = boss!.id;
     $('#boss-effect-name')!.textContent = boss!.effectName;
     $('#boss-effect-title')!.textContent = boss!.effectName;
     const status = Engine.bossStatusText(app.run);

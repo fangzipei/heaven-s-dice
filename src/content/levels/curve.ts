@@ -14,12 +14,13 @@ const roundTo = (value: number, step: number) => Math.max(step, Math.round(value
 function buildNoBossTargets(): number[] {
   const targets = [500, 1000];
   let value = 1000;
-  for (let level = 3; level <= 24; level += 1) {
-    if (level === 8) value += 500;
+  for (let level = 3; level <= 25; level += 1) {
+    if (level === 25) value = 100000;
+    else if (level === 8) value += 500;
     else if (level === 16) value += 1000;
     else if (level <= 7) value *= 1.15;
-    else if (level <= 15) value *= 1.20;
-    else value *= 1.25;
+    else if (level <= 15) value *= 1.15;
+    else value *= 1.12;
     targets.push(value);
   }
   return targets;

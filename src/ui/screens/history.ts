@@ -115,6 +115,7 @@ export async function openHistory(): Promise<void> {
           <div><span>耗时</span><b>${durationLabel(entry.durationMs)}</b></div>
           <div><span>银币</span><b>${num(entry.coins)}</b></div>
           <div><span>最终得分</span><b>${num(entry.finalScore)}</b></div>
+          <div><span>全骰</span><b>${num(entry.summary?.hotDice ?? entry.summary?.hotThrows ?? 0)} 次</b></div>
         </div>
         <div class="history-loadout">
           <div><span>骰子</span><b>${groupedDice(entry.loadout.dice)}</b></div>

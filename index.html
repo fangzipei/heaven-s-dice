@@ -85,6 +85,14 @@
             <button class="home-option" data-action="open-compendium"><svg><use href="#i-book"></use></svg><span>查看图鉴</span></button>
             <button class="home-option" data-action="open-tutorial"><svg><use href="#i-help"></use></svg><span>查看规则</span></button>
           </div>
+          <button class="home-update" id="home-update" data-action="open-changelog">
+            <span class="home-update-dot" aria-hidden="true"></span>
+            <span class="home-update-copy">
+              <b id="home-update-title">最新更新</b>
+              <em id="home-update-summary">看看这次改了什么。</em>
+            </span>
+            <svg aria-hidden="true"><use href="#i-arrow"></use></svg>
+          </button>
         </div>
       </main>
 
@@ -171,6 +179,16 @@
             <div class="score-panel-bottom">
               <span id="opponent-inline">对手：灰爪</span>
               <span id="reroll-inline" aria-live="polite"><span class="reroll-hud-label">本关重投</span><b>3</b><em>/ 3</em></span>
+            </div>
+            <div class="hot-combo" id="hot-combo" hidden aria-live="polite">
+              <span class="hot-combo-flames" aria-hidden="true">
+                <img src="assets/art/fx/fire-1.svg" alt="">
+                <img src="assets/art/fx/fire-2.svg" alt="">
+                <img src="assets/art/fx/fire-3.svg" alt="">
+                <img src="assets/art/fx/fire-4.svg" alt="">
+              </span>
+              <span class="hot-combo-word">全骰</span>
+              <b class="hot-combo-num">×<em id="hot-combo-count">0</em></b>
             </div>
           </div>
 

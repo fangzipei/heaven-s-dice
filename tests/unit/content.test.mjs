@@ -11,16 +11,16 @@ const countBy = (list, key) => list.reduce((counts, entry) => {
   return counts;
 }, {});
 
-test('dice roster: 4 wolf + 4 demon + 25 free agents, rarity 11/8/8/6', () => {
-  expect(DICE.length).toBe(33);
-  expect(countBy(DICE, 'rarity')).toEqual({ common: 11, rare: 8, epic: 8, legendary: 6 });
+test('dice roster: 4 wolf + 4 demon + 26 free agents, rarity 11/9/8/6', () => {
+  expect(DICE.length).toBe(34);
+  expect(countBy(DICE, 'rarity')).toEqual({ common: 11, rare: 9, epic: 8, legendary: 6 });
   expect(Object.keys(DICE_SETS)).toEqual(['wolf', 'demon']);
   for (const set of Object.values(DICE_SETS)) {
     expect(DICE.filter((die) => die.setId === set.id).length).toBe(4);
     expect(set.bonuses.length).toBe(2);
   }
   // The whole point of the reshuffle: not every die has to be in a set.
-  expect(DICE.filter((die) => !die.setId).length).toBe(25);
+  expect(DICE.filter((die) => !die.setId).length).toBe(26);
   for (const die of DICE) {
     expect(die.probs.length).toBe(6);
     const sum = die.probs.reduce((a, b) => a + b, 0);
@@ -36,7 +36,7 @@ test('every die bonus is well-formed, and bias dice mark 1/5 rare', () => {
     expect(typeof die.bonus.label).toBe('string');
     expect(die.bonus.label.length).toBeGreaterThan(0);
   }
-  expect(DICE.filter((die) => die.bonus).length).toBe(19);
+  expect(DICE.filter((die) => die.bonus).length).toBe(20);
   const bias = DICE.filter((die) => /^bias_/.test(die.id));
   expect(bias.length).toBe(6);
   for (const die of bias) {
@@ -107,14 +107,15 @@ test('item mix: 41 items, 14 active / 27 passive, 10 one-shot consumables', () =
   ]);
 });
 
-test('every boss has a legendary drop-only relic', () => {
-  for (const boss of BOSS_CATALOG) {
+test('every non-final boss has a legendary drop-only relic', () => {
+  const normalBosses = BOSS_CATALOG.filter((boss) => boss.id !== 'satan');
+  for (const boss of normalBosses) {
     const relic = ITEM_BY_ID[BOSS_RELICS[boss.id]];
     expect(relic, boss.id).toBeTruthy();
     expect(relic.rarity).toBe('legendary');
     expect(relic.bossOnly).toBe(boss.id);
   }
-  expect(Object.keys(BOSS_RELICS).length).toBe(BOSS_CATALOG.length);
+  expect(Object.keys(BOSS_RELICS).length).toBe(normalBosses.length);
 });
 
 test('shop prices sit in the 35–300 band', () => {
@@ -161,27 +162,27 @@ test('barrel composition: starter + probability + score + interaction + gesture'
   }
 });
 
-test('24 levels with six dealers at 3/7/11/15/20/24', () => {
-  expect(BOSSES.length).toBe(6);
+test('25 levels with seven dealers at 3/7/11/15/20/24/25', () => {
+  expect(BOSSES.length).toBe(7);
   expect(MINIONS.length).toBe(5);
   expect(TABLES.length).toBe(5);
-  expect(LEVELS.length).toBe(24);
+  expect(LEVELS.length).toBe(25);
   const dealerLevels = BOSSES.map((boss) => boss.level);
-  expect(dealerLevels).toEqual([3, 7, 11, 15, 20, 24]);
+  expect(dealerLevels).toEqual([3, 7, 11, 15, 20, 24, 25]);
   expect(dealerLevels).toEqual(MINION_GAPS.reduce((acc, gap) => {
     acc.push((acc.at(-1) || 0) + gap + 1);
     return acc;
   }, []));
-  expect(new Set(BOSSES.map((boss) => boss.effectKey)).size).toBe(6);
+  expect(new Set(BOSSES.map((boss) => boss.effectKey)).size).toBe(7);
 
-  // 2, 3, 3, 3, 4, 3 — the run up to each dealer.
+  // 2, 3, 3, 3, 4, 3, 0 — the run up to each dealer.
   const gaps = [];
   let previous = 0;
   for (const level of dealerLevels) {
     gaps.push(level - previous - 1);
     previous = level;
   }
-  expect(gaps).toEqual([2, 3, 3, 3, 4, 3]);
+  expect(gaps).toEqual([2, 3, 3, 3, 4, 3, 0]);
 
   for (const level of LEVELS) {
     expect(level.target > 0).toBeTruthy();
@@ -193,8 +194,7 @@ test('24 levels with six dealers at 3/7/11/15/20/24', () => {
     expect(minions[i].target > minions[i - 1].target).toBeTruthy();
   }
   for (const dealer of LEVELS.filter((level) => level.boss)) {
-    const before = LEVELS.find((level) => level.level === dealer.level - 1);
-    if (before) expect(dealer.target > before.target).toBeTruthy();
+    expect(dealer.target > 0).toBeTruthy();
   }
   const minionRewards = LEVELS.filter((level) => !level.boss).map((level) => level.reward);
   for (let i = 1; i < minionRewards.length; i += 1) {
@@ -207,9 +207,9 @@ test('24 levels with six dealers at 3/7/11/15/20/24', () => {
   }
 });
 
-test('24 levels split 5 / 5 / 5 / 5 / 4 across five tables', () => {
+test('25 levels split 5 / 5 / 5 / 5 / 5 across five tables', () => {
   expect([0, 1, 2, 3, 4].map((chapter) => chapterLevelSpan(chapter))).toEqual([
-    [1, 5], [6, 10], [11, 15], [16, 20], [21, 24],
+    [1, 5], [6, 10], [11, 15], [16, 20], [21, 25],
   ]);
   for (const table of TABLES) {
     const levels = LEVELS.filter((level) => chapterForLevel(level.level) === table.group);
@@ -221,6 +221,8 @@ test('the level table uses the no-boss curve, then boss coefficients', () => {
   expect(buildLevelTable()).toEqual(LEVELS);
   expect(LEVELS[0].target).toBe(LEVEL_CURVE.targetBase);
   expect(LEVELS[1].target).toBe(LEVEL_CURVE.nonBossTargets[1]);
+  expect(LEVELS[23].target).toBe(31380);
+  expect(LEVELS[24].target).toBe(100000);
   expect(LEVELS[0].reward).toBe(LEVEL_CURVE.rewardBase);
   for (const level of LEVELS) {
     const boss = BOSSES.find((entry) => entry.level === level.level);
@@ -230,7 +232,6 @@ test('the level table uses the no-boss curve, then boss coefficients', () => {
       continue;
     }
     expect(level.reward > level.curve.reward).toBeTruthy();
-    expect(level.target > level.curve.target).toBeTruthy();
     const idealReward = level.curve.reward * boss.curve.reward;
     const idealTarget = level.curve.target * boss.curve.target;
     expect(Math.abs(level.reward - idealReward) <= LEVEL_CURVE.rewardStep * 2).toBeTruthy();

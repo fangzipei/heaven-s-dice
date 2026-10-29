@@ -3,7 +3,7 @@ import type { BossContentDef } from '../../core/types.ts';
 
 export default {
   id: 'pairbane', art: 'boss-scale',
-  curve: { target: 1.35, reward: 1.85 },
+  curve: { target: 0.8, reward: 1.85 },
   rarity: 'epic',
   name: '成双之忌', title: '不许成对', accent: '#c9b7d9',
   effectName: '成双即罪', effectKey: 'banPairs',

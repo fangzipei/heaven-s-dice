@@ -3,15 +3,15 @@
 // 从 app.js 的 Tooltips 一节原样搬出。文案与概率条算法一字未改，因为
 // tools/boss-test.mjs 与商店截图都在比对这段文本。
 import {
-  BARRELS, BARREL_BY_ID, DICE_BY_ID, DICE_SETS, ITEM_BY_ID, STANDARD_DIE, rarityOf,
+  BARRELS, BARREL_BY_ID, BOSS_BY_ID, DICE_BY_ID, DICE_SETS, ITEM_BY_ID, STANDARD_DIE, rarityOf,
 } from '../../content/index.ts';
 import { effectiveProbs, getBarrel, setCounts } from '../../core/engine.ts';
-import type { BarrelDef, DiceDef } from '../../core/types.ts';
+import type { BarrelDef, DiceDef, RunState } from '../../core/types.ts';
 import { h } from '../../core/util.ts';
 import { $, uiZoom } from '../dom.ts';
 import { app } from '../state.ts';
 
-const TIP_SELECTOR = '[data-die-tip],[data-item-tip],[data-set-tip],[data-barrel-tip],[data-pattern-tip],[data-rule-tip]';
+const TIP_SELECTOR = '[data-die-tip],[data-item-tip],[data-set-tip],[data-barrel-tip],[data-pattern-tip],[data-rule-tip],[data-boss-tip]';
 
 let tooltipCurrent: HTMLElement | null = null;
 
@@ -144,7 +144,20 @@ export function tooltipFor(el: HTMLElement): string {
   if (el.dataset.barrelTip) return barrelTooltip(el.dataset.barrelTip);
   if (el.dataset.ruleTip) return ruleUsageTooltip(el.dataset.ruleTip);
   if (el.dataset.patternTip) return patternTooltip(el.dataset.patternTip, el.dataset.patternLabel || '骰型');
+  if (el.dataset.bossTip) return bossTooltip(el.dataset.bossTip);
   return '';
+}
+
+export function bossTooltip(bossId: string): string {
+  const boss = BOSS_BY_ID[bossId];
+  if (!boss) return '';
+  return `
+    <h5>${h(boss.name)}</h5>
+    <div class="tip-sub">庄家特性 · ${h(boss.title)}</div>
+    <p><b>${h(boss.effectName)}</b></p>
+    <p>${h(boss.effectDesc)}</p>
+    <p class="tip-bonus">${h(boss.intro)}</p>
+  `;
 }
 
 const RULE_TIP_GROUPS: Record<string, { label: string; note: string; match?: (key: string) => boolean }> = {
@@ -211,14 +224,22 @@ export function dieTooltip(dieId: string): string {
   `;
 }
 
+/** Per-level relic triggers: the detail card reports whether it already fired. */
+const ITEM_LEVEL_STATE: Record<string, { flag: keyof RunState['flags']; used: string; ready: string }> = {
+  judge_relic: { flag: 'judgeRelicUsed', used: '本关已触发', ready: '本关尚未触发' },
+};
+
 export function itemTooltip(itemId: string): string {
   const item = ITEM_BY_ID[itemId];
   if (!item) return '';
   const rarity = rarityOf(item);
+  const state = ITEM_LEVEL_STATE[itemId];
+  const fired = state ? Boolean(app.run?.flags?.[state.flag]) : false;
   return `
     <h5>${h(item.name)}</h5>
     <div class="tip-sub">${h(rarity.name)} · ${item.consumable ? '一次性物品' : item.type === 'active' ? '主动物品' : '被动物品'}</div>
     <p>${h(item.desc)}</p>
+    ${state ? `<p class="tip-state ${fired ? 'is-used' : ''}">${fired ? state.used : state.ready}</p>` : ''}
     <p class="tip-bonus">${h(item.flavor)}</p>
   `;
 }

@@ -53,6 +53,24 @@ describe('结算弹窗搬到 ui/screens/result.ts 之后仍然写同样的文案
     expect(html).not.toContain('重投上限 +1');
   });
 
+  test('庄家掉落：弹出一张掉落卡片，确定后继续', () => {
+    const run = app.run;
+    run.level = 11;
+    run.score = run.target;
+    run.levelReward = {
+      base: 100, curveBase: 80, bossPremium: 20, bossName: '审判官', bossScale: 1.25,
+      relic: { id: 'judge_relic', name: '停审令牌' }, bonuses: [], total: 120,
+    };
+    showVictory();
+    const html = overlay();
+    expect(html).toContain('boss-drop');
+    expect(html).toContain('assets/art/items/judge_relic-cut.svg');
+    expect(html).toContain('停审令牌');
+    expect(html).toContain('每次「计分并重投」有 25% 概率不消耗重投；每关最多触发一次。');
+    expect(html).toContain('data-action="go-shop">确定');
+    expect(html).not.toContain('庄家掉落 <b>');
+  });
+
   test('终局：通关摘要与返回首页', () => {
     const run = app.run;
     run.level = LEVEL_COUNT;
@@ -60,26 +78,25 @@ describe('结算弹窗搬到 ui/screens/result.ts 之后仍然写同样的文案
     showVictory();
     const html = overlay();
     expect(html).toContain('THE HOUSE HAS FALLEN');
-    expect(html).toContain('<h2>天穹已破</h2>');
-    expect(html).toContain('你击败了钻石天使，赢下了整座天国骰局。');
+    expect(html).toContain('<h2>天堂的主人</h2>');
+    expect(html).toContain('你击败了撒旦，坐上了那张空着的王座。');
     expect(html).toContain(`<span>通关关卡</span><b>${LEVEL_COUNT} / ${LEVEL_COUNT}</b>`);
     expect(html).toContain('data-action="confirm-home">返回首页');
     expect(html).not.toContain('restart-run');
     expect(html).not.toContain('再来一局');
   });
 
-  test('失败：两条去向与半价银币的警告', () => {
+  test('失败：这一局结束，只能重开整局', () => {
     app.run.score = 10;
     showDefeat();
     const html = overlay();
     expect(html).toContain('THE HOUSE COLLECTS');
     expect(html).toContain('<h2>赌局结束</h2>');
     expect(html).toContain('收走了桌上的银币。你没能达到');
-    expect(html).toContain('卷土重来会保留骰子、骰桶与物品，但会失去一半银币。');
-    expect(html).toContain('data-action="retry-level">卷土重来');
+    expect(html).toContain('data-action="restart-run">重新开始');
     expect(html).toContain('data-action="confirm-home">离开赌桌');
-    expect(html).not.toContain('restart-run');
-    expect(html).not.toContain('重新开始');
+    expect(html).not.toContain('retry-level');
+    expect(html).not.toContain('卷土重来');
   });
 
   test('一局只弹一次：resultShown 挡住第二次调用', () => {

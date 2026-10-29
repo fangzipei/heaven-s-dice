@@ -7,8 +7,7 @@
 import type {
   DiceDef, PricedDie, ById, BarrelDef, ItemDef, TableDef, MinionDef,
 } from '../core/types.ts';
-import { DICE_SETS, DIE_PRICE_BY_RARITY } from './meta.ts';
-import { STANDARD_DIE } from './standard_die.ts';
+import { DICE_SETS, DIE_PRICE_BY_RARITY } from './meta.ts';import { STANDARD_DIE } from './standard_die.ts';
 import { DICE_DEFS } from './dice/index.ts';
 import { BARREL_DEFS } from './barrels/index.ts';
 import { ITEM_DEFS, BOSS_RELICS } from './items/index.ts';
@@ -26,11 +25,14 @@ export {
   getLevelConfig, getOpponent, getTable, buildLevelTable, LEVEL_CURVE, setDifficultyConfig,
 } from './levels/index.ts';
 
+/* 少数骰子有独立定价，其余按稀有度。条目文件仍保持未定价。 */
+const DIE_PRICE_OVERRIDES: Record<string, number> = { chain_note: 150 };
+
 /* 商店卡池里永远是有价骰子，所以价格是聚合时盖上去的章，条目文件不写它。
    注意：这里生成的是新对象，dice/<id>.ts 导出的是未定价的定义本体。 */
 export const DICE: PricedDie[] = DICE_DEFS.map((die) => ({
   ...die,
-  price: DIE_PRICE_BY_RARITY[die.rarity] ?? 30,
+  price: DIE_PRICE_OVERRIDES[die.id] ?? DIE_PRICE_BY_RARITY[die.rarity] ?? 30,
 }));
 
 export const DICE_BY_ID: ById<PricedDie> = Object.fromEntries(DICE.map((d) => [d.id, d]));

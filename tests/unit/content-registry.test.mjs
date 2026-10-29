@@ -91,7 +91,7 @@ describe('one file per entry, and every file registered', () => {
     }
     const byRarity = { common: 35, rare: 70, epic: 130, legendary: 210 };
     for (const die of Content.DICE) {
-      expect(die.price).toBe(byRarity[die.rarity]);
+      expect(die.price).toBe(die.id === 'chain_note' ? 150 : byRarity[die.rarity]);
     }
     expect(Content.STANDARD_DIE.price).toBeUndefined();
   });
@@ -107,7 +107,7 @@ describe('one file per entry, and every file registered', () => {
       const source = readFileSync(new URL(`bosses/${file}`, CONTENT_DIR), 'utf8');
       expect(source, `${file} must not hand-write level/group`).not.toMatch(/\b(level|group):/);
     }
-    expect(Content.BOSSES.map((boss) => boss.level)).toEqual([3, 7, 11, 15, 20, 24]);
+    expect(Content.BOSSES.map((boss) => boss.level)).toEqual([3, 7, 11, 15, 20, 24, 25]);
     expect(Content.BOSSES.map((boss) => boss.group))
       .toEqual(SNAPSHOT.BOSSES.map((boss) => boss.group));
     expect(readFileSync(new URL('bosses/index.ts', CONTENT_DIR), 'utf8'))

@@ -5,7 +5,7 @@ export default {
   id: 'ashclerk', art: 'boss-ash',
   // 赏金系数：这一关的银币 = 曲线 × 系数（曲线本身逐关上涨，系数随
   // 关卡缓慢收敛，否则后期赏金会指数爆炸）。
-  curve: { target: 1.35, reward: 1.85 },
+  curve: { target: 0.8, reward: 1.85 },
   rarity: 'epic',
   name: '灰烬书记官', title: '熔炉的记录员', accent: '#d98a56',
   effectName: '不许复写', effectKey: 'noRepeatType',

@@ -12,6 +12,7 @@ import twinsix from './twinsix.ts';
 import toll from './toll.ts';
 import mirror from './mirror.ts';
 import pairbane from './pairbane.ts';
+import satan from './satan.ts';
 import { BOSS_LEVELS, chapterForLevel } from '../levels/structure.ts';
 import type { BossContentDef, BossDef, RarityId } from '../../core/types.ts';
 
@@ -29,6 +30,7 @@ export const BOSS_DEFS: BossContentDef[] = [
   toll,
   mirror,
   pairbane,
+  satan,
 ];
 
 export const BOSS_BY_ID: Record<string, BossContentDef> = Object.fromEntries(
@@ -45,8 +47,10 @@ const pools: Record<RarityId, BossContentDef[]> = {
   common: [],
   rare: BOSS_DEFS.filter((boss) => boss.rarity === 'rare'),
   epic: BOSS_DEFS.filter((boss) => boss.rarity === 'epic'),
-  legendary: BOSS_DEFS.filter((boss) => boss.rarity === 'legendary'),
+  legendary: BOSS_DEFS.filter((boss) => boss.rarity === 'legendary' && boss.id !== 'satan'),
 };
+
+export const FINAL_BOSS_ID = 'satan';
 
 /** Stable default used for the compendium and for code paths without a run. */
 export const DEFAULT_BOSS_PLAN: Record<number, string> = {
@@ -56,6 +60,7 @@ export const DEFAULT_BOSS_PLAN: Record<number, string> = {
   15: 'ashclerk',
   20: 'startax',
   24: 'seraph',
+  25: 'satan',
 };
 
 function shuffle<T>(list: T[], rng: () => number): T[] {
@@ -77,6 +82,7 @@ export function rollBossPlan(rng: () => number): Record<number, string> {
   };
   const plan: Record<number, string> = {};
   for (const slot of BOSS_SLOTS) {
+    if (slot.level === 25) { plan[25] = FINAL_BOSS_ID; continue; }
     const pick = queues[slot.rarity].shift();
     if (pick) plan[slot.level] = pick.id;
   }

@@ -4,7 +4,7 @@ import {
   DICE_BY_ID, ITEM_BY_ID, ITEMS,
 } from '../../src/content/index.ts';
 import {
-  applyItemGrant, applyScore, buildScore, createRun, createShop, getDiceCapacity, initLevel,
+  advanceLevel, applyItemGrant, applyScore, buildScore, bustRound, createRun, createShop, getDiceCapacity, initLevel,
   makeRng, refreshSection, rollDice, shopPrice, useItem,
 } from '../../src/core/engine.ts';
 
@@ -145,20 +145,168 @@ describe('新骰子计分规则', () => {
     expect(totalFor(five)).toBe(50);
   });
 
-  test('金痕计分给 20 银币', () => {
+  test('金痕骰只在锁分时给银币，继续时先挂账', () => {
     const state = blankState();
     select(state, [{ dieId: 'gilded_trace', value: 1 }, { value: 5 }]);
     const result = applyScore(state, 'continue');
     expect(result.ok).toBe(true);
+    expect(state.coins).toBe(0);
+    expect(state.roundCoins).toBe(20);
+    expect(result.coins).toBe(0);
+
+    // Banking the round pays every 金痕 die scored during it.
+    state.rerolls = 0;
+    select(state, [{ value: 1 }, { value: 5 }]);
+    const bank = applyScore(state, 'bank');
+    expect(bank.ok).toBe(true);
     expect(state.coins).toBe(20);
+    expect(state.roundCoins).toBe(0);
+    expect(bank.coins).toBe(20);
   });
 
-  test('鎏金桶让计分骰给 100 银币', () => {
+  test('过关离开赌桌时金痕挂账照常入账', () => {
+    const state = blankState();
+    select(state, [{ dieId: 'gilded_trace', value: 1 }, { value: 5 }]);
+    applyScore(state, 'continue');
+    expect(state.roundCoins).toBe(20);
+    state.score = state.target;
+    expect(advanceLevel(state).ok).toBe(true);
+    // The level reward lands on top, so only the floor and the cleared pool
+    // are pinned here.
+    expect(state.coins).toBeGreaterThanOrEqual(20);
+    expect(state.roundCoins).toBe(0);
+    expect(state.log.some((entry) => String(entry.text || '').includes('+20 银币'))).toBe(true);
+  });
+
+  test('金痕骰在掷空时连同挂账一起作废', () => {
+    const state = blankState();
+    select(state, [{ dieId: 'gilded_trace', value: 1 }, { value: 5 }]);
+    applyScore(state, 'continue');
+    expect(state.roundCoins).toBe(20);
+    bustRound(state);
+    expect(state.coins).toBe(0);
+    expect(state.roundCoins).toBe(0);
+  });
+
+  test('计分并重投时金痕当场结算', () => {
+    const state = blankState();
+    select(state, [{ dieId: 'gilded_trace', value: 1 }, { value: 5 }]);
+    const result = applyScore(state, 'reroll');
+    expect(result.ok).toBe(true);
+    expect(state.coins).toBe(20);
+    expect(result.coins).toBe(20);
+  });
+
+  test('鎏金桶的金币与金痕骰一样，锁分后才入账', () => {
+    const state = blankState({ barrel: 'gilded' });
+    state.dice = [{ uid: 'd0', bagUid: 'b0', dieId: 'standard', value: 1, blank: false, wild: false, scored: false, gilded: true }];
+    state.selected = ['d0'];
+    const continued = applyScore(state, 'continue');
+    expect(continued.coins).toBe(0);
+    expect(continued.pendingCoins).toBe(100);
+    expect(state.coins).toBe(0);
+    expect(state.roundCoins).toBe(100);
+
+    // Locking the round pays the pending gold.
+    state.rerolls = 0;
+    state.dice = [{ uid: 'd1', bagUid: 'b0', dieId: 'standard', value: 5, blank: false, wild: false, scored: false }];
+    state.selected = ['d1'];
+    const banked = applyScore(state, 'bank');
+    expect(banked.coins).toBe(100);
+    expect(state.coins).toBe(100);
+    expect(state.roundCoins).toBe(0);
+  });
+
+  test('鎏金桶的挂账金币在掷空时作废', () => {
     const state = blankState({ barrel: 'gilded' });
     state.dice = [{ uid: 'd0', bagUid: 'b0', dieId: 'standard', value: 1, blank: false, wild: false, scored: false, gilded: true }];
     state.selected = ['d0'];
     applyScore(state, 'continue');
-    expect(state.coins).toBe(100);
+    expect(state.roundCoins).toBe(100);
+    bustRound(state);
+    expect(state.coins).toBe(0);
+    expect(state.roundCoins).toBe(0);
+  });
+});
+
+describe('停审令牌', () => {
+  function pardonState() {
+    const state = blankState({ rerolls: 3 });
+    state.phase = 'reroll-pending';
+    state.flags.rerollAll = true;
+    state.passiveItems = ['judge_relic'];
+    state.dice = Array.from({ length: 6 }, (_, index) => ({
+      uid: `d${index}`, bagUid: `b${index}`, dieId: 'standard',
+      value: null, blank: false, wild: false, scored: false,
+    }));
+    state.selected = [];
+    return state;
+  }
+
+  test('触发时豁免这一次重投，并把 pardon 交给界面', () => {
+    const state = pardonState();
+    const result = rollDice(state, { rng: () => 0.1 });
+    expect(result.ok).toBe(true);
+    expect(result.pardon).toBe(true);
+    expect(state.rerolls).toBe(3);
+    expect(state.flags.judgeRelicUsed).toBe(true);
+    expect(state.log.some((entry) => String(entry.text || '').includes('停审令牌'))).toBe(true);
+  });
+
+  test('没触发时照常扣一次重投', () => {
+    const state = pardonState();
+    const result = rollDice(state, { rng: () => 0.9 });
+    expect(result.pardon).toBe(false);
+    expect(state.rerolls).toBe(2);
+    expect(state.flags.judgeRelicUsed).toBeFalsy();
+  });
+
+  test('同一关只触发一次', () => {
+    const state = pardonState();
+    state.flags.judgeRelicUsed = true;
+    const result = rollDice(state, { rng: () => 0.1 });
+    expect(result.pardon).toBe(false);
+    expect(state.rerolls).toBe(2);
+  });
+});
+
+describe('全骰连击', () => {
+  test('本关每次全骰再叠一层 ×1.2，并累计整局全骰次数', () => {
+    const state = blankState();
+    select(state, [1, 1, 1, 1, 1, 1].map((value) => ({ value })));
+    const first = applyScore(state, 'continue');
+    expect(first.hot).toBe(true);
+    expect(first.hotCount).toBe(1);
+    expect(first.hotMultiplier).toBeCloseTo(1.2);
+    expect(first.total).toBe(Math.round(8000 * 1.2));
+
+    select(state, [1, 1, 1, 1, 1, 1].map((value) => ({ value })));
+    const second = applyScore(state, 'continue');
+    expect(second.hot).toBe(true);
+    expect(second.hotCount).toBe(2);
+    expect(second.hotMultiplier).toBeCloseTo(1.44);
+    expect(second.total).toBe(Math.round(8000 * 1.44));
+    expect(state.stats.hotDice).toBe(2);
+  });
+
+  test('没触发全骰的一手不加倍', () => {
+    const state = blankState();
+    select(state, [{ value: 1 }, { value: 2 }, { value: 3 }, { value: 4 }, { value: 6 }, { value: 6 }]);
+    state.selected = [state.dice[0].uid];
+    const result = applyScore(state, 'continue');
+    expect(result.hot).toBe(false);
+    expect(result.total).toBe(100);
+    expect(state.hotCount).toBe(0);
+    expect(state.stats.hotDice).toBe(0);
+  });
+
+  test('进入新关卡清零全骰计数（整局记录保留）', () => {
+    const state = blankState();
+    state.hotCount = 4;
+    state.stats.hotDice = 7;
+    initLevel(state);
+    expect(state.hotCount).toBe(0);
+    expect(state.stats.hotDice).toBe(7);
   });
 });
 

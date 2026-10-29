@@ -4,7 +4,7 @@ import { TABLE_DEFS } from '../tables/index.ts';
 /* ── 关卡结构：24 关，6 位庄家 ─────────────────────────────────────────
    庄家固定在 3 / 7 / 11 / 15 / 20 / 24 关：
    3、7 稀有；11、15 史诗；20、24 传说。 */
-export const MINION_GAPS: number[] = [2, 3, 3, 3, 4, 3];
+export const MINION_GAPS: number[] = [2, 3, 3, 3, 4, 3, 0];
 
 /** 第 i 位庄家的关卡号 = 前面所有空档累加 + 每位庄家自己占的一关。 */
 export const BOSS_LEVELS: number[] = (() => {

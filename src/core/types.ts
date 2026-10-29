@@ -60,6 +60,7 @@ export type DieBonus =
   | { type: 'retriggerKind'; label: string }
   /* Coins paid each time this die is scored. */
   | { type: 'coinsPerScore'; value: number; label: string }
+  | { type: 'afterScoreFlat'; value: number; label: string }
   /* Multiplier while the level has no rerolls left. */
   | { type: 'noRerollMultiplier'; value: number; label: string }
   /* Permanent multiplier growth when the shop is rerolled (once per shop). */
@@ -416,6 +417,8 @@ export interface RunStats {
   levelScore: number;
   bestHit: number;
   wins: number;
+  /** 整局触发全骰的次数（跨关累计，记录用）。 */
+  hotDice: number;
 }
 
 export interface RunState {
@@ -432,6 +435,12 @@ export interface RunState {
   selected: string[];
   score: number;
   roundScore: number;
+  /** 本关挂账的银币（金痕骰 / 鎏金桶）；锁分时才入账。 */
+  roundCoins?: number;
+  /** 连记骰：每颗骰子成功参与非浮动计分的累计次数，按 bagUid 记录。 */
+  dieStacks?: Record<string, number>;
+  /** 本关触发的全骰次数；左上角计数与连击倍率都读它。 */
+  hotCount?: number;
   targetReached: boolean;
   overshootTierKey: string | null;
   lastBust: { lost?: number; floating?: boolean; saved?: number } | null;

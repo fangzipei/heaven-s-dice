@@ -5,7 +5,7 @@ export default {
   id: 'gildedking', art: 'boss-gold',
   // 赏金系数：这一关的银币 = 曲线 × 系数（曲线本身逐关上涨，系数随
   // 关卡缓慢收敛，否则后期赏金会指数爆炸）。
-  curve: { target: 1.35, reward: 1.85 },
+  curve: { target: 0.8, reward: 1.85 },
   rarity: 'epic',
   name: '金冠赌王', title: '无冕之王', accent: '#e8c569',
   effectName: '只开一桌', effectKey: 'singleTypeOnly',

@@ -32,6 +32,7 @@ import gilded_trace from './gilded_trace.ts';
 import last_road from './last_road.ts';
 import shadow from './shadow.ts';
 import neighbor from './neighbor.ts';
+import chain_note from './chain_note.ts';
 import bias_one from './bias_one.ts';
 import bias_two from './bias_two.ts';
 import bias_three from './bias_three.ts';
@@ -72,6 +73,7 @@ export const DICE_DEFS: DiceDef[] = [
   last_road,
   shadow,
   neighbor,
+  chain_note,
   // ── 新增：六枚普通偏向骰，各把一面抬到 30% ─────────────────────────
   bias_one,
   bias_two,

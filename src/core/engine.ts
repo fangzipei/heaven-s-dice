@@ -50,6 +50,8 @@ export const STARTING_COINS = 0;
 export const DEBUG = false;
 /** 最近一次平衡调整：所有商店货品在标价基础上再上浮 25%。 */
 export const SHOP_PRICE_MULTIPLIER = 1.25;
+/** 全骰连击：本关第 N 次全骰的那一手按 1.2^N 计分。 */
+export const HOT_CHAIN_MULTIPLIER = 1.2;
 
 let uidCounter = 0;
 function uid(prefix = 'id'): string {
@@ -371,6 +373,7 @@ export function bossStatusText(state: RunState): string {
   if (effectKey === 'coinTaxPerDie') return '每颗计分骰抽 2 银币';
   if (effectKey === 'doubleTarget') return '本关目标 ×2';
   if (effectKey === 'banPairs') return '本投出现对子即无法计分';
+  if (effectKey === 'satanGift') return `恩赐已生效：+2 重投 · 目标 ${state.target} 分`;
   return '';
 }
 
@@ -383,6 +386,7 @@ export function initLevel(state: RunState): RunState {
   state.score = state.carryScore || 0;
   state.carryScore = 0;
   state.roundScore = 0;
+  state.roundCoins = 0;
   state.targetReached = false;
   state.overshootTierKey = null;
   state.lastBust = null;
@@ -417,6 +421,7 @@ export function initLevel(state: RunState): RunState {
   // the two boss effects and a handful of items may still shift this level.
   let rerolls = BASE_REROLLS;
   if (config.boss && effectKey === 'rerollMinus') rerolls -= 1;
+  if (config.boss && effectKey === 'satanGift') rerolls += 2;
   state.rerolls = Math.max(1, rerolls);
   state.maxRerolls = state.rerolls;
   state.levelStartRerolls = rerolls;
@@ -425,6 +430,7 @@ export function initLevel(state: RunState): RunState {
   state.runWon = false;
   state.stats.levelRolls = 0;
   state.stats.levelScore = 0;
+  state.hotCount = 0;
   pushLog(state, `${getTable(state.level).name}：第 ${state.level} 关，目标 ${state.target} 分。`, 'system');
   if (config.boss && effectKey === 'floatingScore') {
     pushLog(state, '悬秤人把秤悬在桌上：本关所有得分都是漂浮分，掷出无法计分的骰型就会整桌清零。', 'system');
@@ -447,6 +453,7 @@ export function createRun({ rng = Math.random }: { rng?: () => number } = {}): R
     selected: [],
     score: 0,
     roundScore: 0,
+    roundCoins: 0,
     targetReached: false,
     overshootTierKey: null,
     lastBust: null,
@@ -462,7 +469,7 @@ export function createRun({ rng = Math.random }: { rng?: () => number } = {}): R
     shop: null,
     log: [],
     rngState: 0,
-    stats: { rolls: 0, scored: 0, levelRolls: 0, levelScore: 0, bestHit: 0, wins: 0 },
+    stats: { rolls: 0, scored: 0, levelRolls: 0, levelScore: 0, bestHit: 0, wins: 0, hotDice: 0 },
     comboUsage: {},
     scoreHistory: [],
     rng,
@@ -811,6 +818,17 @@ export function buildScore(state: RunState, action = 'reroll'): BuildScoreResult
     flats.push({ label: `${barrel.name} · 引信`, value: barrel.value });
     flatAdd += barrel.value;
   }
+  let chainFlat = 0;
+  for (let i = 0; i < selected.length; i += 1) {
+    const bonus = dieSpecs[i]!.bonus;
+    if (bonus?.type !== 'afterScoreFlat') continue;
+    const stack = state.dieStacks?.[selected[i]!.bagUid] || 0;
+    chainFlat += bonus.value * stack;
+  }
+  if (chainFlat > 0) {
+    flats.push({ label: '连记 · 已参与计分', value: chainFlat });
+    flatAdd += chainFlat;
+  }
 
   const costs: { label: string; value: number }[] = [];
   if (state.flags.bloodContract) costs.push({ label: '血契代价', value: 100 });
@@ -891,6 +909,8 @@ function addScore(state: RunState, amount: number, { round = false }: { round?: 
  * Only the current round is lost; previously secured score stays.
  */
 export function bustRound(state: RunState): number {
+  // 金痕 coins ride on the round: a bust forfeits them with the points.
+  state.roundCoins = 0;
   let lost = Math.max(0, state.roundScore || 0);
   if (!lost) return 0;
   const barrel = getBarrel(state);
@@ -1093,6 +1113,13 @@ export function advanceLevel(state: RunState | null): { ok: boolean; error?: str
   if (state.score < state.target) {
     return { ok: false, error: `还差 ${state.target - state.score} 分。` };
   }
+  // Leaving the table settles the round for good, so 金痕 coins still pending
+  // are credited instead of vanishing with the round.
+  if (state.roundCoins) {
+    state.coins += state.roundCoins;
+    pushLog(state, `骰子结算：+${state.roundCoins} 银币。`, 'reward');
+    state.roundCoins = 0;
+  }
   state.roundScore = 0;
   completeLevel(state);
   return {
@@ -1132,6 +1159,8 @@ export interface RollResult {
   /** A bust is on hold because the player owns salt and has to answer. */
   saltOffer?: boolean;
   loanOffer?: boolean;
+  /** 停审令牌 waived this reroll's cost. */
+  pardon?: boolean;
 }
 
 function ownsSalt(state: RunState): boolean {
@@ -1233,7 +1262,7 @@ function applyBarrelRollEffects(
   if (barrel.type === 'gild' && rng() < barrel.chance) {
     const die = rolled[Math.floor(rng() * rolled.length)]!;
     die.gilded = true;
-    pushLog(state, `${barrel.name}：一颗骰子染上金痕；它计分时额外 +${barrel.coin} 银币。`, 'roll');
+    pushLog(state, `${barrel.name}：一颗骰子染上金痕；它计分时挂 ${barrel.coin} 银币，锁分后入账。`, 'roll');
   }
   if (barrel.type === 'straightFix') {
     const fix = completeStraight(rolled, rng);
@@ -1304,11 +1333,12 @@ export function rollDice(state: RunState, { free = false, rng = getRng(state), f
   if (!freeThrow && state.rerolls <= 0) {
     return { ok: false, error: '没有剩余重投次数。' };
   }
+  let pardon = false;
   if (!freeThrow) {
-    const pardon = state.flags.rerollAll
+    pardon = Boolean(state.flags.rerollAll
       && state.passiveItems.includes('judge_relic')
       && !state.flags.judgeRelicUsed
-      && rng() < 0.25;
+      && rng() < 0.25);
     if (pardon) {
       state.flags.judgeRelicUsed = true;
       pushLog(state, '停审令牌：这次「计分并重投」不消耗重投。', 'good');
@@ -1446,7 +1476,7 @@ export function rollDice(state: RunState, { free = false, rng = getRng(state), f
   }
   if (!state.flags.saltOffer && !state.flags.loanOffer) finalizeStuck(state);
   return {
-    ok: true, values: state.lastRoll!, hot: Boolean(wasHot), bust,
+    ok: true, values: state.lastRoll!, hot: Boolean(wasHot), bust, pardon,
     saltOffer: Boolean(state.flags.saltOffer), loanOffer: Boolean(state.flags.loanOffer),
   };
 }
@@ -1460,12 +1490,20 @@ export interface ApplyScoreResult {
   action?: string;
   won?: boolean;
   hot?: boolean;
+  /** Coins actually credited by this action (0 while the hand's coins are still pending). */
+  coins?: number;
+  /** Pending coins this hand added to the round (金痕骰 / 鎏金桶), paid when the round locks. */
+  pendingCoins?: number;
   reroll?: boolean;
   rerollAll?: boolean;
   cleared?: boolean;
   settled?: boolean;
   targetReached?: boolean;
   breakdown?: RunScoreBreakdown | null;
+  /** 本关第几次全骰（这一手触发全骰时才有）。 */
+  hotCount?: number;
+  /** 这一手的全骰连击倍率，1 表示没有触发。 */
+  hotMultiplier?: number;
 }
 
 /**
@@ -1498,7 +1536,16 @@ export function applyScore(state: RunState, action: ScoreAction): ApplyScoreResu
 
   const scoringDice = selectedDice(state);
   const scoringValues: (number | string)[] = scoringDice.map((d) => (d.wild ? '魔' : d.value ?? 0));
-  const total = chosen.total;
+  let total = chosen.total;
+  // 全骰连击：这一手把六颗骰子全部计分时，本关每多一次全骰就再乘一层。
+  const hotNow = state.dice.every((die) => die.scored || scoringDice.includes(die));
+  let hotMultiplier = 1;
+  if (hotNow) {
+    state.hotCount = (state.hotCount || 0) + 1;
+    state.stats.hotDice = (state.stats.hotDice || 0) + 1;
+    hotMultiplier = HOT_CHAIN_MULTIPLIER ** state.hotCount;
+    total = Math.round(total * hotMultiplier);
+  }
   const bossEffect = bossEffectKey(state);
   if (bossEffect === 'noRepeatType') {
     state.flags.bossLastType = handTypeOf(chosen.analysis);
@@ -1541,6 +1588,15 @@ export function applyScore(state: RunState, action: ScoreAction): ApplyScoreResu
   if (state.scoreHistory.length > 60) state.scoreHistory.splice(0, state.scoreHistory.length - 60);
   state.lastBust = null;
   state.flags.fuseArmed = false;
+  if (!isFloatingScore(state)) {
+    state.dieStacks = state.dieStacks || {};
+    for (const die of scoringDice) {
+      const bonus = getDieSpec(die.dieId).bonus;
+      if (bonus?.type === 'afterScoreFlat') {
+        state.dieStacks[die.bagUid] = (state.dieStacks[die.bagUid] || 0) + 1;
+      }
+    }
+  }
   state.lastScore = {
     total,
     action,
@@ -1555,21 +1611,27 @@ export function applyScore(state: RunState, action: ScoreAction): ApplyScoreResu
     && chosen.analysis.combos.every((combo) => combo.type === 'single');
   state.flags.roundSinglesOnly = state.flags.roundSinglesOnly !== false && allSingles;
 
-  // Coins paid by dice that were actually scored this hand.
-  let coinGain = 0;
+  // Coins paid by dice that were actually scored this hand. 金痕骰 and 鎏金
+  // gold both wait for the round to be locked in ("计分并重投" / "计分并结算");
+  // a continue keeps them pending with the points, so a bust forfeits them too.
+  let handCoins = 0;
   const activeBarrel = getBarrel(state);
   const gildCoin = activeBarrel.type === 'gild' ? activeBarrel.coin : 100;
   for (const die of scoringDice) {
     const bonus = getDieSpec(die.dieId).bonus;
-    if (bonus?.type === 'coinsPerScore') coinGain += bonus.value;
+    if (bonus?.type === 'coinsPerScore') handCoins += bonus.value;
     if (die.gilded) {
-      coinGain += gildCoin;
+      handCoins += gildCoin;
       die.gilded = false;
     }
   }
-  if (coinGain > 0) {
-    state.coins += coinGain;
-    pushLog(state, `骰子结算：+${coinGain} 银币。`, 'reward');
+  state.roundCoins = (state.roundCoins || 0) + handCoins;
+  const banksRound = action !== 'continue';
+  const paidCoins = banksRound ? state.roundCoins : 0;
+  if (banksRound) state.roundCoins = 0;
+  if (paidCoins > 0) {
+    state.coins += paidCoins;
+    pushLog(state, `骰子结算：+${paidCoins} 银币。`, 'reward');
   }
   if (bossEffect === 'coinTaxPerDie') {
     const tax = scoringDice.length * 2;
@@ -1597,6 +1659,9 @@ export function applyScore(state: RunState, action: ScoreAction): ApplyScoreResu
   for (const die of scoringDice) die.scored = true;
   state.selected = [];
   pushLog(state, `计分 ${total} 分（${scoringValues.join(' · ')}）。`, 'score');
+  if (hotMultiplier > 1) {
+    pushLog(state, `全骰连击 ×${hotMultiplier.toFixed(2)}：本手 ${total} 分。`, 'hot');
+  }
 
   const reachedTarget = checkWin(state);
 
@@ -1610,7 +1675,7 @@ export function applyScore(state: RunState, action: ScoreAction): ApplyScoreResu
       die.scored = false;
     }
     pushLog(state, '全骰！所有骰子都已计分，可以免费重掷全部骰子。', 'hot');
-    return { ok: true, total, action, hot: true, won: false, targetReached: reachedTarget, breakdown: chosen.breakdown };
+    return { ok: true, total, action, hot: true, won: false, coins: paidCoins, pendingCoins: handCoins, targetReached: reachedTarget, breakdown: chosen.breakdown, hotCount: state.hotCount, hotMultiplier };
   }
 
   if (action === 'bank') {
@@ -1618,11 +1683,11 @@ export function applyScore(state: RunState, action: ScoreAction): ApplyScoreResu
     if (state.score >= state.target) {
       state.phase = 'cleared';
       pushLog(state, '目标已达成，等待你进入下一关。', 'win');
-      return { ok: true, total, action, won: false, hot: false, cleared: true, targetReached: true, breakdown: chosen.breakdown };
+      return { ok: true, total, action, won: false, hot: false, coins: paidCoins, pendingCoins: handCoins, cleared: true, targetReached: true, breakdown: chosen.breakdown };
     }
     state.phase = 'lost';
     pushLog(state, `重投耗尽，计分 ${total} 后仍未达到目标。`, 'lose');
-    return { ok: true, total, action, won: false, hot: false, settled: true, breakdown: chosen.breakdown };
+    return { ok: true, total, action, won: false, hot: false, coins: paidCoins, pendingCoins: handCoins, settled: true, breakdown: chosen.breakdown };
   }
 
   // "计分并重投" ends the round: bank every accumulated point, then bring all
@@ -1632,7 +1697,7 @@ export function applyScore(state: RunState, action: ScoreAction): ApplyScoreResu
   state.flags.rerollAll = action === 'reroll';
   if (action === 'reroll') state.flags.roundSinglesOnly = true;
   return {
-    ok: true, total, action, won: false, hot: false, targetReached: reachedTarget,
+    ok: true, total, action, won: false, hot: false, coins: paidCoins, pendingCoins: handCoins, targetReached: reachedTarget,
     reroll: true, rerollAll: action === 'reroll', breakdown: chosen.breakdown,
   };
 }

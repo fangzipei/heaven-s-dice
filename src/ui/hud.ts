@@ -7,7 +7,7 @@ import {
   DICE_SETS, ITEM_BY_ID, LEVEL_COUNT, LEVELS, getLevelConfig, getOpponent, getTable,
 } from '../content/index.ts';
 import {
-  bossStatusText, canUseItem, getBarrel, getDieSpec, isFloatingScore, setCounts,
+  bossStatusText, canUseItem, getBarrel, getDieSpec, isFloatingScore, setCounts, HOT_CHAIN_MULTIPLIER,
 } from '../core/engine.ts';
 import type { BossDef } from '../core/types.ts';
 import { clamp, h, num } from '../core/util.ts';
@@ -21,6 +21,10 @@ export function renderTopbar() {
   const run = app.run;
   if (!run) return;
   $('#coin-value')!.textContent = num(run.coins);
+  const pendingCoins = run.roundCoins || 0;
+  $('#coin-pill')!.title = pendingCoins
+    ? `银币 ${run.coins} · 待结算 +${pendingCoins}（锁分后入账）`
+    : `银币 ${run.coins}`;
   const table = getTable(run.level);
   $('#chapter-label')!.textContent = `${table.subtitle}`;
   $('#level-label')!.textContent = `第 ${run.level} / ${LEVEL_COUNT} 关`;
@@ -61,6 +65,19 @@ export function renderScorePanel() {
   rerollInline.innerHTML = `<span class="reroll-hud-label">本关重投</span><b>${run.rerolls}</b><em>/ ${run.maxRerolls}</em>`;
   rerollInline.classList.toggle('is-low', run.rerolls > 0 && run.rerolls <= 2);
   rerollInline.classList.toggle('is-empty', run.rerolls <= 0);
+  const hotCombo = $('#hot-combo');
+  if (hotCombo) {
+    const hots = run.hotCount || 0;
+    hotCombo.hidden = hots <= 0;
+    hotCombo.style.setProperty('--hot-scale', String(1 + Math.min(6, hots) * 0.14));
+    hotCombo.classList.toggle('is-burning', hots >= 2);
+    hotCombo.classList.toggle('is-blazing', hots >= 3);
+    const countNode = $('#hot-combo-count');
+    if (countNode) countNode.textContent = String(hots);
+    hotCombo.title = hots > 0
+      ? `本关全骰 ${hots} 次 · 下一次全骰 ×${(HOT_CHAIN_MULTIPLIER ** (hots + 1)).toFixed(2)}`
+      : '';
+  }
   $('#score-panel')!.classList.toggle('is-floating', floating);
   $('#score-panel')!.classList.toggle('is-danger', run.rerolls <= 0 && run.score < run.target);
   const canAdvance = run.score >= run.target && !['won', 'run-won', 'lost', 'shop'].includes(run.phase);
@@ -104,6 +121,8 @@ export function renderOpponentPlate() {
   $('#boss-effect-card')!.hidden = !isBoss;
   if (isBoss) {
     const boss = opponent as BossDef;
+    $('#boss-badge')!.dataset.bossTip = boss.id;
+    $('#boss-effect-card')!.dataset.bossTip = boss.id;
     $('#boss-effect-name')!.textContent = boss.effectName;
     $('#boss-effect-title')!.textContent = boss.effectName;
     const status = bossStatusText(run);

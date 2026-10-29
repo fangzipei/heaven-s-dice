@@ -488,6 +488,8 @@ body {
 .floating-tooltip .tip-set p.is-active { color: var(--gold-bright) !important; }
 .floating-tooltip .tip-note { color: var(--muted) !important; font-size: 11px !important; margin-top: 6px !important; }
 .floating-tooltip .tip-usage { font-size: 13px !important; color: var(--ink-dim) !important; }
+.floating-tooltip .tip-state { font-size: 12px !important; letter-spacing: .04em !important; color: var(--ink-dim) !important; }
+.floating-tooltip .tip-state.is-used { color: var(--muted) !important; }
 .floating-tooltip .tip-usage b { font-size: 28px !important; color: var(--gold-bright) !important; margin-right: 4px; }
 
 /* ── shop: one sheet, three drawn sections ───────────────────────────── */
@@ -606,6 +608,19 @@ body {
 .result-score span { color: var(--muted) !important; }
 .result-score b { color: var(--ink) !important; }
 .result-sigil { background: var(--sticky) !important; border: 1.6px solid var(--pencil) !important; color: var(--gold-bright) !important; box-shadow: 3px 4px 0 rgba(80, 62, 40, .14) !important; }
+.hot-combo-word { color: var(--ink-dim) !important; text-shadow: none !important; }
+.hot-combo-num { color: var(--blood) !important; text-shadow: 2px 3px 0 rgba(80, 62, 40, .18) !important; }
+.hot-callout span { color: var(--ink) !important; }
+.hot-callout b { color: var(--blood) !important; text-shadow: 0 0 60px rgba(255,150,40,.85), 6px 7px 0 rgba(80, 62, 40, .12) !important; }
+.score-float .float-chain { color: #9a4a18 !important; text-shadow: 0 1px 2px rgba(255,255,255,.5) !important; }
+.boss-drop-card { background: #fffaf0 !important; border: 1.4px solid var(--pencil) !important; box-shadow: 3px 4px 0 rgba(80, 62, 40, .16) !important; }
+.boss-drop-kicker { color: var(--pencil-soft) !important; }
+.boss-drop-art { background: var(--sticky) !important; border: 1.2px solid var(--pencil) !important; }
+.boss-drop-art img { filter: none !important; }
+.boss-drop-body h3 { color: var(--ink) !important; }
+.boss-drop-rarity { color: var(--gold-bright) !important; }
+.boss-drop-desc { color: var(--ink-dim) !important; }
+.boss-drop-flavor { color: var(--muted) !important; }
 .intro-modal { background: #fbf6e8 !important; }
 .intro-portrait { background: #f1e5cd !important; }
 .intro-portrait::after { background: linear-gradient(90deg, transparent 62%, #fbf6e8 100%), linear-gradient(0deg, #fbf6e8 0%, transparent 38%) !important; }
@@ -640,6 +655,22 @@ body {
 .tut-flow b { color: var(--ink) !important; }
 .tut-flow span { color: var(--ink-dim) !important; }
 .tutorial-nav-button.is-active, .compendium-tab.is-active { background: var(--sticky) !important; }
+/* The tutorial page still inherited the old dark chrome: keep its rails as
+   ruled paper so the sheet reads as one page. */
+.tutorial-nav { background: var(--paper-sheet) !important; border-bottom: 1.5px dashed var(--line) !important; }
+.tutorial-foot { background: var(--paper-sheet) !important; border-top: 1.5px dashed var(--line-strong) !important; color: var(--muted) !important; }
+.tutorial-foot .secondary-button, .tutorial-foot .primary-button { border-radius: 0 !important; }
+.guide-wait { color: var(--muted) !important; font-size: 11px; letter-spacing: .06em; }
+/* 金痕 coin hint: a small sticky note so it reads on the pale sky. */
+.coin-float { background: var(--sticky); border: 1.3px solid var(--pencil); box-shadow: 2px 3px 0 rgba(80, 62, 40, .16); color: var(--ink) !important; text-shadow: none !important; }
+.coin-float small { color: var(--ink-dim) !important; text-shadow: none !important; }
+.coin-float.is-pending { color: var(--ink-dim) !important; }
+.coin-float.is-pending small { color: var(--muted) !important; }
+.coin-float.is-pardon { color: var(--ink) !important; background: var(--sticky); border: 1.3px solid var(--gold-bright); box-shadow: 2px 3px 0 rgba(80, 62, 40, .16) !important; font-size: 12px; }
+.coin-float.is-pardon small { color: var(--ink-dim) !important; }
+@media (prefers-reduced-motion: reduce) {
+  #reroll-inline.is-pardoned { animation: none; }
+}
 .history-card, .history-empty { background: #fffaf0 !important; border-color: var(--line-strong) !important; }
 .history-when, .history-level { color: var(--muted) !important; }
 .history-stats b { color: var(--ink) !important; }

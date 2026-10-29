@@ -241,12 +241,16 @@ const ovItems = [...ITEMS].sort(byRarity).map((item) => ovRow({
   chance: item.bossOnly ? '商店不掉落' : `${pctText(100 / shopItems.length)} / 格`,
   strength: itemStrength(item),
 })).join('');
-const ovBosses = [...BOSS_CATALOG].sort(byRarity).map((boss) => ovRow({
-  name: boss.name, rarity: boss.rarity,
-  price: '随机池',
-  effect: `${boss.effectName}：${boss.effectDesc}`, within: `${RARITIES[boss.rarity].name}池`,
-  chance: '每局随机', strength: bossStrength(boss),
-})).join('');
+const ovBosses = [...BOSS_CATALOG].sort(byRarity).map((boss) => {
+  const finalBoss = boss.id === 'satan';
+  return ovRow({
+    name: boss.name, rarity: boss.rarity,
+    price: finalBoss ? '最终关' : '随机池',
+    effect: `${boss.effectName}：${boss.effectDesc}`,
+    within: finalBoss ? '固定第 25 关' : `${RARITIES[boss.rarity].name}池`,
+    chance: finalBoss ? '固定' : '每局随机', strength: bossStrength(boss),
+  });
+}).join('');
 
 /* The live roller needs each die's six face drawings, its skin variables and
    the real post-barrel probabilities. Baking them in keeps the page a single
@@ -761,7 +765,7 @@ footer code{color:#93836b;font-family:Consolas,monospace;font-size:9.5px}
     </div>
     <div class="market-card">
       <h4>关卡目标与基础奖励（★ 庄家关）</h4>
-      <p style="color:#8d7e66;font-size:10px;line-height:1.7;margin:0 0 8px">无庄家目标：第 1 关 500，第 2 关 1000；2–7 关每关 +15%；第 8 关在 7 关基础上 +500，8–15 关每关 +20%；第 16 关在 15 关基础上 +1000，16–24 关每关 +25%。Boss 只把自己那一行的“无 Boss 目标”乘上目标系数，不会抬高下一关。赏金 = ${LEVEL_CURVE.rewardBase} × ${LEVEL_CURVE.rewardGrowth}<sup>关-1</sup> × Boss 赏金系数。</p>
+      <p style="color:#8d7e66;font-size:10px;line-height:1.7;margin:0 0 8px">无庄家目标：第 1 关 500，第 2 关 1000；2–7 关每关 +15%；第 8 关在 7 关基础上 +500，8–15 关每关 +15%；第 16 关在 15 关基础上 +1000，16–24 关每关 +12%；第 25 关撒旦固定 100000。Boss 只把自己那一行的“无 Boss 目标”乘上目标系数，不会抬高下一关。赏金 = ${LEVEL_CURVE.rewardBase} × ${LEVEL_CURVE.rewardGrowth}<sup>关-1</sup> × Boss 赏金系数。</p>
       <div class="ov-wrap"><table><thead><tr><th>关</th><th>无 Boss 目标</th><th>实际目标</th><th>基础赏金</th><th>Boss / 类型</th></tr></thead><tbody>${levelTable}</tbody></table></div>
       <div class="m-line" style="margin-top:10px"><span>庄家</span><b>${BOSS_CATALOG.length} 位</b></div>
       <div class="m-line"><span>悬赏系数</span><b>×${Math.min(...BOSS_CATALOG.map((b) => b.curve.reward)).toFixed(2)} – ×${Math.max(...BOSS_CATALOG.map((b) => b.curve.reward)).toFixed(2)}</b></div>
@@ -772,8 +776,9 @@ footer code{color:#93836b;font-family:Consolas,monospace;font-size:9.5px}
     <li>物品不重复出售，随身主动物品不限件数；一次性消耗品用掉后会重新出现在市集。</li>
     <li>三种「货架」被动各自只影响对应分区的上架数量，可叠加使用。</li>
     <li><b>镀金袖扣</b>让刷新费用 −20%，并让每关胜利 +15 银币。</li>
-    <li>失败后「卷土重来」保留骰袋、骰桶与物品，失去一半银币。</li>
-    <li>每关基础 <b>3 次重投</b>，击败庄家不再累积上限；烈酒 / 时间沙漏 / 加注契约 / 旋涡桶仪式可以临时 +1。</li>
+    <li>失败即整局结束：结算里只能「重新开始」，从第 1 关重开一副全新的骰袋、骰桶与银币。</li>
+    <li>每关基础 <b>3 次重投</b>，击败庄家不再累积上限；烈酒 / 时间沙漏 / 加注契约 / 旋涡桶仪式可以临时 +1。最终庄家撒旦开局额外给 <b>+2 重投</b>。</li>
+    <li><b>全骰连击</b>：本关每触发一次全骰，那一次计分就多乘一层 ×1.2（第 1 次 ×1.2、第 2 次 ×1.44……）；左上角「全骰 ×N」记录本关次数。</li>
     <li><b>悬秤人</b>（传说池）把整桌分数变成漂浮分：计分与重投都不会真正入账，掷出无法计分的骰型就整桌清零；只有落秤（过关）时分数与赏金才一起兑现。</li>
     <li>骰子期望分数可用 <b>npm run dice:ev</b> 重新评估。</li>
   </ul>

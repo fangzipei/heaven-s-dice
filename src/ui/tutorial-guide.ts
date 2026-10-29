@@ -12,7 +12,7 @@ const STEPS: Step[] = [
   { selector: '.cup-zone', title: '手动摇桶', body: '按住右侧骰桶，左右拖动约 2 秒后松手。教程会固定给你 1·5·1·5·2·3。', gate: 'roll' },
   { selector: '.dice-zone', title: '点选 1 和 5', body: '点选两颗 1 和两颗 5；选中后浮动分会出现在计分板。', gate: 'selectOneFive' },
   { selector: '.action-dock', title: '点「计分并继续」', body: '点击「计分并继续」：这四颗骰子移出，教程会继续发下一手。', gate: 'continue' },
-  { selector: '.cup-zone', title: '点「自动摇骰」', body: '这次点自动摇骰，让系统代摇。教程会固定给你三颗 3。', gate: 'roll' },
+  { selector: '.action-dock', title: '点「自动投掷」', body: '这次点「自动投掷」，让系统代摇。教程会固定给你三颗 3。', gate: 'roll' },
   { selector: '.dice-zone', title: '点选三条 3', body: '选中三颗 3，组成条子。三个 3 = 300 分。', gate: 'selectTriple' },
   { selector: '.action-dock', title: '点「计分并重投」', body: '点击「计分并重投」结束本轮，把累计分落袋，并消耗一次重投。', gate: 'reroll' },
   { selector: '.cup-zone', title: '再摇一手顺子', body: '手动摇桶。教程会固定给你 1·2·3·4·5·6。', gate: 'roll' },
@@ -22,7 +22,7 @@ const STEPS: Step[] = [
   { selector: '.cup-zone', title: '点「重投」', body: '掷空后消耗一次重投，重新摇桶。教程会固定给你通天顺。', gate: 'roll' },
   { selector: '.dice-zone', title: '点选通天顺', body: '点选 1 到 6 六颗骰子，组成通天顺。', gate: 'selectFullStraight' },
   { selector: '.action-dock', title: '点「计分并继续」', body: '六颗骰子全部得分时，继续会把六颗一起免费重投，形成全骰。', gate: 'continue' },
-  { selector: '.action-dock', title: '选四条并「计分并重投」', body: '选中四颗 2，再点「计分并重投」结束本关。条子按点数 × 数量倍率计算，四条远高于三条。', gate: 'reroll' },
+  { selector: '.action-dock', title: '选四条并「计分并重投」', body: '选中四颗 2，再点「计分并重投」结束本轮。条子按点数 × 数量倍率计算，四条远高于三条。', gate: 'reroll' },
 ];
 
 const ROLLS: number[][] = [
@@ -83,17 +83,54 @@ function paint(): void {
   if (!guideRoot) return;
   const manual = step.gate === 'next';
   guideRoot.innerHTML = `
-    <section class="guide-card" role="dialog" aria-label="鏂版墜寮曞">
-      <header><span>鏂版墜寮曞</span><em>${guideIndex + 1} / ${STEPS.length}</em></header>
+    <section class="guide-card" role="dialog" aria-label="新手引导">
+      <header><span>新手引导</span><em>${guideIndex + 1} / ${STEPS.length}</em></header>
       <h3>${step.title}</h3>
       <p>${step.body}</p>
       <div class="guide-actions">
-        ${manual ? '<button class="primary-button" data-guide="next">涓嬩竴姝?/button>' : '<span class="guide-wait">鎸夋彁绀烘搷浣滃悗鑷姩缁х画</span>'}
-        <button class="text-button" data-guide="close">璺宠繃寮曞</button>
+        ${manual ? '<button class="primary-button" data-guide="next">下一步</button>' : '<span class="guide-wait">按提示操作后自动继续</span>'}
+        <button class="text-button" data-guide="close">跳过引导</button>
       </div>
     </section>`;
   guideRoot.querySelector('[data-guide="next"]')?.addEventListener('click', advance);
   guideRoot.querySelector('[data-guide="close"]')?.addEventListener('click', () => endTutorialGuide());
+  placeCard();
+}
+
+/** Keep the card out of every interactive zone: the left gutter beside the
+ *  dice tray when it is wide enough, otherwise the free band above the tray. */
+function placeCard(): void {
+  const card = guideRoot?.querySelector<HTMLElement>('.guide-card');
+  if (!card) return;
+  const rect = (selector: string) => document.querySelector(selector)?.getBoundingClientRect();
+  const tray = rect('.dice-zone');
+  const dock = rect('.action-dock');
+  const cup = rect('.cup-zone');
+  const score = rect('.score-panel');
+  const topEdge = Math.max(score?.bottom ?? 0, 64) + 6;
+  const bottomEdge = Math.min(
+    tray?.top ?? Infinity,
+    cup?.top ?? Infinity,
+    dock?.top ?? Infinity,
+  ) - 6;
+  const gutter = (tray?.left ?? 0) - 16;
+
+  card.style.bottom = 'auto';
+  card.style.left = '10px';
+  if (gutter - 10 >= 240) {
+    card.style.width = `${Math.min(360, Math.round(gutter - 10))}px`;
+    card.style.right = 'auto';
+    card.style.top = '0px';
+    const height = card.offsetHeight;
+    const standAt = (dock?.top ?? bottomEdge + height) - 8 - height;
+    card.style.top = `${Math.round(Math.max(topEdge, standAt))}px`;
+    return;
+  }
+  card.style.right = '10px';
+  card.style.width = 'auto';
+  card.style.top = '0px';
+  const height = card.offsetHeight;
+  card.style.top = `${Math.round(Math.max(topEdge, bottomEdge - height))}px`;
 }
 
 export function startTutorialGuide(): void {
@@ -103,6 +140,7 @@ export function startTutorialGuide(): void {
   guideRoot = document.createElement('div');
   guideRoot.id = 'tutorial-guide';
   document.body.appendChild(guideRoot);
+  window.addEventListener('resize', placeCard);
   paint();
 }
 
@@ -128,6 +166,7 @@ export function guideEvent(kind: 'roll' | 'selection' | 'continue' | 'reroll', r
 }
 
 export function endTutorialGuide(): void {
+  window.removeEventListener('resize', placeCard);
   document.querySelectorAll('.guide-highlight').forEach((el) => el.classList.remove('guide-highlight'));
   guideRoot?.remove();
   guideRoot = null;
