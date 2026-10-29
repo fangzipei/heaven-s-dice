@@ -3,7 +3,7 @@ import type { BarrelDef } from '../../core/types.ts';
 
 export default {
   id: 'vortex', name: '旋涡桶', rarity: 'legendary', type: 'gesture',
-  art: 'vortex', price: 165, gesture: 'circle',
+  art: 'vortex', price: 248, gesture: 'circle',
   desc: '顺时针画满一圈，本掷计分 +15%，并在此关获得 1 次额外重投（每关一次）。',
   short: '旋涡仪式：本掷 +15% 且每关 +1 重投',
 } satisfies BarrelDef;

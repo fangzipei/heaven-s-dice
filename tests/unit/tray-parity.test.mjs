@@ -137,7 +137,7 @@ function setBoard({ phase = 'selecting', throwNumber = 1, selected = [] } = {}) 
   app.run.dice = [
     { uid: 'd1', bagUid: 'b1', dieId: 'standard', value: 1, blank: false, wild: false, scored: false },
     { uid: 'd2', bagUid: 'b2', dieId: 'standard', value: 5, blank: false, wild: false, scored: true },
-    { uid: 'd3', bagUid: 'b3', dieId: 'wolf_hunter', value: 3, blank: false, wild: false, scored: false },
+    { uid: 'd3', bagUid: 'b3', dieId: 'wolf_bloodmoon', value: 3, blank: false, wild: false, scored: false },
     { uid: 'd4', bagUid: 'b4', dieId: 'standard', value: 6, blank: false, wild: false, scored: false },
     { uid: 'd5', bagUid: 'b5', dieId: 'standard', value: 2, blank: true, wild: false, scored: false },
     { uid: 'd6', bagUid: 'b6', dieId: 'standard', value: null, blank: false, wild: false, scored: false },
@@ -226,7 +226,7 @@ describe('WebGL 骰桌：建桌、签名缓存与无障碍行', () => {
     const html = nodes.get('#dice-a11y').innerHTML;
     expect((html.match(/die-a11y-button/g) || []).length).toBe(6);
     expect(html).toContain('aria-label="标准骰，1 点"');
-    expect(html).toContain('aria-label="猎手骰，3 点"');
+    expect(html).toContain('aria-label="血月骰，3 点"');
     expect(html).toContain('aria-label="白骰，无法计分"');
     expect(html).toContain('aria-label="未掷出的骰子"');
     expect(html).toContain('aria-pressed="true"');

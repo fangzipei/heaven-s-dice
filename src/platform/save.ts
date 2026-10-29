@@ -20,14 +20,23 @@ function plainRun(run: RunState): Record<string, unknown> {
   return JSON.parse(JSON.stringify(copy)) as Record<string, unknown>;
 }
 
-export function saveGame(run: RunState, record: RunRecord | null): void {
+export function saveGame(run: RunState, record: RunRecord | null): SavedGame {
+  const payload = buildSavedGame(run, record);
+  writeSavedGame(payload);
+  return payload;
+}
+
+export function buildSavedGame(run: RunState, record: RunRecord | null, savedAt = Date.now()): SavedGame {
+  return {
+    version: 2,
+    savedAt,
+    run: plainRun(run),
+    record: record ? JSON.parse(JSON.stringify(record)) as RunRecord : null,
+  };
+}
+
+export function writeSavedGame(payload: SavedGame): void {
   try {
-    const payload: SavedGame = {
-      version: 2,
-      savedAt: Date.now(),
-      run: plainRun(run),
-      record: record ? JSON.parse(JSON.stringify(record)) as RunRecord : null,
-    };
     localStorage.setItem(SAVE_KEY, JSON.stringify(payload));
   } catch { /* private mode / quota */ }
 }

@@ -38,7 +38,7 @@ vi.mock('../../src/render/motion.ts', () => ({
 import { app } from '../../src/ui/state.ts';
 import {
   beginRoll, handleScore, forfeitRun, renderGame, useItem, setSpeech,
-  requestUseItem, confirmUseItem,
+  requestUseItem, confirmUseItem, showTwoFaceOffer, showLoanOffer,
 } from '../../src/ui/game.ts';
 import { createRun } from '../../src/core/engine.ts';
 import { installDomStub } from '../helpers/stub-dom.mjs';
@@ -192,6 +192,23 @@ describe('物品与弃局', () => {
 describe('对局控制只有一份实现', () => {
   const legacy = legacyAppSource();
   const game = readFileSync(new URL('../../src/ui/game.ts', import.meta.url), 'utf8');
+
+  test('two-face barrel asks for two faces before the first roll', () => {
+    app.run.barrelId = 'twoface';
+    app.run.flags.twoFacePending = true;
+    beginRoll();
+    expect(dom.html('#overlay-root')).toContain('data-action="twoface-confirm"');
+    expect(dom.html('#overlay-root')).toContain('data-action="twoface-face"');
+  });
+
+  test('loan barrel renders a payable reroll prompt', () => {
+    app.run.barrelId = 'loan';
+    app.run.flags.loanOffer = true;
+    app.run.roundScore = 50;
+    showLoanOffer();
+    expect(dom.html('#overlay-root')).toContain('data-action="loan-pay"');
+    expect(dom.html('#overlay-root')).toContain('data-action="loan-decline"');
+  });
 
   for (const name of [
     'renderGame', 'beginRoll', 'startCupHold', 'cancelCupHold', 'handleScore',

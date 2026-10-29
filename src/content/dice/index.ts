@@ -6,13 +6,11 @@
 // probs 是字面的六面权重，掷骰时才归一化：每颗特殊骰都要有一个读得懂的偏向，
 // 而不是一句看不见的“运气值”。
 import wolf_whelp from './wolf_whelp.ts';
-import wolf_hunter from './wolf_hunter.ts';
 import wolf_bloodmoon from './wolf_bloodmoon.ts';
 import wolf_alpha from './wolf_alpha.ts';
 import wolf_ancestor from './wolf_ancestor.ts';
 import demon_imp from './demon_imp.ts';
 import demon_taxman from './demon_taxman.ts';
-import demon_seal from './demon_seal.ts';
 import demon_queen from './demon_queen.ts';
 import demon_devourer from './demon_devourer.ts';
 import odd_eye from './odd_eye.ts';
@@ -45,14 +43,12 @@ import type { DiceDef } from '../../core/types.ts';
 export const DICE_DEFS: DiceDef[] = [
   // ── 狼裔 · 5 枚：全部在把概率往 3 推 ─────────────────────────────────
   wolf_whelp,
-  wolf_hunter,
   wolf_bloodmoon,
   wolf_alpha,
   wolf_ancestor,
   // ── 恶魔 · 5 枚：掷出 1 就是赖子，不按 100 分算 ──────────────────────
   demon_imp,
   demon_taxman,
-  demon_seal,
   demon_queen,
   demon_devourer,
   // ── 无套组 · 10 枚：形状本身就是规则 ────────────────────────────────

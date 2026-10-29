@@ -131,12 +131,17 @@ export function getBarrel(state: RunState): BarrelDef {
   return BARREL_BY_ID[state.barrelId] || BARRELS[0]!;
 }
 
-export function effectiveProbs(dieId: string, barrelId: string, override?: number[]): number[] {
+export function effectiveProbs(dieId: string, barrelId: string, override?: number[], preferredFaces?: number[]): number[] {
   const die = getDieSpec(dieId);
   const barrel = BARREL_BY_ID[barrelId] || BARRELS[0]!;
   const bias = 'bias' in barrel && barrel.bias ? barrel.bias : [1, 1, 1, 1, 1, 1];
   const base = override && override.length === 6 ? override : die.probs;
-  const weights = base.map((probability, index) => probability * (bias[index] ?? 1));
+  const weights = base.map((probability, index) => {
+    const faceBias = barrel.type === 'twoFace' && preferredFaces?.includes(index + 1)
+      ? (barrel.multiplier || 2.4)
+      : 1;
+    return probability * (bias[index] ?? 1) * faceBias;
+  });
   return normalizeWeights(weights);
 }
 
@@ -208,6 +213,12 @@ function resetLevelFlags(state: RunState) {
     suspensorRelicUsed: false,
     luciferRelicUsed: false,
     roundSinglesOnly: true,
+    nightwatchUsed: false,
+    fuseArmed: false,
+    loanUsed: false,
+    loanOffer: false,
+    twoFaceFaces: [],
+    twoFacePending: false,
   };
 }
 
@@ -382,6 +393,10 @@ export function initLevel(state: RunState): RunState {
   state.throwNumber = 0;
   state.bossDiceRolled = 0;
   resetLevelFlags(state);
+  if (getBarrel(state).type === 'twoFace') {
+    state.flags.twoFacePending = true;
+    state.flags.twoFaceFaces = [];
+  }
   state.itemCharges = {};
   for (const itemId of state.activeItems) {
     state.itemCharges[itemId] = ITEM_BY_ID[itemId]?.charges ?? 1;
@@ -785,10 +800,33 @@ export function buildScore(state: RunState, action = 'reroll'): BuildScoreResult
     multipliers.push({ label: '旋涡仪式 · +15%', value: 1.15 });
   }
 
+  if (barrel.type === 'pawn') {
+    const bonus = Math.min(barrel.cap, Math.floor(Math.max(0, state.coins) / Math.max(1, barrel.step)));
+    if (bonus > 0) {
+      flats.push({ label: `${barrel.name} · 银币加成`, value: bonus });
+      flatAdd += bonus;
+    }
+  }
+  if (barrel.type === 'fuse' && state.flags.fuseArmed) {
+    flats.push({ label: `${barrel.name} · 引信`, value: barrel.value });
+    flatAdd += barrel.value;
+  }
+
+  const costs: { label: string; value: number }[] = [];
+  if (state.flags.bloodContract) costs.push({ label: '血契代价', value: 100 });
   let preBoss = Math.round((scoringBase + flatAdd) * multiplier);
+  let total = preBoss;
+  const seventhUid = state.bag[6]?.uid;
+  if (state.passiveItems.includes('dice_bag')
+    && seventhUid
+    && selected.some((die) => die.bagUid === seventhUid)) {
+    const share = Math.round(preBoss / Math.max(1, selected.length));
+    const cut = Math.round(share * 0.5);
+    total = Math.max(0, preBoss - cut);
+    costs.push({ label: '丰饶骰袋 · 第七骰计分减半', value: -cut });
+  }
 
   // Boss score taxes are applied after the player's own modifiers.
-  let total = preBoss;
   if (bossEffect === 'scoreTaxReroll' && boss) {
     total = Math.round(total * 0.6);
     multipliers.push({ label: `${boss.name} · 四成归天`, value: 0.6 });
@@ -796,9 +834,6 @@ export function buildScore(state: RunState, action = 'reroll'): BuildScoreResult
   if (bossNote && boss) notes.push({ label: `${boss.name} · ${bossNote}` });
   if (voided || (bossEffect === 'minTripleScore' && scoringBase === 0)) total = 0;
   if (voided && boss) notes.push({ label: `${boss.name} · 本手不计分`, value: '×0' });
-
-  const costs: { label: string; value: number }[] = [];
-  if (state.flags.bloodContract) costs.push({ label: '血契代价', value: 100 });
 
   return {
     valid: true,
@@ -855,9 +890,23 @@ function addScore(state: RunState, amount: number, { round = false }: { round?: 
  * A turn's unbanked points burn when the next throw has no scoring dice.
  * Only the current round is lost; previously secured score stays.
  */
-function bustRound(state: RunState): number {
+export function bustRound(state: RunState): number {
   let lost = Math.max(0, state.roundScore || 0);
   if (!lost) return 0;
+  const barrel = getBarrel(state);
+  if (barrel.type === 'nightwatch' && !state.flags.nightwatchUsed) {
+    state.flags.nightwatchUsed = true;
+    const kept = Math.floor(lost * barrel.keep);
+    const forfeited = lost - kept;
+    state.score = Math.max(0, state.score - forfeited);
+    state.stats.levelScore = Math.max(0, state.stats.levelScore - forfeited);
+    state.roundScore = kept;
+    state.targetReached = state.score >= state.target;
+    state.lastBust = { lost: forfeited, floating: false, saved: kept };
+    state.flags.roundSinglesOnly = true;
+    pushLog(state, `守夜桶压住一半：${kept} 分留在桌上，${forfeited} 分散去。`, 'good');
+    return forfeited;
+  }
   const floating = isFloatingScore(state);
   if (floating && state.passiveItems.includes('suspensor_relic') && !state.flags.suspensorRelicUsed) {
     state.flags.suspensorRelicUsed = true;
@@ -1082,6 +1131,7 @@ export interface RollResult {
   bust?: number;
   /** A bust is on hold because the player owns salt and has to answer. */
   saltOffer?: boolean;
+  loanOffer?: boolean;
 }
 
 function ownsSalt(state: RunState): boolean {
@@ -1113,6 +1163,35 @@ export function resolveSaltOffer(state: RunState, use: boolean): { ok: boolean; 
     : '盐挡住了这一掷，但本轮本来没有分数可保。', 'good');
   finalizeStuck(state);
   return { ok: true, saved };
+}
+
+export function resolveLoanOffer(state: RunState, use: boolean): RollResult & { paid?: number } {
+  if (!state.flags.loanOffer) return { ok: false, error: '现在没有需要借运的掷空。' };
+  const barrel = getBarrel(state);
+  state.flags.loanOffer = false;
+  if (!use || barrel.type !== 'loan') {
+    const bust = bustRound(state);
+    finalizeStuck(state);
+    return { ok: true, values: state.lastRoll || [], hot: false, bust };
+  }
+  if (state.coins < barrel.cost) return { ok: false, error: '银币不够。' };
+  state.coins -= barrel.cost;
+  state.flags.loanUsed = true;
+  state.phase = 'ready';
+  state.selected = [];
+  state.lastBust = null;
+  pushLog(state, `借运桶付出 ${barrel.cost} 银币：重投这一手。`, 'item');
+  return { ...rollDice(state, { free: true }), paid: barrel.cost };
+}
+
+export function setTwoFaceFaces(state: RunState, faces: number[]): { ok: boolean; error?: string } {
+  if (getBarrel(state).type !== 'twoFace') return { ok: false, error: '当前骰桶不是双面桶。' };
+  const unique = [...new Set(faces)].filter((face) => Number.isInteger(face) && face >= 1 && face <= 6);
+  if (unique.length !== 2) return { ok: false, error: '请选择两个不同的点数。' };
+  state.flags.twoFaceFaces = unique;
+  state.flags.twoFacePending = false;
+  pushLog(state, `双面桶定下 ${unique.join('、')} 两面。`, 'good');
+  return { ok: true };
 }
 
 function completeStraight(dice: BoardDie[], rng: () => number): { die: BoardDie; face: number } | null {
@@ -1284,7 +1363,7 @@ export function rollDice(state: RunState, { free = false, rng = getRng(state), f
       return;
     }
     const forcedValue = forced.length ? forced.shift() : undefined;
-    die.value = forcedValue ?? rollValue(effectiveProbs(die.dieId, barrel.id, die.probs), rng);
+    die.value = forcedValue ?? rollValue(effectiveProbs(die.dieId, barrel.id, die.probs, state.flags.twoFaceFaces), rng);
     // Demon dice turn their 1 face into a joker, never a plain 100 points.
     die.wild = getDieSpec(die.dieId).setId === 'demon' && die.value === 1;
     rolledNow.push(die);
@@ -1312,6 +1391,14 @@ export function rollDice(state: RunState, { free = false, rng = getRng(state), f
   }
 
   applyBarrelRollEffects(state, rolledNow, barrel, rng);
+  if (barrel.type === 'rotation' && (state.throwNumber || 0) > 0) {
+    const candidates = state.dice.filter((die) => !die.scored && !die.blank && !die.wild && typeof die.value === 'number');
+    if (candidates.length) {
+      const die = candidates[Math.floor(rng() * candidates.length)]!;
+      die.value = die.value === 6 ? 1 : (die.value as number) + 1;
+      pushLog(state, `${barrel.name}转动：一颗骰子变成 ${die.value} 点。`, 'roll');
+    }
+  }
   shuffleTable(state, rng);
   applyOrderedDieEffects(state, rng);
   if (bossEffectKey(state) === 'banTypeEachThrow') {
@@ -1342,6 +1429,12 @@ export function rollDice(state: RunState, { free = false, rng = getRng(state), f
     if (ownsSalt(state)) {
       state.flags.saltOffer = true;
       state.lastBust = { saved: Math.max(0, state.roundScore || 0) };
+    } else if (getBarrel(state).type === 'loan'
+      && !state.flags.loanUsed
+      && state.coins >= (getBarrel(state) as Extract<BarrelDef, { type: 'loan' }>).cost) {
+      state.flags.loanOffer = true;
+      state.lastBust = { saved: Math.max(0, state.roundScore || 0) };
+      pushLog(state, '借运桶开口：付 40 银币，可以把这一掷重来。', 'info');
     } else {
       bust = bustRound(state);
     }
@@ -1351,8 +1444,11 @@ export function rollDice(state: RunState, { free = false, rng = getRng(state), f
     state.lastBust = null;
     pushLog(state, `掷出 ${state.lastRoll!.map((v) => v === 0 ? '白' : v).join(' · ')}。`, 'roll');
   }
-  if (!state.flags.saltOffer) finalizeStuck(state);
-  return { ok: true, values: state.lastRoll!, hot: Boolean(wasHot), bust, saltOffer: Boolean(state.flags.saltOffer) };
+  if (!state.flags.saltOffer && !state.flags.loanOffer) finalizeStuck(state);
+  return {
+    ok: true, values: state.lastRoll!, hot: Boolean(wasHot), bust,
+    saltOffer: Boolean(state.flags.saltOffer), loanOffer: Boolean(state.flags.loanOffer),
+  };
 }
 
 export type ScoreAction = 'continue' | 'reroll' | 'bank';
@@ -1444,6 +1540,7 @@ export function applyScore(state: RunState, action: ScoreAction): ApplyScoreResu
   }
   if (state.scoreHistory.length > 60) state.scoreHistory.splice(0, state.scoreHistory.length - 60);
   state.lastBust = null;
+  state.flags.fuseArmed = false;
   state.lastScore = {
     total,
     action,
@@ -1739,6 +1836,10 @@ export function useItem(state: RunState, itemId: string): ItemResult {
     delete state.itemCharges[itemId];
   } else {
     state.itemCharges[itemId] = 0;
+  }
+  if (getBarrel(state).type === 'fuse') {
+    state.flags.fuseArmed = true;
+    pushLog(state, '引信桶点燃：下一次计分 +120。', 'good');
   }
   finalizeStuck(state);
   return { ok: true, item };

@@ -6,7 +6,8 @@
 import { ITEM_BY_ID, LEVEL_COUNT, getOpponent, rarityOf, DICE_SETS } from '../content/index.ts';
 import {
   advanceLevel, applyGesture, applyItemGrant, applyScore, canUseItem, forfeit, getBarrel,
-  getDieSpec, getScorePreview, resolveSaltOffer as engineResolveSaltOffer, rollDice, selectedDice,
+  getDieSpec, getScorePreview, resolveSaltOffer as engineResolveSaltOffer, resolveLoanOffer as engineResolveLoanOffer,
+  setTwoFaceFaces, rollDice, selectedDice,
   handTypeName, activeBoss,
   useItem as engineUseItem,
 } from '../core/engine.ts';
@@ -19,6 +20,7 @@ import { sound } from '../platform/sound.ts';
 import { discoverLoadout } from '../platform/storage.ts';
 import { recordScore, recordThrow, getRunRecord } from '../platform/run-record.ts';
 import { saveGame } from '../platform/save.ts';
+import { uploadActiveGame } from '../platform/sync.ts';
 import { closeOverlay, openOverlay } from './components/overlay.ts';
 import { showToast } from './components/toast.ts';
 import { guideEvent, nextTutorialRoll } from './tutorial-guide.ts';
@@ -537,6 +539,7 @@ async function performCupRoll({ free = false, prepared = false, from = null }: {
     $('#cup')?.classList.remove('is-ritual');
     renderGame();
     if (run.flags.saltOffer) showSaltOffer();
+    else if (run.flags.loanOffer) showLoanOffer();
     else if (run.phase === 'lost') showDefeat();
     else if (run.phase === 'dead') speakRandomTaunt(0.35);
     else if (previousPhase !== 'hot' && Math.random() < .24) speakRandomTaunt(0.24);
@@ -588,9 +591,83 @@ export function answerSaltOffer(use: boolean): void {
   if (run.phase === 'lost') showDefeat();
 }
 
+export function showLoanOffer(): void {
+  const run = app.run;
+  if (!run || !run.flags.loanOffer) return;
+  const barrel = getBarrel(run);
+  const saved = Math.max(0, run.roundScore || 0);
+  openOverlay(`
+    <div class="modal result-modal" style="width:min(440px,100%);padding:34px">
+      <p class="modal-kicker">A BUST ON THE TABLE</p>
+      <h2 style="font-size:26px;margin-top:6px">要借运重投吗？</h2>
+      <p class="result-sub">${saved > 0 ? `本轮 ${num(saved)} 分还摆在桌上。` : '本轮还没有分数可保。'}支付 ${barrel.type === 'loan' ? barrel.cost : 40} 银币，这一手可以重来一次；每关只能借一次。</p>
+      <div class="modal-actions" style="margin-top:22px">
+        <button class="secondary-button" data-action="loan-decline">不借，认栽</button>
+        <button class="primary-button" data-action="loan-pay">借运 · 付 ${barrel.type === 'loan' ? barrel.cost : 40} 银币重投</button>
+      </div>
+    </div>
+  `, { dismissible: false });
+}
+
+export function answerLoanOffer(pay: boolean): void {
+  const run = app.run;
+  if (!run) return;
+  const result = engineResolveLoanOffer(run, pay);
+  if (!result.ok) { showToast(result.error!, 'error'); return; }
+  closeOverlay();
+  renderGame();
+  if (pay) showToast(`借运桶付出 ${result.paid} 银币，重新落骰。`, 'good');
+  if (run.flags.loanOffer) showLoanOffer();
+  else if (run.flags.saltOffer) showSaltOffer();
+  else if (run.phase === 'lost') showDefeat();
+}
+
+export function showTwoFaceOffer(): void {
+  const run = app.run;
+  if (!run || !run.flags.twoFacePending) return;
+  openOverlay(`
+    <div class="modal result-modal" style="width:min(440px,100%);padding:34px">
+      <p class="modal-kicker">CHOOSE TWO FACES</p>
+      <h2 style="font-size:26px;margin-top:6px">双面桶要偏向哪两面？</h2>
+      <p class="result-sub">选择两个点数，本关这两面的出现概率会大幅提高。</p>
+      <div class="twoface-grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:18px 0">
+        ${[1, 2, 3, 4, 5, 6].map((face) => `<button class="secondary-button twoface-face" data-action="twoface-face" data-face="${face}">${face}</button>`).join('')}
+      </div>
+      <div class="modal-actions">
+        <button class="primary-button" data-action="twoface-confirm">定下两面</button>
+      </div>
+    </div>
+  `, { dismissible: false });
+}
+
+export function answerTwoFace(): void {
+  const run = app.run;
+  if (!run) return;
+  const faces = [...document.querySelectorAll<HTMLElement>('.twoface-face.is-selected')]
+    .map((el) => Number(el.dataset.face));
+  const result = setTwoFaceFaces(run, faces);
+  if (!result.ok) { showToast(result.error!, 'error'); return; }
+  closeOverlay();
+  beginRoll();
+}
+
+export function toggleTwoFace(face: number): void {
+  const buttons = [...document.querySelectorAll<HTMLElement>('.twoface-face')];
+  const selected = buttons.filter((el) => el.classList.contains('is-selected'));
+  const target = buttons.find((el) => Number(el.dataset.face) === face);
+  if (!target) return;
+  if (target.classList.contains('is-selected')) {
+    target.classList.remove('is-selected');
+    return;
+  }
+  if (selected.length >= 2) selected[0]?.classList.remove('is-selected');
+  target.classList.add('is-selected');
+}
+
 export function beginRoll({ free = false }: { free?: boolean } = {}): void {
   if (!app.run || app.busy || app.introOpen) return;
   const run = app.run;
+  if (run.flags.twoFacePending) { showTwoFaceOffer(); return; }
   const allowedNormal = ['ready', 'dead', 'hot', 'selecting', 'reroll-pending'].includes(run.phase);
   if (!allowedNormal && !free) return;
   const freeContinuation = run.phase === 'reroll-pending' && !run.flags.rerollAll;
@@ -745,6 +822,7 @@ export function advanceCurrentLevel(): void {
   clearTimeout(app.rollTimer ?? undefined);
   renderGame();
   saveGame(app.run, getRunRecord());
+  void uploadActiveGame(app.run, getRunRecord());
   setTimeout(() => {
     app.busy = false;
     showVictory();

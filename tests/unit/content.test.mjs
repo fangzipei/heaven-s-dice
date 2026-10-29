@@ -11,12 +11,12 @@ const countBy = (list, key) => list.reduce((counts, entry) => {
   return counts;
 }, {});
 
-test('dice roster: 5 wolf + 5 demon + 25 free agents, rarity 11/9/9/6', () => {
-  expect(DICE.length).toBe(35);
-  expect(countBy(DICE, 'rarity')).toEqual({ common: 11, rare: 9, epic: 9, legendary: 6 });
+test('dice roster: 4 wolf + 4 demon + 25 free agents, rarity 11/8/8/6', () => {
+  expect(DICE.length).toBe(33);
+  expect(countBy(DICE, 'rarity')).toEqual({ common: 11, rare: 8, epic: 8, legendary: 6 });
   expect(Object.keys(DICE_SETS)).toEqual(['wolf', 'demon']);
   for (const set of Object.values(DICE_SETS)) {
-    expect(DICE.filter((die) => die.setId === set.id).length).toBe(5);
+    expect(DICE.filter((die) => die.setId === set.id).length).toBe(4);
     expect(set.bonuses.length).toBe(2);
   }
   // The whole point of the reshuffle: not every die has to be in a set.
@@ -143,7 +143,7 @@ test('three shelf passives each open one extra shop slot', () => {
 });
 
 test('barrel composition: starter + probability + score + interaction + gesture', () => {
-  expect(BARRELS.length).toBe(13);
+  expect(BARRELS.length).toBe(19);
   expect(BARRELS.filter((barrel) => barrel.type === 'probability').length).toBe(3);
   expect(BARRELS.filter((barrel) => barrel.type === 'gesture').length).toBe(2);
   expect(BARRELS.filter((barrel) => barrel.type === 'none').length).toBe(1);
@@ -156,7 +156,7 @@ test('barrel composition: starter + probability + score + interaction + gesture'
     expect(barrel.value > 0 && barrel.tripleValue > 0).toBeTruthy();
   }
   for (const barrel of wild) expect(barrel.value > 0).toBeTruthy();
-  for (const type of ['gild', 'forceOne', 'straightFix', 'extraDie', 'singlesBonus']) {
+  for (const type of ['gild', 'forceOne', 'straightFix', 'extraDie', 'singlesBonus', 'pawn', 'nightwatch', 'fuse', 'rotation', 'twoFace', 'loan']) {
     expect(BARRELS.filter((barrel) => barrel.type === type).length, type).toBe(1);
   }
 });
@@ -220,7 +220,7 @@ test('24 levels split 5 / 5 / 5 / 5 / 4 across five tables', () => {
 test('the level table uses the no-boss curve, then boss coefficients', () => {
   expect(buildLevelTable()).toEqual(LEVELS);
   expect(LEVELS[0].target).toBe(LEVEL_CURVE.targetBase);
-  expect(LEVELS[1].target).toBe(Math.round(LEVEL_CURVE.targetBase * (1 + LEVEL_CURVE.targetSegments[0].growth) / 10) * 10);
+  expect(LEVELS[1].target).toBe(LEVEL_CURVE.nonBossTargets[1]);
   expect(LEVELS[0].reward).toBe(LEVEL_CURVE.rewardBase);
   for (const level of LEVELS) {
     const boss = BOSSES.find((entry) => entry.level === level.level);

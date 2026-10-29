@@ -272,7 +272,9 @@ function analyzeCounts(
     }
     distribute(face + 1, remaining, add);
     if (counts[face] === 0) return;
-    const need = Math.max(1, 3 - counts[face]!);
+    const need = allowPairs
+      ? Math.max(1, 2 - counts[face]!)
+      : Math.max(1, 3 - counts[face]!);
     for (let take = need; take <= remaining; take += 1) {
       const nextAdd = cloneCounts(add);
       nextAdd[face]! += take;

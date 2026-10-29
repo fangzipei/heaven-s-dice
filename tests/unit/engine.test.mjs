@@ -8,6 +8,7 @@ import {
   buildScore, syncBag, getScorePreview, hasItemEverBeenTaken,
   activeBoss, isBossDieBlocked, handTypeOf, sellItem, canSellItem, itemSellPrice,
   bossEffectKey, shopSlots, isFloatingScore, resolveSaltOffer, activeItemCapacity,
+  bustRound, setTwoFaceFaces, resolveLoanOffer,
 } from '../../src/core/engine.ts';
 import { makeRng, cashOutValue } from '../../src/core/engine.ts';
 import {
@@ -35,7 +36,7 @@ test('a new run starts with zero coins and a 500-point first target', () => {
   expect(state.coins).toBe(0);
   expect(state.level).toBe(1);
   expect(state.target).toBe(500);
-  expect(getLevelConfig(2).target).toBe(540);
+  expect(getLevelConfig(2).target).toBe(1000);
 });
 
 test('opening throw is free, later throws spend the three fixed rerolls', () => {
@@ -440,7 +441,7 @@ test('target is the level config and nothing else', () => {
 test('wolf two-piece pays for every scored 3', () => {
   const state = fresh();
   state.bag[0].dieId = 'wolf_whelp';
-  state.bag[1].dieId = 'wolf_hunter';
+  state.bag[1].dieId = 'wolf_bloodmoon';
   syncBag(state);
   initLevel(state);
   forceRoll(state, [3, 3, 3, 1, 2, 4]);
@@ -455,7 +456,7 @@ test('wolf two-piece pays for every scored 3', () => {
 
 test('wolf four-piece adds the triple-three bonus', () => {
   const state = fresh();
-  ['wolf_whelp', 'wolf_hunter', 'wolf_bloodmoon', 'wolf_alpha'].forEach((id, i) => {
+  ['wolf_whelp', 'wolf_bloodmoon', 'wolf_alpha', 'wolf_ancestor'].forEach((id, i) => {
     state.bag[i].dieId = id;
   });
   syncBag(state);
@@ -524,7 +525,7 @@ test('a joker spent on the straight does not also pay an any-triple bonus', () =
 
 test('demon set bonus multiplies only when a joker is used', () => {
   const state = fresh();
-  state.bag[0].dieId = 'demon_seal';
+  state.bag[0].dieId = 'demon_imp';
   state.bag[1].dieId = 'demon_taxman';
   syncBag(state);
   initLevel(state);
@@ -703,6 +704,19 @@ test('dice packs roll their choices at purchase and keep them on reopen', () => 
   expect(second).toEqual(first);
 });
 
+test('boss-only relics never appear in shop item offers', () => {
+  const state = fresh();
+  initLevel(state);
+  state.coins = 9999;
+  createShop(state);
+  for (let i = 0; i < 80; i += 1) {
+    createShop(state);
+    for (const offer of state.shop.item) {
+      expect(ITEM_BY_ID[offer.id].bossOnly, offer.id).toBeUndefined();
+    }
+  }
+});
+
 test('owned items can be sold for half price only in the shop', () => {
   const state = fresh();
   state.phase = 'shop';
@@ -827,11 +841,24 @@ test('new boss rules: two/six singles, coin tax, double target and Lucifer ban',
 });
 
 test('boss relics change scoring rules instead of adding flat points', () => {
+  const plain = fresh();
+  forceRoll(plain, [3, 3, 2, 1, 4, 5]);
+  plain.selected = plain.dice.slice(0, 2).map((die) => die.uid);
+  expect(buildScore(plain, 'reroll').valid).toBe(false);
+
   const pair = fresh();
   pair.passiveItems = ['pairbane_relic'];
   forceRoll(pair, [3, 3, 2, 1, 4, 5]);
   pair.selected = pair.dice.slice(0, 2).map((die) => die.uid);
   expect(buildScore(pair, 'reroll').total).toBe(150);
+
+  const wildPair = fresh();
+  wildPair.passiveItems = ['pairbane_relic'];
+  forceRoll(wildPair, [3, 1, 2, 4, 5, 6]);
+  wildPair.dice[1].wild = true;
+  wildPair.dice[1].value = 0;
+  wildPair.selected = [wildPair.dice[0].uid, wildPair.dice[1].uid];
+  expect(buildScore(wildPair, 'reroll').total).toBe(150);
 
   const twins = fresh();
   twins.passiveItems = ['twinsix_relic'];
@@ -863,6 +890,18 @@ test('the pair-ban boss voids any throw with an exact pair', () => {
   state.selected = state.dice.slice(0, 2).map((die) => die.uid);
   const result = buildScore(state, 'reroll');
   expect(result.total).toBe(0);
+});
+
+test('the seventh die from a dice bag loses half of its scoring share', () => {
+  const state = fresh();
+  state.passiveItems = ['dice_bag'];
+  syncBag(state);
+  initLevel(state);
+  forceRoll(state, [1, 2, 3, 4, 6, 6, 5]);
+  const seventh = state.dice.find((die) => die.bagUid === state.bag[6].uid);
+  expect(seventh).toBeTruthy();
+  state.selected = [seventh.uid];
+  expect(buildScore(state, 'reroll').total).toBe(25);
 });
 
 test('the rat blanks every ninth rolled die', () => {
@@ -1275,4 +1314,48 @@ test('a dealer level records the coefficient that paid it', () => {
   advanceLevel(minion);
   expect(minion.levelReward.bossPremium).toBe(0);
   expect(minion.levelReward.curveBase).toBe(minion.levelReward.base);
+});
+
+test('new barrel effects: pawn, fuse, nightwatch, twoface and loan', () => {
+  const pawn = fresh();
+  pawn.barrelId = 'pawn';
+  pawn.coins = 100;
+  initLevel(pawn);
+  forceRoll(pawn, [5, 2, 4, 6, 2, 4]);
+  pawn.selected = [pawn.dice[0].uid];
+  expect(buildScore(pawn, 'reroll').total).toBe(60);
+
+  const fuse = fresh();
+  fuse.barrelId = 'fuse';
+  initLevel(fuse);
+  fuse.flags.fuseArmed = true;
+  forceRoll(fuse, [5, 2, 4, 6, 2, 4]);
+  fuse.selected = [fuse.dice[0].uid];
+  expect(buildScore(fuse, 'reroll').total).toBe(170);
+
+  const night = fresh();
+  night.barrelId = 'nightwatch';
+  night.roundScore = 200;
+  expect(bustRound(night)).toBe(100);
+  expect(night.roundScore).toBe(100);
+  expect(night.flags.nightwatchUsed).toBe(true);
+  expect(bustRound(night)).toBe(100);
+
+  const faces = fresh();
+  faces.barrelId = 'twoface';
+  expect(setTwoFaceFaces(faces, [5, 6]).ok).toBe(true);
+  expect(faces.flags.twoFaceFaces).toEqual([5, 6]);
+  const probs = effectiveProbs('standard', 'twoface', undefined, [5, 6]);
+  expect(probs[4]).toBeGreaterThan(probs[0]);
+
+  const loan = fresh();
+  loan.barrelId = 'loan';
+  loan.coins = 100;
+  loan.roundScore = 50;
+  loan.phase = 'dead';
+  loan.flags.loanOffer = true;
+  const result = resolveLoanOffer(loan, true);
+  expect(result.ok).toBe(true);
+  expect(loan.coins).toBe(60);
+  expect(loan.flags.loanUsed).toBe(true);
 });

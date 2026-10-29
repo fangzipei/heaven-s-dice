@@ -71,6 +71,10 @@ export interface RunRecord {
   segmentStartedAt?: string | null;
   result: RunResult | null;
   levelReached: number;
+  /** First level actually recorded; 1 means a complete run history. */
+  recordedFromLevel?: number;
+  /** True when the record contains every level from 1 to levelReached. */
+  complete?: boolean;
   finalScore: number;
   coins: number;
   levels: RecordedLevel[];
@@ -115,6 +119,8 @@ export function beginRunRecord(run: RunState, userId: string): RunRecord {
     segmentStartedAt: new Date().toISOString(),
     result: null,
     levelReached: run.level,
+    recordedFromLevel: run.level,
+    complete: false,
     finalScore: run.score,
     coins: run.coins,
     levels: [],
@@ -300,6 +306,10 @@ export function finishRunRecord(run: RunState, result: RunResult): RunRecord | n
   active.durationMs = Math.max(0, active.elapsedMs || active.durationMs || 0);
   active.result = result;
   active.levelReached = run.level;
+  active.recordedFromLevel = active.levels[0]?.level ?? run.level;
+  active.complete = active.levels.length >= run.level
+    && active.levels[0]?.level === 1
+    && active.levels[active.levels.length - 1]?.level === run.level;
   active.finalScore = run.score;
   active.coins = run.coins;
   const throws = active.levels.flatMap((item) => item.throws);

@@ -1,5 +1,5 @@
 /*
- * Rough shop-upgrade model used to choose the three no-boss growth bands.
+ * Rough shop-upgrade model used to review the shop rarity bands.
  *
  *   node tools/curve-model.mjs
  *
@@ -21,7 +21,7 @@ console.log('阶段商店稀有度与期望价值');
 for (const row of rows) {
   console.log(`≤${String(row.untilLevel).padStart(2)} 关  普通 ${row.weights.common}%  稀有 ${row.weights.rare}%  史诗 ${row.weights.epic}%  传说 ${row.weights.legendary}%  → 质量 ${row.quality.toFixed(2)}`);
 }
-console.log('\n无庄家曲线增长率：');
-for (const segment of LEVEL_CURVE.targetSegments ?? []) {
-  console.log(`≤${segment.untilLevel} 关  +${(segment.growth * 100).toFixed(1)}%/关`);
+console.log('\n无庄家目标：');
+for (let level = 1; level <= (LEVEL_CURVE.nonBossTargets?.length ?? 0); level += 1) {
+  console.log(`第 ${level} 关  ${Math.round(LEVEL_CURVE.nonBossTargets[level - 1])} 分`);
 }

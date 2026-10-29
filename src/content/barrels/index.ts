@@ -15,6 +15,12 @@ import marker from './marker.ts';
 import guide from './guide.ts';
 import brood from './brood.ts';
 import singles from './singles.ts';
+import pawn from './pawn.ts';
+import nightwatch from './nightwatch.ts';
+import fuse from './fuse.ts';
+import rotation from './rotation.ts';
+import twoface from './twoface.ts';
+import loan from './loan.ts';
 import type { BarrelDef } from '../../core/types.ts';
 
 export const BARREL_DEFS: BarrelDef[] = [
@@ -31,4 +37,10 @@ export const BARREL_DEFS: BarrelDef[] = [
   guide,
   brood,
   singles,
+  pawn,
+  nightwatch,
+  fuse,
+  rotation,
+  twoface,
+  loan,
 ];

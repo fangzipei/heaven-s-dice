@@ -9,7 +9,7 @@ import { h, num } from '../../core/util.ts';
 import { sound } from '../../platform/sound.ts';
 import { finishRunRecord } from '../../platform/run-record.ts';
 import { clearGameSave } from '../../platform/save.ts';
-import { storeFinishedRun } from '../../platform/sync.ts';
+import { clearActiveGame, storeFinishedRun } from '../../platform/sync.ts';
 import { openOverlay } from '../components/overlay.ts';
 import { projectedReward } from '../reward.ts';
 import { app } from '../state.ts';
@@ -27,6 +27,7 @@ export function showVictory(): void {
     const finished = finishRunRecord(run, 'win');
     if (finished) storeFinishedRun(finished);
     clearGameSave();
+    void clearActiveGame();
     const summary = runSummary(run);
     openOverlay(`
       <div class="modal result-modal">
@@ -86,6 +87,7 @@ export function showDefeat(): void {
   const finished = finishRunRecord(run, 'loss');
   if (finished) storeFinishedRun(finished);
   clearGameSave();
+  void clearActiveGame();
   sound.lose();
   openOverlay(`
     <div class="modal result-modal loss">

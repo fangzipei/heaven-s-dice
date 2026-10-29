@@ -129,6 +129,30 @@ export type BarrelDef =
   | {
       id: string; name: string; rarity: RarityId; type: 'singlesBonus'; art: string;
       price: number; multiplier: number; desc: string; short: string;
+    }
+  | {
+      id: string; name: string; rarity: RarityId; type: 'pawn'; art: string;
+      price: number; step: number; cap: number; desc: string; short: string;
+    }
+  | {
+      id: string; name: string; rarity: RarityId; type: 'nightwatch'; art: string;
+      price: number; keep: number; desc: string; short: string;
+    }
+  | {
+      id: string; name: string; rarity: RarityId; type: 'fuse'; art: string;
+      price: number; value: number; desc: string; short: string;
+    }
+  | {
+      id: string; name: string; rarity: RarityId; type: 'rotation'; art: string;
+      price: number; desc: string; short: string;
+    }
+  | {
+      id: string; name: string; rarity: RarityId; type: 'twoFace'; art: string;
+      price: number; multiplier: number; desc: string; short: string;
+    }
+  | {
+      id: string; name: string; rarity: RarityId; type: 'loan'; art: string;
+      price: number; cost: number; desc: string; short: string;
     };
 
 export type HandTag =
@@ -314,6 +338,18 @@ export interface RunFlags {
   roundSinglesOnly?: boolean;
   /** 本局赖子骰参与计分的次数，用于骰型规则的悬停提示。 */
   wildScored?: number;
+  /** 守夜桶：本关的防爆保分是否已用。 */
+  nightwatchUsed?: boolean;
+  /** 引信桶：主动物品后的下一手是否带 +120。 */
+  fuseArmed?: boolean;
+  /** 借运桶：本关是否已经借过一次重投。 */
+  loanUsed?: boolean;
+  /** 借运桶：当前掷空正在等待玩家决定是否付钱重投。 */
+  loanOffer?: boolean;
+  /** 双面桶：本关选择的两面。 */
+  twoFaceFaces?: number[];
+  /** 双面桶：本关还没确认两面。 */
+  twoFacePending?: boolean;
 }
 
 export interface LogEntry {

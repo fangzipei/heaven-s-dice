@@ -23,7 +23,7 @@ import {
   recordShop, restoreRunRecord, resumeRunRecord, setRecordUser,
 } from '../platform/run-record.ts';
 import { clearGameSave, loadGame, saveGame } from '../platform/save.ts';
-import { syncEverything } from '../platform/sync.ts';
+import { clearActiveGame, syncEverything, uploadActiveGame } from '../platform/sync.ts';
 import {
   identityBack, identityLogin, identityNext, logoutAccount, openAccount, openIdentity,
   refreshAccountButton, setPasswordAndSync, switchAccount, syncNow,
@@ -34,9 +34,9 @@ import { bindTooltip, hideTooltip } from './components/tooltip.ts';
 import { $, $$, setCss } from './dom.ts';
 import { paperSwap } from './paper-transition.ts';
 import {
-  advanceCurrentLevel, answerSaltOffer, beginRoll, bindCupDrag, cancelGrant, cancelGrantReplace,
+  advanceCurrentLevel, answerLoanOffer, answerSaltOffer, answerTwoFace, beginRoll, bindCupDrag, cancelGrant, cancelGrantReplace,
   chooseGrantDie, confirmGrantReplace, confirmUseItem, forfeitRun, handleScore, pulseCup, renderGame,
-  requestUseItem, setSpeech,
+  requestUseItem, setSpeech, toggleTwoFace,
 } from './game.ts';
 import { renderTopbar } from './hud.ts';
 import { baseReward } from './reward.ts';
@@ -91,7 +91,10 @@ document.addEventListener('DOMContentLoaded', () => {
 /* Checkpoints are written only when a level or shop is finished, so continuing
    always drops the player at a clean level start instead of a half-played hand. */
 function saveCheckpoint(): void {
-  if (app.run) saveGame(app.run, getRunRecord());
+  if (!app.run) return;
+  const record = getRunRecord();
+  saveGame(app.run, record);
+  if (record) void uploadActiveGame(app.run, record);
 }
 
 export function refreshResumeButton(): void {
@@ -104,6 +107,10 @@ export function refreshResumeButton(): void {
     const when = saved.savedAt ? new Date(saved.savedAt).toLocaleString('zh-CN', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
     button.textContent = `继续上局 · 第 ${level} 关${when ? ` · ${when}` : ''}`;
   }
+}
+
+if (typeof window !== 'undefined') {
+  window.addEventListener('hd:save-restored', refreshResumeButton);
 }
 
 export function resumeRun(): void {
@@ -385,6 +392,18 @@ async function handleAction(action: string, target: HTMLElement, _event?: MouseE
     case 'salt-decline':
       answerSaltOffer(false);
       break;
+    case 'loan-pay':
+      answerLoanOffer(true);
+      break;
+    case 'loan-decline':
+      answerLoanOffer(false);
+      break;
+    case 'twoface-face':
+      toggleTwoFace(Number(target.dataset.face));
+      break;
+    case 'twoface-confirm':
+      answerTwoFace();
+      break;
     case 'use-item':
       requestUseItem(target.dataset.itemId!);
       break;
@@ -485,6 +504,7 @@ export async function startRun(): Promise<void> {
     return;
   }
   await loadGameConfig();
+  await clearActiveGame();
   paperSwap(() => {
     closeOverlay();
     closeShopScreen();

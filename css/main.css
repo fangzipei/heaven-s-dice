@@ -2359,3 +2359,6 @@ body.rail-collapsed .cup-zone { right: 4.2% !important; }
 /* Let the table span the scene again, while still leaving room for the dice row. */
 .table-3d { width: 132% !important; height: 180% !important; bottom: -3% !important; }
 .scene-art, .opponent, .room-3d { filter: none !important; }
+
+.twoface-face.is-selected{border-color:#d8b56a;background:rgba(216,181,106,.22);color:#fff3cd}
+

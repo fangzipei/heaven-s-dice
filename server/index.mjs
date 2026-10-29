@@ -404,12 +404,74 @@ async function summary(req, res) {
   return json(res, 200, { counts });
 }
 
+async function activeSaveUser(req, res) {
+  const user = await accountFromRequest(req);
+  if (!user) { fail(res, 401, '请先登录。'); return null; }
+  if (!user.password_hash) { fail(res, 403, '只有设置密码的账号才能同步未完成对局。'); return null; }
+  return user;
+}
+
+async function getActiveSave(req, res) {
+  const user = await activeSaveUser(req, res);
+  if (!user) return;
+  const [rows] = await pool.query(
+    'SELECT client_run_id, saved_at, run, record FROM hd_active_runs WHERE user_id = ? LIMIT 1',
+    [user.id],
+  );
+  if (!rows.length) return json(res, 200, { save: null });
+  const row = rows[0];
+  const parse = (value) => {
+    if (typeof value !== 'string') return value;
+    try { return JSON.parse(value); } catch { return null; }
+  };
+  return json(res, 200, {
+    save: {
+      savedAt: new Date(row.saved_at).getTime(),
+      clientRunId: row.client_run_id,
+      run: parse(row.run),
+      record: parse(row.record),
+    },
+  });
+}
+
+async function putActiveSave(req, res) {
+  const user = await activeSaveUser(req, res);
+  if (!user) return;
+  const body = await readBody(req);
+  const savedAt = Number(body.savedAt);
+  const run = body.run;
+  const record = body.record && typeof body.record === 'object' ? body.record : null;
+  if (!Number.isFinite(savedAt) || !run || typeof run !== 'object' || !run.level) {
+    return fail(res, 400, '未完成对局数据不完整。');
+  }
+  const clientRunId = String(body.clientRunId || record?.clientRunId || '').slice(0, 64);
+  if (!clientRunId) return fail(res, 400, '未完成对局缺少 clientRunId。');
+  await pool.query(
+    `INSERT INTO hd_active_runs (user_id, client_run_id, saved_at, run, record)
+     VALUES (?, ?, ?, ?, ?)
+     ON DUPLICATE KEY UPDATE
+       client_run_id = IF(VALUES(saved_at) >= saved_at, VALUES(client_run_id), client_run_id),
+       run = IF(VALUES(saved_at) >= saved_at, VALUES(run), run),
+       record = IF(VALUES(saved_at) >= saved_at, VALUES(record), record),
+       saved_at = GREATEST(saved_at, VALUES(saved_at))`,
+    [user.id, clientRunId, new Date(savedAt), JSON.stringify(run), record ? JSON.stringify(record) : null],
+  );
+  return json(res, 200, { ok: true });
+}
+
+async function deleteActiveSave(req, res) {
+  const user = await activeSaveUser(req, res);
+  if (!user) return;
+  await pool.query('DELETE FROM hd_active_runs WHERE user_id = ?', [user.id]);
+  return json(res, 200, { ok: true });
+}
+
 const server = http.createServer(async (req, res) => {
   try {
     if (req.method === 'OPTIONS') {
       res.writeHead(204, {
         'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'GET,POST,OPTIONS',
+        'Access-Control-Allow-Methods': 'GET,POST,DELETE,OPTIONS',
         'Access-Control-Allow-Headers': 'Content-Type,Authorization',
       });
       return res.end();
@@ -443,6 +505,9 @@ const server = http.createServer(async (req, res) => {
     if (req.method === 'GET' && path === '/me') return await me(req, res);
     if (req.method === 'POST' && path === '/runs') return await saveRunRequest(req, res, false);
     if (req.method === 'POST' && path === '/runs/batch') return await saveRunRequest(req, res, true);
+    if (req.method === 'GET' && path === '/active-run') return await getActiveSave(req, res);
+    if (req.method === 'POST' && path === '/active-run') return await putActiveSave(req, res);
+    if (req.method === 'DELETE' && path === '/active-run') return await deleteActiveSave(req, res);
     if (req.method === 'GET' && path === '/history') return await history(req, res, url);
     if (req.method === 'GET' && path === '/leaderboards') return await leaderboards(req, res, url);
     if (req.method === 'GET' && path === '/stats/entities') return await entityStats(req, res, url);

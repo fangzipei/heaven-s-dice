@@ -20,7 +20,7 @@ beforeAll(() => {
   globalThis.requestAnimationFrame = (fn) => { fn(); return 0; };
   app.introOpen = false;
   app.run = null;
-  app.discovered = { dice: ['wolf_hunter'], barrels: ['oak'], items: ['lucky_coin'] };
+  app.discovered = { dice: ['wolf_bloodmoon'], barrels: ['oak'], items: ['lucky_coin'] };
   bindDiscovery(app);
 });
 
@@ -49,8 +49,8 @@ describe('图鉴搬到 ui/screens/compendium.ts 之后仍然写同样的文案',
     const html = overlay();
     expect(html).toContain('每一枚秘骰都像一张有偏向的牌：点数概率不同。');
     expect(html).toContain(`已遇见 1 / ${DICE.filter((die) => !die.isStandard).length}`);
-    expect(html).toContain('data-die-tip="wolf_hunter"');
-    expect(html).toContain('猎手骰');
+    expect(html).toContain('data-die-tip="wolf_bloodmoon"');
+    expect(html).toContain('血月骰');
     expect((html.match(/<article class="compendium-card is-locked" aria-label="这枚骰子尚未遇见">/g) || []).length)
       .toBe(DICE.filter((die) => !die.isStandard).length - 1);
     expect(html).toContain('<b>尚未遇见</b><span>在赌局或市集中遇见后解锁</span>');

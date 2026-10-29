@@ -93,24 +93,6 @@
       "price": 35
     },
     {
-      "id": "wolf_hunter",
-      "name": "猎手骰",
-      "setId": "wolf",
-      "rarity": "rare",
-      "probs": [
-        0.2,
-        0.09,
-        0.31,
-        0.07,
-        0.21,
-        0.12
-      ],
-      "flavor": "狼群追猎时，猎手总会把三枚爪印留在雪里。",
-      "desc": "3 点概率 31%，1、5 各 20%。",
-      "bonus": null,
-      "price": 70
-    },
-    {
       "id": "wolf_bloodmoon",
       "name": "血月骰",
       "setId": "wolf",
@@ -213,24 +195,6 @@
       ],
       "flavor": "税吏从不掷出运气，他只掷出应收的数目。",
       "desc": "恶魔赖子 14%，5、6 略高。",
-      "bonus": null,
-      "price": 130
-    },
-    {
-      "id": "demon_seal",
-      "name": "契约之印",
-      "setId": "demon",
-      "rarity": "epic",
-      "probs": [
-        0.11,
-        0.17,
-        0.17,
-        0.17,
-        0.21,
-        0.17
-      ],
-      "flavor": "盖下去的那一刻，连点数都要补缴印花税。",
-      "desc": "恶魔赖子 11%，5 点偏高。",
       "bonus": null,
       "price": 130
     },
@@ -886,7 +850,7 @@
       "rarity": "epic",
       "type": "probability",
       "art": "astral",
-      "price": 105,
+      "price": 158,
       "bias": [
         1,
         1,
@@ -917,7 +881,7 @@
       "rarity": "epic",
       "type": "wildScore",
       "art": "demon-totem",
-      "price": 120,
+      "price": 180,
       "value": 60,
       "desc": "每颗参与本次计分的恶魔赖子额外 +60 分。赖子不能单独计分，必须补进组合。",
       "short": "每颗计分的恶魔赖子 +60 分"
@@ -928,7 +892,7 @@
       "rarity": "epic",
       "type": "gesture",
       "art": "pentagram",
-      "price": 125,
+      "price": 188,
       "gesture": "pentagram",
       "desc": "每关完成一次五芒星仪式，本掷所有计分 +20%。",
       "short": "五芒星仪式：每关一次，本掷计分 +20%"
@@ -939,7 +903,7 @@
       "rarity": "legendary",
       "type": "gesture",
       "art": "vortex",
-      "price": 165,
+      "price": 248,
       "gesture": "circle",
       "desc": "顺时针画满一圈，本掷计分 +15%，并在此关获得 1 次额外重投（每关一次）。",
       "short": "旋涡仪式：本掷 +15% 且每关 +1 重投"
@@ -973,7 +937,7 @@
       "rarity": "legendary",
       "type": "straightFix",
       "art": "guide",
-      "price": 220,
+      "price": 330,
       "desc": "若本次摇出的骰型只差一颗就能组成顺子，桶会转动其中一颗骰子，补成顺子。",
       "short": "差一颗成顺时自动补顺"
     },
@@ -983,7 +947,7 @@
       "rarity": "epic",
       "type": "extraDie",
       "art": "brood",
-      "price": 140,
+      "price": 210,
       "chance": 0.05,
       "desc": "每次摇动有 5% 概率多滚出一颗骰子；多出的骰子只参与本次投掷。",
       "short": "5% 多出一颗临时骰"
@@ -998,6 +962,72 @@
       "multiplier": 1.2,
       "desc": "若本轮此前每次都只按单颗骰型计分，则本次计分 +20%。",
       "short": "整轮只计单骰时 +20%"
+    },
+    {
+      "id": "pawn",
+      "name": "当铺桶",
+      "rarity": "epic",
+      "type": "pawn",
+      "art": "gilded",
+      "price": 190,
+      "step": 10,
+      "cap": 80,
+      "desc": "每次计分时，每 10 银币让本手 +1 分，单次最多 +80 分。",
+      "short": "银币转分数，最多 +80"
+    },
+    {
+      "id": "nightwatch",
+      "name": "守夜桶",
+      "rarity": "epic",
+      "type": "nightwatch",
+      "art": "guide",
+      "price": 200,
+      "keep": 0.5,
+      "desc": "每关第一次掷空时，保留本轮 50% 的挂账分数。",
+      "short": "每关第一次掷空保留一半"
+    },
+    {
+      "id": "fuse",
+      "name": "引信桶",
+      "rarity": "rare",
+      "type": "fuse",
+      "art": "marker",
+      "price": 100,
+      "value": 120,
+      "desc": "使用主动物品后，下一次计分额外 +120 分。",
+      "short": "主动物品后下一手 +120"
+    },
+    {
+      "id": "rotation",
+      "name": "轮转桶",
+      "rarity": "rare",
+      "type": "rotation",
+      "art": "serpent",
+      "price": 100,
+      "desc": "每次重投后，随机一颗未计分骰子点数 +1；6 点回到 1。",
+      "short": "每次重投随机一颗骰子 +1"
+    },
+    {
+      "id": "twoface",
+      "name": "双面桶",
+      "rarity": "legendary",
+      "type": "twoFace",
+      "art": "astral",
+      "price": 330,
+      "multiplier": 2.4,
+      "desc": "每关开始时选择两个点数；这两面的出现概率大幅提高。",
+      "short": "每关选择两个偏重点数"
+    },
+    {
+      "id": "loan",
+      "name": "借运桶",
+      "rarity": "epic",
+      "type": "loan",
+      "art": "oak",
+      "price": 180,
+      "cost": 40,
+      "desc": "每关第一次掷空时，可以支付 40 银币重投一次。",
+      "short": "掷空时付 40 银币重投"
     }
   ],
   "ITEMS": [
@@ -1206,7 +1236,7 @@
       "price": 240,
       "charges": 0,
       "unique": true,
-      "desc": "可使用的骰子 +1（永久，整局限获取一次）。",
+      "desc": "可使用的骰子 +1（永久，整局限获取一次）；第七位骰子参与计分时，其对应分数 -50%。",
       "flavor": "袋口永远比看起来深。你甚至不确定里面有没有别的东西。"
     },
     {
@@ -1871,19 +1901,31 @@
     "rewardGrowth": 1.06,
     "targetStep": 10,
     "rewardStep": 5,
-    "targetSegments": [
-      {
-        "untilLevel": 7,
-        "growth": 0.07
-      },
-      {
-        "untilLevel": 15,
-        "growth": 0.09
-      },
-      {
-        "untilLevel": 24,
-        "growth": 0.11
-      }
+    "nonBossTargets": [
+      500,
+      1000,
+      1150,
+      1322.5,
+      1520.8749999999998,
+      1749.0062499999997,
+      2011.3571874999996,
+      2511.3571875,
+      3013.628625,
+      3616.3543499999996,
+      4339.625219999999,
+      5207.550263999999,
+      6249.060316799998,
+      7498.872380159997,
+      8998.646856191996,
+      9998.646856191996,
+      12498.308570239995,
+      15622.885712799995,
+      19528.607140999993,
+      24410.75892624999,
+      30513.448657812485,
+      38141.81082226561,
+      47677.26352783201,
+      59596.57940979001
     ]
   },
   "LEVELS": [
@@ -1898,213 +1940,213 @@
     },
     {
       "level": 2,
-      "target": 540,
+      "target": 1000,
       "reward": 60,
       "curve": {
-        "target": 540,
+        "target": 1000,
         "reward": 60
       }
     },
     {
       "level": 3,
-      "target": 660,
+      "target": 1320,
       "reward": 100,
       "curve": {
-        "target": 570,
+        "target": 1150,
         "reward": 60
       },
       "boss": true
     },
     {
       "level": 4,
-      "target": 610,
+      "target": 1320,
       "reward": 65,
       "curve": {
-        "target": 610,
+        "target": 1320,
         "reward": 65
       }
     },
     {
       "level": 5,
-      "target": 660,
+      "target": 1520,
       "reward": 70,
       "curve": {
-        "target": 660,
+        "target": 1520,
         "reward": 70
       }
     },
     {
       "level": 6,
-      "target": 700,
+      "target": 1750,
       "reward": 75,
       "curve": {
-        "target": 700,
+        "target": 1750,
         "reward": 75
       }
     },
     {
       "level": 7,
-      "target": 860,
+      "target": 2310,
       "reward": 125,
       "curve": {
-        "target": 750,
+        "target": 2010,
         "reward": 80
       },
       "boss": true
     },
     {
       "level": 8,
-      "target": 820,
+      "target": 2510,
       "reward": 85,
       "curve": {
-        "target": 820,
+        "target": 2510,
         "reward": 85
       }
     },
     {
       "level": 9,
-      "target": 890,
+      "target": 3010,
       "reward": 90,
       "curve": {
-        "target": 890,
+        "target": 3010,
         "reward": 90
       }
     },
     {
       "level": 10,
-      "target": 970,
+      "target": 3620,
       "reward": 95,
       "curve": {
-        "target": 970,
+        "target": 3620,
         "reward": 95
       }
     },
     {
       "level": 11,
-      "target": 1430,
+      "target": 5860,
       "reward": 180,
       "curve": {
-        "target": 1060,
+        "target": 4340,
         "reward": 100
       },
       "boss": true
     },
     {
       "level": 12,
-      "target": 1150,
+      "target": 5210,
       "reward": 105,
       "curve": {
-        "target": 1150,
+        "target": 5210,
         "reward": 105
       }
     },
     {
       "level": 13,
-      "target": 1260,
+      "target": 6250,
       "reward": 110,
       "curve": {
-        "target": 1260,
+        "target": 6250,
         "reward": 110
       }
     },
     {
       "level": 14,
-      "target": 1370,
+      "target": 7500,
       "reward": 115,
       "curve": {
-        "target": 1370,
+        "target": 7500,
         "reward": 115
       }
     },
     {
       "level": 15,
-      "target": 2020,
+      "target": 12150,
       "reward": 230,
       "curve": {
-        "target": 1500,
+        "target": 9000,
         "reward": 125
       },
       "boss": true
     },
     {
       "level": 16,
-      "target": 1660,
+      "target": 10000,
       "reward": 130,
       "curve": {
-        "target": 1660,
+        "target": 10000,
         "reward": 130
       }
     },
     {
       "level": 17,
-      "target": 1840,
+      "target": 12500,
       "reward": 140,
       "curve": {
-        "target": 1840,
+        "target": 12500,
         "reward": 140
       }
     },
     {
       "level": 18,
-      "target": 2040,
+      "target": 15620,
       "reward": 150,
       "curve": {
-        "target": 2040,
+        "target": 15620,
         "reward": 150
       }
     },
     {
       "level": 19,
-      "target": 2270,
+      "target": 19530,
       "reward": 155,
       "curve": {
-        "target": 2270,
+        "target": 19530,
         "reward": 155
       }
     },
     {
       "level": 20,
-      "target": 4160,
+      "target": 40280,
       "reward": 360,
       "curve": {
-        "target": 2520,
+        "target": 24410,
         "reward": 165
       },
       "boss": true
     },
     {
       "level": 21,
-      "target": 2800,
+      "target": 30510,
       "reward": 175,
       "curve": {
-        "target": 2800,
+        "target": 30510,
         "reward": 175
       }
     },
     {
       "level": 22,
-      "target": 3100,
+      "target": 38140,
       "reward": 185,
       "curve": {
-        "target": 3100,
+        "target": 38140,
         "reward": 185
       }
     },
     {
       "level": 23,
-      "target": 3450,
+      "target": 47680,
       "reward": 200,
       "curve": {
-        "target": 3450,
+        "target": 47680,
         "reward": 200
       }
     },
     {
       "level": 24,
-      "target": 6310,
+      "target": 98330,
       "reward": 450,
       "curve": {
-        "target": 3820,
+        "target": 59600,
         "reward": 210
       },
       "boss": true

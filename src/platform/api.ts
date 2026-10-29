@@ -134,6 +134,26 @@ export async function uploadRuns(token: string, runs: RunRecord[]): Promise<void
   await request('runs/batch', { method: 'POST', body: { runs }, token, timeoutMs: 20000 });
 }
 
+export interface CloudSave {
+  savedAt: number;
+  clientRunId: string;
+  run: Record<string, unknown>;
+  record: RunRecord | null;
+}
+
+export async function fetchActiveSave(token: string): Promise<CloudSave | null> {
+  const result = await request<{ save: CloudSave | null }>('active-run', { token });
+  return result.save || null;
+}
+
+export async function uploadActiveSave(token: string, save: CloudSave): Promise<void> {
+  await request('active-run', { method: 'POST', body: save, token, timeoutMs: 12000 });
+}
+
+export async function deleteActiveSave(token: string): Promise<void> {
+  await request('active-run', { method: 'DELETE', token, timeoutMs: 8000 });
+}
+
 export async function fetchLeaderboard(board: 'time' | 'luck', limit = 20): Promise<LeaderboardRow[]> {
   const result = await request<{ rows: LeaderboardRow[] }>(`leaderboards?board=${board}&limit=${limit}`);
   return result.rows;
