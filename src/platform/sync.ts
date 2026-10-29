@@ -1,5 +1,5 @@
 // platform/sync.ts — 已结算历程与未完成对局的本地保存和后端同步。
-import { buildSavedGame, clearPending, loadGame, queuePending, readHistory, readPending, saveHistory, writeSavedGame } from './save.ts';
+import { buildSavedGame, clearGameSave, clearPending, loadGame, queuePending, readHistory, readPending, saveHistory, writeSavedGame } from './save.ts';
 import { API_ENABLED, deleteActiveSave, fetchActiveSave, uploadActiveSave, uploadRuns } from './api.ts';
 import { loadProfile, saveProfile } from './profile.ts';
 import type { RunState } from '../core/types.ts';
@@ -69,7 +69,9 @@ export async function restoreActiveGame(): Promise<boolean> {
   if (!API_ENABLED || !profile?.token || !profile.hasPassword) return false;
   try {
     const remote = await fetchActiveSave(profile.token);
-    const local = loadGame();
+    const loaded = loadGame();
+    const local = loaded && (!loaded.record || loaded.record.userId === profile.id) ? loaded : null;
+    if (loaded && !local) clearGameSave();
     if (!remote?.run) {
       if (local?.record) {
         const payload = buildSavedGame(local.run, local.record, local.savedAt);

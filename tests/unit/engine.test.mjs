@@ -1406,6 +1406,18 @@ test('hint selection chooses the highest-scoring legal dice subset', () => {
   expect(buildScore(state, 'continue').valid).toBe(true);
 });
 
+test('floating score must be locked by a scoring action before advancing', () => {
+  const state = fresh();
+  state.level = 20;
+  state.bossPlan = { ...state.bossPlan, 20: 'suspensor' };
+  initLevel(state);
+  state.score = state.target;
+  state.phase = 'selecting';
+  expect(advanceLevel(state).ok).toBe(false);
+  state.flags.floatingLocked = true;
+  expect(advanceLevel(state).ok).toBe(true);
+});
+
 test('glove can rescue a dead throw and reopens scoring', () => {
   const state = fresh();
   state.activeItems = ['glove'];

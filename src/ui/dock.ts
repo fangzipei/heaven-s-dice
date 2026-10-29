@@ -4,7 +4,7 @@
 // 是 handleAction 的字典，文案被 tools/campaign-test.mjs 与截图比对依赖，
 // 所以这里只允许改 import 和 TS 断言，不许动模板字符串。
 import { LEVEL_COUNT } from '../content/index.ts';
-import { activeBoss, buildScore, getScorePreview, selectedDice } from '../core/engine.ts';
+import { activeBoss, activeCharges, buildScore, getScorePreview, selectedDice } from '../core/engine.ts';
 import { h, num } from '../core/util.ts';
 import { $ } from './dom.ts';
 import { app } from './state.ts';
@@ -148,11 +148,14 @@ export function renderActionDock() {
     const pending = Boolean(run.flags.floatingBustPending);
     const canReroll = run.rerolls > 0;
     const canClick = canReroll || pending;
+    const hasItems = activeCharges(run) > 0;
     dock.innerHTML = `
       <div class="action-dock-inner">
         <div class="action-hint">${pending
           ? `浮动分还挂在桌上 · ${canReroll ? `重投会扣掉它并消耗 1 次（剩余 ${run.rerolls}）` : '先使用烟雾弹或 +重投道具；点重投会结算本关'}`
-          : canReroll ? `没有可计分的组合 · 重投消耗 1 次（剩余 ${run.rerolls}）` : '没有可计分的组合，重投已经耗尽'}</div>
+          : hasItems
+            ? '没有可计分的组合，重投已经耗尽 · 你还有物品：可以用魔术手套改骰面，或用加投物品再试'
+            : canReroll ? `没有可计分的组合 · 重投消耗 1 次（剩余 ${run.rerolls}）` : '没有可计分的组合，重投已经耗尽'}</div>
         <div class="action-buttons">
           <button class="score-action primary single-action" data-action="manual-roll" ${canClick ? '' : 'disabled'}>
             <span class="action-icon"><svg><use href="#i-cup"></use></svg></span>

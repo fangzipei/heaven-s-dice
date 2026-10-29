@@ -89,7 +89,9 @@ export function renderScorePanel() {
   }
   $('#score-panel')!.classList.toggle('is-floating', floating);
   $('#score-panel')!.classList.toggle('is-danger', run.rerolls <= 0 && run.score < run.target);
-  const canAdvance = run.score >= run.target && !['won', 'run-won', 'lost', 'shop'].includes(run.phase);
+  const canAdvance = run.score >= run.target
+    && (!floating || Boolean(run.flags.floatingLocked))
+    && !['won', 'run-won', 'lost', 'shop'].includes(run.phase);
   const nextButton = $('#next-level')!;
   nextButton.hidden = !canAdvance || app.busy;
   $('#next-level-label')!.textContent = run.level >= LEVEL_COUNT ? '查看结局' : '下一关';

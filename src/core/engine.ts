@@ -224,6 +224,7 @@ function resetLevelFlags(state: RunState) {
     smokeReroll: false,
     floatingBustPending: false,
     stargazerRerollUsed: false,
+    floatingLocked: false,
   };
 }
 
@@ -1157,6 +1158,9 @@ export function advanceLevel(state: RunState | null): { ok: boolean; error?: str
   if (state.score < state.target) {
     return { ok: false, error: `还差 ${state.target - state.score} 分。` };
   }
+  if (isFloatingScore(state) && !state.flags.floatingLocked) {
+    return { ok: false, error: '浮动分还没落秤：先计分并重投（或计分并结算）锁定这一轮。' };
+  }
   // Leaving the table settles the round for good, so 金痕 coins still pending
   // are credited instead of vanishing with the round.
   if (state.roundCoins) {
@@ -1742,6 +1746,9 @@ export function applyScore(state: RunState, action: ScoreAction): ApplyScoreResu
   }
 
   const reachedTarget = checkWin(state);
+  if (isFloatingScore(state) && action !== 'continue') {
+    state.flags.floatingLocked = true;
+  }
 
   const allScored = state.dice.every((d) => d.scored);
   if (allScored) {

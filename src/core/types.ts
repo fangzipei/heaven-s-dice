@@ -357,6 +357,8 @@ export interface RunFlags {
   floatingBustPending?: boolean;
   /** 星轨套：本关第一次重投已经免费。 */
   stargazerRerollUsed?: boolean;
+  /** 悬秤人：浮动分已经被一次计分并重投/结算锁定。 */
+  floatingLocked?: boolean;
 }
 
 export interface LogEntry {

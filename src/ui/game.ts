@@ -684,7 +684,7 @@ export function beginRoll({ free = false }: { free?: boolean } = {}): void {
   if (!free && run.phase === 'dead' && run.flags.floatingBustPending && run.rerolls <= 0) {
     settleFloatingBust(run);
     renderGame();
-    showDefeat();
+    showDefeat(true);
     return;
   }
   if (run.rerolls <= 0 && run.phase !== 'hot' && run.phase !== 'ready' && !free && !freeContinuation) {
@@ -1170,7 +1170,7 @@ export function forfeitRun(): void {
   const result = forfeit(app.run);
   if (!result.ok) return;
   renderGame();
-  showDefeat();
+  showDefeat(true);
 }
 
 /* ═══════════════════════════════════════════════════════════════════
