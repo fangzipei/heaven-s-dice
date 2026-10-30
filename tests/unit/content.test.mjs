@@ -11,9 +11,9 @@ const countBy = (list, key) => list.reduce((counts, entry) => {
   return counts;
 }, {});
 
-test('dice roster: four 4-piece sets + 20 free agents, rarity 11/10/10/5', () => {
+test('dice roster: four 4-piece sets + 20 free agents, rarity 11/9/10/6', () => {
   expect(DICE.length).toBe(36);
-  expect(countBy(DICE, 'rarity')).toEqual({ common: 11, rare: 10, epic: 10, legendary: 5 });
+  expect(countBy(DICE, 'rarity')).toEqual({ common: 11, rare: 9, epic: 10, legendary: 6 });
   expect(Object.keys(DICE_SETS)).toEqual(['wolf', 'demon', 'stargazer', 'caravan']);
   for (const set of Object.values(DICE_SETS)) {
     expect(DICE.filter((die) => die.setId === set.id).length).toBe(4);

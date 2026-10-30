@@ -19,7 +19,7 @@ import { artDieImageHtml } from '../../render/dice-dom.ts';
 import { dieSkinStyle, favoredFaces } from '../../render/dice-skins.ts';
 import { closeOverlay, openOverlay } from '../components/overlay.ts';
 import { showToast } from '../components/toast.ts';
-import { barrelTypeLabel } from '../components/tooltip.ts';
+import { barrelTypeLabel, dieTooltip } from '../components/tooltip.ts';
 import { $ } from '../dom.ts';
 import { sound } from '../../platform/sound.ts';
 import { getRunRecord, recordShop } from '../../platform/run-record.ts';
@@ -288,7 +288,20 @@ export function buyItem(index: number): void {
   if (!app.run) return;
   if (app.run.shop) app.run.phase = 'shop';
   const result = engineBuyItem(app.run, index);
-  if (!result.ok) { showToast(result.error!, 'error'); return; }
+  if (!result.ok) {
+    if (result.needDropDie && result.item) {
+      app.pendingDrop = {
+        index,
+        itemId: result.item.id,
+        itemName: result.item.name,
+        price: result.price ?? 0,
+      };
+      showDropDieModal();
+      return;
+    }
+    showToast(result.error!, 'error');
+    return;
+  }
   recordShop(app.run, { action: 'buy', kind: 'item', id: result.item!.id, name: result.item!.name, price: result.price });
   sound.item();
   if (result.item! && 'grant' in result.item! && result.item!.grant) {
@@ -302,6 +315,41 @@ export function buyItem(index: number): void {
   }
   renderShopScreen();
   showToast(`购入「${result.item!.name}」，花费 ${result.price} 银币。`, 'good');
+}
+
+export function showDropDieModal(): void {
+  if (!app.run || !app.pendingDrop) return;
+  const { itemName, price } = app.pendingDrop;
+  const options = app.run.bag.map((entry) => {
+    const spec = getDieSpec(entry.dieId);
+    const rarity = rarityOf(spec);
+    return `<button class="replace-option" data-action="confirm-drop-die" data-bag-uid="${h(entry.uid)}" data-die-tip="${h(spec.id)}">
+      ${artDieImageHtml(spec)}
+      <b>${h(spec.name)}</b><span>${rarity.name}${spec.setId ? ` · ${DICE_SETS[spec.setId].name}` : ''}</span>
+    </button>`;
+  }).join('');
+  openOverlay(`
+    <div class="modal" style="width:min(620px,100%);padding:36px 38px">
+      <p class="modal-kicker">CHOOSE A DIE TO LOSE</p>
+      <h2 class="modal-title" style="font-size:28px;margin-top:5px">选择要丢弃的骰子</h2>
+      <p class="modal-text" style="margin-top:8px">购入「${h(itemName)}」（${num(price)} 银币）会让可用骰子 -1。请亲手选择一枚离开骰袋。</p>
+      <div class="replace-grid">${options}</div>
+      <div class="modal-actions"><button class="secondary-button" data-action="cancel-drop">取消购买</button></div>
+    </div>
+  `, { dismissible: false });
+}
+
+export function confirmDropDie(bagUid: string): void {
+  if (!app.run || !app.pendingDrop) return;
+  const { index } = app.pendingDrop;
+  const result = engineBuyItem(app.run, index, bagUid);
+  if (!result.ok) { showToast(result.error!, 'error'); return; }
+  recordShop(app.run, { action: 'buy', kind: 'item', id: result.item!.id, name: result.item!.name, price: result.price });
+  app.pendingDrop = null;
+  closeOverlay();
+  sound.item();
+  renderShopScreen();
+  showToast(`购入「${result.item!.name}」并丢弃了一枚骰子。`, 'good');
 }
 
 export function sellShopItem(itemId: string): void {
@@ -321,20 +369,47 @@ export function showReplaceModal(): void {
     const spec = getDieSpec(entry.dieId);
     const rarity = rarityOf(spec);
     return `
-      <button class="replace-option" data-action="confirm-replace" data-bag-uid="${h(entry.uid)}" data-die-tip="${h(spec.id)}">
+      <button class="replace-option" data-action="preview-replace" data-bag-uid="${h(entry.uid)}" data-die-tip="${h(spec.id)}">
         ${artDieImageHtml(spec)}
         <b>${h(spec.name)}</b><span>${rarity.name}${spec.setId ? ` · ${DICE_SETS[spec.setId].name}` : ''}</span>
       </button>`;
   }).join('');
   openOverlay(`
-    <div class="modal" style="width:min(620px,100%);padding:36px 38px">
+    <div class="modal" style="width:min(640px,100%);padding:36px 38px">
       <p class="modal-kicker">DICE BAG FULL</p>
       <h2 class="modal-title" style="font-size:28px;margin-top:5px">骰袋已满</h2>
-      <p class="modal-text" style="margin-top:8px">要购入「${h(die.name)}」（${num(price)} 银币），请选择一枚被替换的骰子。被替换的骰子将离开本局。</p>
+      <p class="modal-text" style="margin-top:8px">要购入「${h(die.name)}」（${num(price)} 银币），请先点击一枚旧骰查看详情，再确认是否替换。</p>
       <div class="replace-grid">${options}</div>
+      <div id="replace-detail" class="replace-detail"></div>
       <div class="modal-actions"><button class="secondary-button" data-action="cancel-replace">取消</button></div>
     </div>
   `, { dismissible: true });
+}
+
+/** Show the selected old die's details without replacing it yet. */
+export function previewReplace(bagUid: string): void {
+  if (!app.run || !app.pendingReplace) return;
+  const entry = app.run.bag.find((item) => item.uid === bagUid);
+  const detail = $('#replace-detail');
+  if (!entry || !detail) return;
+  const spec = getDieSpec(entry.dieId);
+  app.run.bag.forEach((item) => {
+    const option = document.querySelector<HTMLElement>(`.replace-option[data-bag-uid="${item.uid}"]`);
+    option?.classList.toggle('is-selected', item.uid === bagUid);
+  });
+  detail.innerHTML = `
+    <div class="replace-detail-head">将被替换的骰子</div>
+    <div class="replace-detail-body">
+      <div class="replace-detail-art">${artDieImageHtml(spec)}</div>
+      <div class="replace-detail-copy">${dieTooltip(spec.id)}</div>
+    </div>
+    <div class="replace-detail-actions">
+      <button class="secondary-button" data-action="cancel-replace">取消</button>
+      <button class="primary-button" data-action="confirm-replace" data-bag-uid="${h(entry.uid)}">确认更换</button>
+    </div>`;
+  if (typeof detail.scrollIntoView === 'function') {
+    detail.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  }
 }
 
 export function confirmReplace(bagUid: string): void {

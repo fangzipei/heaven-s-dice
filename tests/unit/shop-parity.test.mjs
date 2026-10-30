@@ -7,7 +7,7 @@ import { beforeEach, describe, expect, test } from 'vitest';
 
 import { app } from '../../src/ui/state.ts';
 import {
-  buyBarrel, buyDie, buyItem, closeShopScreen, confirmReplace, openShopScreen,
+  buyBarrel, buyDie, buyItem, closeShopScreen, confirmReplace, openShopScreen, previewReplace,
   refreshShop, sellShopItem, showReplaceModal,
 } from '../../src/ui/screens/shop.ts';
 import { createRun, createShop, getDiceCapacity, refreshCost, sectionLabel, shopPrice } from '../../src/core/engine.ts';
@@ -84,9 +84,13 @@ describe('市集页搬到 ui/screens/shop.ts 之后仍然写同样的文案', ()
     const modal = dom.html('#overlay-root');
     expect(modal).toContain('DICE BAG FULL');
     expect(modal).toContain('骰袋已满');
-    expect((modal.match(/data-action="confirm-replace"/g) || []).length).toBe(app.run.bag.length);
+    expect((modal.match(/data-action="preview-replace"/g) || []).length).toBe(app.run.bag.length);
+    expect(modal).not.toContain('data-action="confirm-replace"');
     const outgoing = app.run.bag[0].uid;
     const incoming = app.run.shop.dice[0].id;
+    previewReplace(outgoing);
+    expect(dom.html('#replace-detail')).toContain('data-action="confirm-replace"');
+    expect(dom.html('#replace-detail')).toContain('data-action="cancel-replace"');
     confirmReplace(outgoing);
     expect(app.pendingReplace).toBeNull();
     // 替换是原地换骰：槽位 uid 不变，只换 dieId。

@@ -2555,3 +2555,43 @@ body.rail-collapsed .cup-zone { right: 4.2% !important; }
 .guide-fix-fx small { position: absolute; left: 50%; top: calc(50% + 30px); transform: translateX(-50%); white-space: nowrap; font-size: 10px; letter-spacing: .16em; color: #e7c98c; text-shadow: 0 1px 6px #000; animation: guide-fix-copy .9s ease-out forwards; }
 @keyframes guide-fix-ring { 0% { opacity: 0; transform: translate(-50%,-50%) scale(.2); } 24% { opacity: 1; } 100% { opacity: 0; transform: translate(-50%,-50%) scale(1.18); } }
 @keyframes guide-fix-copy { 0% { opacity: 0; } 20% { opacity: 1; } 72% { opacity: 1; } 100% { opacity: 0; } }
+
+/* Selection breakdown: every selected die shows its full score recipe immediately. */
+.combo-summary { display: flex; justify-content: center; align-items: center; gap: 7px; flex-wrap: wrap; width: 100%; }
+.combo-selected { color: #bca77f; font-size: 9px; letter-spacing: .1em; padding: 2px 7px; border: 1px solid rgba(217,180,106,.18); background: rgba(10,8,5,.4); }
+.combo-breakdown { display: flex; justify-content: center; align-items: center; gap: 6px 12px; flex-wrap: wrap; width: 100%; padding-top: 2px; }
+.combo-detail-line { color: #a99a80; font-size: 9px; letter-spacing: .04em; white-space: nowrap; }
+.combo-detail-line b { color: #e4c98f; font-weight: 500; margin-left: 2px; }
+.combo-detail-line.is-note b { color: #d3aa7e; }
+.combo-detail-line.is-cost b { color: #cf8d75; }
+@media (max-width: 760px) {
+  .combo-selected { font-size: 8px; }
+  .combo-breakdown { gap: 3px 8px; }
+  .combo-detail-line { font-size: 8px; }
+}
+
+.tip-growth { display: flex; flex-direction: column; gap: 2px; margin: 8px 0 2px; padding: 7px 9px; border-left: 2px solid rgba(217,180,106,.55); background: rgba(217,180,106,.07); }
+.tip-growth b { color: var(--gold-bright); font-family: var(--serif); font-weight: 400; font-size: 13px; letter-spacing: .04em; }
+.tip-growth span { color: var(--ink-dim); font-size: 10px; line-height: 1.5; }
+
+/* Predicted selected hand: a dashed segment after the current round, distinct from secured/pending. */
+.progress-fill.is-selected { z-index: 3; background: repeating-linear-gradient(135deg, rgba(255,226,158,.85) 0 5px, rgba(255,196,91,.18) 5px 10px); border-left: 1px dashed rgba(255,226,158,.95); box-shadow: 0 0 10px rgba(255,206,111,.35); opacity: .9; }
+.progress-fill.is-selected[hidden] { display: none; }
+
+/* Replacement flow: selecting an old die only previews it; confirm is separate. */
+.replace-option.is-selected { border-color: var(--gold-bright); background: rgba(217,180,106,.12); box-shadow: 0 0 20px rgba(217,180,106,.12); }
+.replace-detail:not(:empty) { margin: 2px 0 18px; padding: 14px 16px; border: 1px solid rgba(217,180,106,.3); background: rgba(10,8,5,.55); }
+.replace-detail .tip-growth { margin: 6px 0; }
+.replace-detail-head { color: var(--gold-soft); font-family: var(--serif); font-size: 10px; letter-spacing: .16em; margin-bottom: 8px; }
+.replace-detail-body { display: flex; gap: 14px; align-items: flex-start; }
+.replace-detail-art { flex: 0 0 64px; }
+.replace-detail-art .art-die { width: 58px; height: 58px; }
+.replace-detail-copy { min-width: 0; flex: 1; }
+.replace-detail-copy h5 { margin: 0 0 2px; font-family: var(--serif); font-size: 18px; font-weight: 400; color: var(--gold-bright); }
+.replace-detail-copy p { line-height: 1.65; }
+.replace-detail-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 12px; }
+@media (max-width: 760px) {
+  .replace-detail-body { gap: 9px; }
+  .replace-detail-art { flex-basis: 48px; }
+  .replace-detail-art .art-die { width: 44px; height: 44px; }
+}

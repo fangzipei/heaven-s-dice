@@ -7,7 +7,7 @@ import {
   DICE_SETS, ITEM_BY_ID, LEVEL_COUNT, LEVELS, getLevelConfig, getOpponent, getTable,
 } from '../content/index.ts';
 import {
-  bossStatusText, canUseItem, getBarrel, getDieSpec, isFloatingScore, setCounts, HOT_CHAIN_MULTIPLIER, DEVIL_RETRY_COSTS,
+  bossStatusText, canUseItem, getBarrel, getDieSpec, getScorePreview, isFloatingScore, setCounts, HOT_CHAIN_MULTIPLIER, DEVIL_RETRY_COSTS,
 } from '../core/engine.ts';
 import type { BossDef } from '../core/types.ts';
 import { clamp, h, num } from '../core/util.ts';
@@ -59,8 +59,17 @@ export function renderScorePanel() {
   const target = Math.max(1, run.target);
   const securedProgress = clamp((secured / target) * 100, 0, 100);
   const totalProgress = clamp((run.score / target) * 100, 0, 100);
+  const selectedPreview = run.phase === 'selecting' && run.selected.length ? getScorePreview(run) : null;
+  const selectedTotal = selectedPreview?.valid ? selectedPreview.total : 0;
+  const selectedProgress = clamp(((run.score + selectedTotal) / target) * 100, 0, 100);
   $('#score-progress')!.style.width = `${securedProgress}%`;
   $('#score-progress-pending')!.style.width = `${totalProgress}%`;
+  const selectedBar = $('#score-progress-selected');
+  if (selectedBar) {
+    selectedBar.style.left = `${totalProgress}%`;
+    selectedBar.style.width = `${Math.max(0, selectedProgress - totalProgress)}%`;
+    selectedBar.hidden = selectedTotal <= 0;
+  }
   const rerollInline = $('#reroll-inline')!;
   rerollInline.innerHTML = `<span class="reroll-hud-label">本关重投</span><b>${run.rerolls}</b><em>/ ${run.maxRerolls}</em>`;
   rerollInline.classList.toggle('is-low', run.rerolls > 0 && run.rerolls <= 2);

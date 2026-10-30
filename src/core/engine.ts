@@ -2538,6 +2538,7 @@ export interface BuyResult {
   ok: boolean;
   error?: string;
   needReplace?: boolean;
+  needDropDie?: boolean;
   die?: PricedDie;
   barrel?: BarrelDef;
   item?: ItemDef;
@@ -2610,7 +2611,7 @@ export function activeItemCapacity(state: RunState): number {
   return 3 + (state.passiveItems.includes('active_shelf') ? 1 : 0);
 }
 
-export function buyItem(state: RunState, index: number): BuyResult {
+export function buyItem(state: RunState, index: number, dropBagUid: string | null = null): BuyResult {
   const item = shopEntry(state, 'item', index);
   if (!item) return { ok: false, error: '这件物品已经售出。' };
   // +1 / -1 dice-capacity items are once-per-run pickups: even after being
@@ -2627,6 +2628,15 @@ export function buyItem(state: RunState, index: number): BuyResult {
   if (item.id === 'barrel_reforger' && getBarrel(state).type === 'reforged') {
     return { ok: false, error: '当前骰桶已经是重铸桶，无法再使用重铸器。' };
   }
+  const afterCapacity = item.id === 'cracked_pouch'
+    ? Math.max(4, getDiceCapacity(state) - 1)
+    : getDiceCapacity(state);
+  if (item.id === 'cracked_pouch' && state.bag.length > afterCapacity) {
+    if (!dropBagUid) return { ok: false, needDropDie: true, item, price };
+    if (!state.bag.some((bagEntry) => bagEntry.uid === dropBagUid)) {
+      return { ok: false, error: '请选择要丢弃的骰子。' };
+    }
+  }
   const beforeSlots = shopSlots(state);
   state.coins -= price;
   if (item.type === 'active') {
@@ -2638,6 +2648,9 @@ export function buyItem(state: RunState, index: number): BuyResult {
     }
   } else {
     state.passiveItems.push(item.id);
+    if (item.id === 'cracked_pouch' && dropBagUid) {
+      state.bag = state.bag.filter((bagEntry) => bagEntry.uid !== dropBagUid);
+    }
     if (item.id === 'dice_bag' || item.id === 'cracked_pouch') syncBag(state);
     if (item.id === 'barrel_reforger') {
       state.flags.barrelReforgeArmed = true;

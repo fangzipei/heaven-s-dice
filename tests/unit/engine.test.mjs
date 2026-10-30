@@ -647,9 +647,15 @@ test('cracked pouch trades a die for a permanent score multiplier', () => {
   state.shop = null;
   createShop(state);
   state.shop.item = [{ kind: 'item', id: 'cracked_pouch', sold: false }];
-  expect(buyItem(state, 0).ok).toBe(true);
+  const needsDrop = buyItem(state, 0);
+  expect(needsDrop.ok).toBe(false);
+  expect(needsDrop.needDropDie).toBe(true);
+  expect(state.passiveItems.includes('cracked_pouch')).toBe(false);
+  const dropped = state.bag[0];
+  expect(buyItem(state, 0, dropped.uid).ok).toBe(true);
   expect(getDiceCapacity(state)).toBe(5);
   expect(state.bag.length).toBe(5);
+  expect(state.bag.some((entry) => entry.uid === dropped.uid)).toBe(false);
   syncBag(state);
   initLevel(state);
   forceRoll(state, [1, 2, 3, 4, 6, 6]);

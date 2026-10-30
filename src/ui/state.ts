@@ -59,6 +59,8 @@ export interface UiState {
   compendiumTab: string;
   /** 骰袋已满时，市集买入流程挂起的那笔订单。 */
   pendingReplace: { index: number; die: PricedDie; price: number } | null;
+  /** 裂痕骰袋购买中：等待玩家选择要丢弃的骰子。 */
+  pendingDrop: { index: number; itemId: string; itemName: string; price: number } | null;
   /** 一次性骰子礼包开出的候选，等待玩家挑一枚。 */
   pendingGrant: { itemId: string; candidates: PricedDie[] } | null;
   /** 骰子礼包已选中骰子，但骰袋已满，等待选择被替换的骰子。 */
@@ -99,6 +101,7 @@ export const app: UiState = {
   soundEnabled: true,
   compendiumTab: 'dice',
   pendingReplace: null,
+  pendingDrop: null,
   pendingGrant: null,
   pendingGrantReplace: null,
   speechTimer: null,

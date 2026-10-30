@@ -197,6 +197,25 @@ export function patternTooltip(key: string, label: string): string {
   `;
 }
 
+function dieGrowthHtml(spec: DiceDef): string {
+  const run = app.run;
+  const entry = run?.bag.find((item) => item.dieId === spec.id);
+  if (spec.bonus?.type === 'shopRerollMultiplier') {
+    const stacks = entry?.shopRerolls || 0;
+    const current = 1 + 0.6 + stacks * spec.bonus.value;
+    const next = current + spec.bonus.value;
+    return `<div class="tip-growth"><b>当前成长 ×${current.toFixed(2)}</b><span>已商店重随 ${stacks} 次 · 下一次 ×${next.toFixed(2)}</span></div>`;
+  }
+  if (spec.bonus?.type === 'afterScoreFlat') {
+    const stacks = entry && run ? (run.dieStacks?.[entry.uid] || 0) : 0;
+    return `<div class="tip-growth"><b>当前成长 +${stacks * spec.bonus.value}</b><span>已参与计分 ${stacks} 次 · 下一次 +${(stacks + 1) * spec.bonus.value}</span></div>`;
+  }
+  if (spec.bonus?.type === 'flatScoredOnce' && run) {
+    return `<div class="tip-growth"><b>${run.flags.balanceUsed ? '本关已触发' : '本关尚未触发'}</b><span>一次性 +${spec.bonus.value}</span></div>`;
+  }
+  return '';
+}
+
 export function dieTooltip(dieId: string): string {
   const spec: DiceDef = DICE_BY_ID[dieId] || STANDARD_DIE;
   const rarity = rarityOf(spec);
@@ -219,6 +238,7 @@ export function dieTooltip(dieId: string): string {
     <div class="tip-probs">${bars}</div>
     <p class="tip-note">当前骰桶「${h(barrel.name)}」修正后的点数概率</p>
     ${spec.bonus ? `<p class="tip-bonus">${h(spec.bonus.label)}</p>` : ''}
+    ${dieGrowthHtml(spec)}
     ${set ? `<div class="tip-set"><div class="tip-set-head">${h(set.name)}套组 · ${setCount} / 4</div>${set.bonuses.map((bonus) => `<p class="${setCount >= bonus.pieces ? 'is-active' : ''}">${setCount >= bonus.pieces ? '✦ 已生效' : '◇ 未激活'} · ${bonus.pieces} 件：${h(bonus.text)}</p>`).join('')}</div>` : ''}
     ${set ? `<p class="tip-note">${h(set.motto)}</p>` : ''}
   `;

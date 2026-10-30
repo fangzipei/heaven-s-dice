@@ -47,7 +47,7 @@ import { openHistory } from './screens/history.ts';
 import { openGesture } from './screens/gesture.ts';
 import { answerDevilRetry, showDefeat, showVictory, useDevilReceipt } from './screens/result.ts';
 import {
-  buyBarrel, buyDie, buyItem, closeShopScreen, confirmReplace, openShopScreen,
+  buyBarrel, buyDie, buyItem, closeShopScreen, confirmDropDie, confirmReplace, openShopScreen, previewReplace,
   refreshShop, sellShopItem,
 } from './screens/shop.ts';
 import { openRules, openTutorial, scrollTutorial, showStartPrompt } from './screens/tutorial.ts';
@@ -470,6 +470,16 @@ async function handleAction(action: string, target: HTMLElement, _event?: MouseE
       break;
     case 'confirm-replace':
       confirmReplace(target.dataset.bagUid!);
+      break;
+    case 'preview-replace':
+      previewReplace(target.dataset.bagUid!);
+      break;
+    case 'confirm-drop-die':
+      confirmDropDie(target.dataset.bagUid!);
+      break;
+    case 'cancel-drop':
+      app.pendingDrop = null;
+      closeOverlay();
       break;
     case 'choose-grant-die':
       chooseGrantDie(target.dataset.dieId!);

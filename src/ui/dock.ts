@@ -57,10 +57,18 @@ export function renderComboPreview() {
   }
   const combos = shownCombos.map((combo) => `<span class="combo-pill">${h(combo.label)}<b>+${num(combo.points)}</b></span>`).join('');
   const breakdown = result.breakdown!;
-  const extras = [];
-  if (breakdown.flatAdd) extras.push(`加算 +${num(breakdown.flatAdd)}`);
-  if (breakdown.multipliers.length) extras.push(breakdown.multipliers.map((m) => `${h(m.label)}`).join(' · '));
-  preview.innerHTML = `${combos}<span class="combo-total">+${num(result.total)}<em>预计 · 计分</em></span>${extras.length ? `<span class="combo-placeholder" style="font-size:8px">${h(extras.join(' · '))}</span>` : ''}`;
+  const selectedFaces = selected.map((die) => die.wild ? '魔' : die.value).join(' · ');
+  const flats = breakdown.flats.map((flat) => `<span class="combo-detail-line">${h(flat.label)} <b>+${num(flat.value)}</b></span>`).join('');
+  const multipliers = breakdown.multipliers.map((mult) => `<span class="combo-detail-line">${h(mult.label)} <b>${h(String(mult.value))}</b></span>`).join('');
+  const notes = breakdown.notes.map((note) => `<span class="combo-detail-line is-note">${h(note.label)}${note.value != null ? ` <b>${h(String(note.value))}</b>` : ''}</span>`).join('');
+  const costs = breakdown.costs.map((cost) => `<span class="combo-detail-line is-cost">${h(cost.label)} <b>−${num(cost.value)}</b></span>`).join('');
+  preview.innerHTML = `
+    <div class="combo-summary"><span class="combo-selected">已选 ${h(selectedFaces)}</span>${combos}</div>
+    <div class="combo-breakdown">
+      <span class="combo-detail-line">基础 <b>+${num(breakdown.base)}</b></span>
+      ${flats}${multipliers}${notes}${costs}
+      <span class="combo-total">+${num(result.total)}<em>预计 · 计分</em></span>
+    </div>`;
 }
 
 export function renderActionDock() {
