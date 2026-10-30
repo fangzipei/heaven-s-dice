@@ -125,7 +125,7 @@ describe('新骰子计分规则', () => {
     expect(state.bag[0].shopRerolls).toBe(1);
     state.phase = 'selecting';
     select(state, [{ bagUid: 'b0', dieId: 'merchant', value: 1 }]);
-    expect(totalFor(state)).toBe(175);
+    expect(totalFor(state)).toBe(75);
   });
 
   test('史诗及以上的骰子只按百分比加分', () => {
@@ -531,6 +531,15 @@ describe('新骰子与商店机制', () => {
     const state = blankState();
     select(state, [{ dieId: 'scavenger', value: 1 }, { value: 5 }]);
     expect(totalFor(state)).toBe(430);
+  });
+
+  test('看客骰未参与计分时给本手 +200', () => {
+    const state = blankState();
+    select(state, [{ dieId: 'bystander', value: 1 }, { value: 5 }]);
+    state.selected = [state.dice[1].uid];
+    expect(totalFor(state)).toBe(250);
+    state.selected = state.dice.map((die) => die.uid);
+    expect(totalFor(state)).toBe(150);
   });
 
   test('衡心每关只 +1000 一次', () => {

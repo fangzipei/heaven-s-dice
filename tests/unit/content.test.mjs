@@ -11,9 +11,9 @@ const countBy = (list, key) => list.reduce((counts, entry) => {
   return counts;
 }, {});
 
-test('dice roster: four 4-piece sets + 20 free agents, rarity 11/9/10/6', () => {
-  expect(DICE.length).toBe(36);
-  expect(countBy(DICE, 'rarity')).toEqual({ common: 11, rare: 9, epic: 10, legendary: 6 });
+test('dice roster: four 4-piece sets + 21 free agents, rarity 11/10/10/6', () => {
+  expect(DICE.length).toBe(37);
+  expect(countBy(DICE, 'rarity')).toEqual({ common: 11, rare: 10, epic: 10, legendary: 6 });
   expect(Object.keys(DICE_SETS)).toEqual(['wolf', 'demon', 'stargazer', 'caravan']);
   for (const set of Object.values(DICE_SETS)) {
     expect(DICE.filter((die) => die.setId === set.id).length).toBe(4);
@@ -21,7 +21,7 @@ test('dice roster: four 4-piece sets + 20 free agents, rarity 11/9/10/6', () => 
     expect(DICE.filter((die) => die.setId === set.id).every((die) => die.unique)).toBe(true);
   }
   // The whole point of the reshuffle: not every die has to be in a set.
-  expect(DICE.filter((die) => !die.setId).length).toBe(20);
+  expect(DICE.filter((die) => !die.setId).length).toBe(21);
   for (const die of DICE) {
     expect(die.probs.length).toBe(6);
     const sum = die.probs.reduce((a, b) => a + b, 0);
@@ -37,7 +37,7 @@ test('every die bonus is well-formed, and bias dice mark 1/5 rare', () => {
     expect(typeof die.bonus.label).toBe('string');
     expect(die.bonus.label.length).toBeGreaterThan(0);
   }
-  expect(DICE.filter((die) => die.bonus).length).toBe(28);
+  expect(DICE.filter((die) => die.bonus).length).toBe(29);
   const bias = DICE.filter((die) => /^bias_/.test(die.id));
   expect(bias.length).toBe(6);
   for (const die of bias) {

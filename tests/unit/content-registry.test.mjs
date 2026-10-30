@@ -91,7 +91,7 @@ describe('one file per entry, and every file registered', () => {
     }
     const byRarity = { common: 35, rare: 70, epic: 130, legendary: 210 };
     for (const die of Content.DICE) {
-      expect(die.price).toBe(die.id === 'chain_note' ? 150 : byRarity[die.rarity]);
+      expect(die.price).toBe(die.id === 'chain_note' ? 150 : die.id === 'bystander' ? 110 : byRarity[die.rarity]);
     }
     expect(Content.STANDARD_DIE.price).toBeUndefined();
   });

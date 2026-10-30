@@ -5,6 +5,6 @@ export default {
   id: 'merchant', name: '商旅骰', setId: 'caravan', rarity: 'epic',
   probs: [1 / 6, 1 / 6, 1 / 6, 1 / 6, 1 / 6, 1 / 6],
   flavor: '它记得每一次讨价还价，也记得每一次你忍不住重随。',
-  desc: '六面均衡；初始额外 +0.6 倍分数（+60%），每间商店最多一次重随后永久再 +15%。',
-  bonus: { type: 'shopRerollMultiplier', value: 0.15, label: '商旅：初始 +0.6 倍（+60%），每次商店重随再 +15%' },
+  desc: '六面均衡；初始仅计 60% 分数，每间商店最多一次重随后永久再 +15%。',
+  bonus: { type: 'shopRerollMultiplier', value: 0.15, label: '商旅：初始仅 60% 计分，每次商店重随再 +15%' },
 } satisfies DiceDef;

@@ -202,7 +202,7 @@ function dieGrowthHtml(spec: DiceDef): string {
   const entry = run?.bag.find((item) => item.dieId === spec.id);
   if (spec.bonus?.type === 'shopRerollMultiplier') {
     const stacks = entry?.shopRerolls || 0;
-    const current = 1 + 0.6 + stacks * spec.bonus.value;
+    const current = 0.6 + stacks * spec.bonus.value;
     const next = current + spec.bonus.value;
     return `<div class="tip-growth"><b>当前成长 ×${current.toFixed(2)}</b><span>已商店重随 ${stacks} 次 · 下一次 ×${next.toFixed(2)}</span></div>`;
   }

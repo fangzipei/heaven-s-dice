@@ -747,7 +747,7 @@ export function buildScore(state: RunState, action = 'reroll'): BuildScoreResult
     } else if (bonus.type === 'shopRerollMultiplier') {
       const entry = state.bag.find((item) => item.uid === die.bagUid);
       const stacks = entry?.shopRerolls || 0;
-      const value = 1 + 0.6 + stacks * bonus.value;
+      const value = 0.6 + stacks * bonus.value;
       multiplier *= value;
       multipliers.push({ label: `${spec.name} · ${bonus.label}`, value });
     }
