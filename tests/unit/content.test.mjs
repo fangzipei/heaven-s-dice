@@ -18,6 +18,7 @@ test('dice roster: four 4-piece sets + 20 free agents, rarity 11/10/10/5', () =>
   for (const set of Object.values(DICE_SETS)) {
     expect(DICE.filter((die) => die.setId === set.id).length).toBe(4);
     expect(set.bonuses.length).toBe(2);
+    expect(DICE.filter((die) => die.setId === set.id).every((die) => die.unique)).toBe(true);
   }
   // The whole point of the reshuffle: not every die has to be in a set.
   expect(DICE.filter((die) => !die.setId).length).toBe(20);

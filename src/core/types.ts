@@ -478,6 +478,8 @@ export interface RunState {
   activeItems: string[];
   passiveItems: string[];
   acquiredItemIds: string[];
+  /** 本局曾经获得过的骰子；唯一骰卖出后也不会重新出现。 */
+  acquiredDieIds: string[];
   dice: BoardDie[];
   selected: string[];
   score: number;

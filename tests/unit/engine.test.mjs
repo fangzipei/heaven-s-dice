@@ -323,6 +323,22 @@ test('shop offers 2 dice, 1 barrel, 3 items and purchases deduct coins', () => {
   expect(state.bag.some((entry) => entry.dieId === dieOffer.id)).toBeTruthy();
 });
 
+test('set dice are one-per-run even after leaving the bag', () => {
+  const state = fresh();
+  state.phase = 'shop';
+  state.coins = 9999;
+  state.shop = {
+    dice: [{ kind: 'die', id: 'wolf_whelp', sold: false }],
+    barrel: [], item: [], refreshes: {},
+  };
+  expect(buyDie(state, 0, state.bag[0].uid).ok).toBe(true);
+  // A stale shop slot must not let the same set die be acquired twice.
+  state.shop.dice = [{ kind: 'die', id: 'wolf_whelp', sold: false }];
+  const second = buyDie(state, 0, state.bag[1].uid);
+  expect(second.ok).toBe(false);
+  expect(second.error).toContain('套组');
+});
+
 test('barrel purchase swaps the current cup', () => {
   const state = fresh();
   state.coins = 500;
@@ -681,16 +697,16 @@ test('active shelf adds one active item slot', () => {
   expect(state.activeItems.length).toBe(4);
 });
 
-test('shop refreshes get 30% more expensive each time', () => {
+test('shop refreshes double in price each time', () => {
   const state = fresh();
   initLevel(state);
   state.coins = 9999;
   createShop(state);
   expect(refreshCost(state, 'dice')).toBe(20);
   expect(refreshSection(state, 'dice', { rng: () => 0.5 }).ok).toBe(true);
-  expect(refreshCost(state, 'dice')).toBe(26);
+  expect(refreshCost(state, 'dice')).toBe(40);
   expect(refreshSection(state, 'dice', { rng: () => 0.5 }).ok).toBe(true);
-  expect(refreshCost(state, 'dice')).toBe(34);
+  expect(refreshCost(state, 'dice')).toBe(80);
   expect(refreshCost(state, 'barrel')).toBe(26);
   expect(refreshCost(state, 'item')).toBe(22);
 });

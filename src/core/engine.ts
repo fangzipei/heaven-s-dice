@@ -535,6 +535,7 @@ export function createRun({ rng = Math.random }: { rng?: () => number } = {}): R
     activeItems: ['lucky_coin'],
     passiveItems: [],
     acquiredItemIds: ['lucky_coin'],
+    acquiredDieIds: [],
     dice: [],
     selected: [],
     score: 0,
@@ -2014,9 +2015,9 @@ function rollGrantIds(state: RunState, item: ItemDef): string[] {
   if (!('grant' in item) || !item.grant) return [];
   const grant = item.grant;
   const all = DICE.filter((die) => die.rarity === grant.rarity);
-  const owned = new Set(state.bag.map((entry) => entry.dieId));
-  const fresh = all.filter((die) => !owned.has(die.id));
-  return pickMany(fresh.length >= grant.count ? fresh : all, grant.count, getRng(state)).map((die) => die.id);
+  const acquired = new Set(getAcquiredDieIds(state));
+  const fresh = all.filter((die) => !die.unique || !acquired.has(die.id));
+  return pickMany(fresh, grant.count, getRng(state)).map((die) => die.id);
 }
 
 export function canUseItem(state: RunState, itemId: string): ItemResult {
@@ -2177,6 +2178,9 @@ export function applyItemGrant(
     return { ok: false, error: '这件物品已经用过了。' };
   }
   if (!die || die.rarity !== item.grant.rarity) return { ok: false, error: '这枚骰子不在礼包范围内。' };
+  if (die.unique && hasDieEverBeenTaken(state, die.id)) {
+    return { ok: false, error: '这枚套组骰本局只能获取一次。' };
+  }
 
   const capacity = getDiceCapacity(state);
   let replaced: PricedDie | undefined;
@@ -2199,6 +2203,7 @@ export function applyItemGrant(
     state.bag.push(entry);
   }
 
+  if (!getAcquiredDieIds(state).includes(die.id)) getAcquiredDieIds(state).push(die.id);
   if (item.consumable) {
     state.activeItems = state.activeItems.filter((id) => id !== itemId);
     delete state.itemCharges[itemId];
@@ -2271,7 +2276,7 @@ export function shopPrice(state: RunState, base: number): number {
 export function refreshCost(state: RunState, section: string): number {
   const base = ({ dice: 20, barrel: 26, item: 22 } as Record<string, number>)[section] ?? 20;
   const refreshes = state.shop?.refreshes?.[section] ?? 0;
-  let value = base * 1.3 ** refreshes;
+  let value = base * 2 ** refreshes;
   for (const item of ITEMS) {
     if (item.type !== 'passive' || !item.refreshDiscount) continue;
     if (state.passiveItems.includes(item.id)) value *= 1 - item.refreshDiscount;
@@ -2280,9 +2285,9 @@ export function refreshCost(state: RunState, section: string): number {
 }
 
 function dicePool(state: RunState): PricedDie[] {
-  const owned = new Set(state.bag.map((entry) => entry.dieId));
-  // 只有标注 unique 的骰子整局只能持有一枚；其余允许重复购买。
-  return DICE.filter((die) => !die.unique || !owned.has(die.id));
+  const acquired = new Set(getAcquiredDieIds(state));
+  // Set dice are unique for the whole run; selling one does not re-open it.
+  return DICE.filter((die) => !(die.unique && acquired.has(die.id)));
 }
 
 function barrelPool(state: RunState): BarrelDef[] {
@@ -2316,6 +2321,17 @@ export function getAcquiredItemIds(state: RunState): string[] {
 
 export function hasItemEverBeenTaken(state: RunState, itemId: string): boolean {
   return getAcquiredItemIds(state).includes(itemId);
+}
+
+export function getAcquiredDieIds(state: RunState): string[] {
+  if (Array.isArray(state.acquiredDieIds)) return state.acquiredDieIds;
+  const fallback = state.bag.map((entry) => entry.dieId);
+  state.acquiredDieIds = [...fallback];
+  return state.acquiredDieIds;
+}
+
+export function hasDieEverBeenTaken(state: RunState, dieId: string): boolean {
+  return getAcquiredDieIds(state).includes(dieId);
 }
 
 function offers<T extends { id: string }>(list: T[], count: number, kind: string, rng: () => number): ShopOffer[] {
@@ -2534,6 +2550,9 @@ export function buyDie(state: RunState, index: number, replaceBagUid: string | n
   const entry = state.shop!.dice[index]!;
   const price = shopPrice(state, die.price);
   if (state.coins < price) return { ok: false, error: `需要 ${price} 银币。` };
+  if (die.unique && hasDieEverBeenTaken(state, die.id)) {
+    return { ok: false, error: '这枚套组骰本局只能获取一次。' };
+  }
   const capacity = getDiceCapacity(state);
   if (state.bag.length >= capacity && !replaceBagUid) {
     return { ok: false, needReplace: true, die, price };
@@ -2552,6 +2571,7 @@ export function buyDie(state: RunState, index: number, replaceBagUid: string | n
     state.bag.push(added);
   }
   state.coins -= price;
+  if (!getAcquiredDieIds(state).includes(die.id)) getAcquiredDieIds(state).push(die.id);
   entry.sold = true;
   pushLog(state, `购入「${die.name}」，花费 ${price} 银币。`, 'shop');
   return { ok: true, die, price };

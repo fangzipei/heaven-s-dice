@@ -32,6 +32,8 @@ const DIE_PRICE_OVERRIDES: Record<string, number> = { chain_note: 150 };
    注意：这里生成的是新对象，dice/<id>.ts 导出的是未定价的定义本体。 */
 export const DICE: PricedDie[] = DICE_DEFS.map((die) => ({
   ...die,
+  // Set dice are one-per-run: owning/selling one cannot make it reappear.
+  unique: die.setId ? true : die.unique,
   price: DIE_PRICE_OVERRIDES[die.id] ?? DIE_PRICE_BY_RARITY[die.rarity] ?? 30,
 }));
 
