@@ -1126,6 +1126,7 @@ test('lucky powder pays 150, frees the reroll and vanishes', () => {
   expect(result.ok).toBe(true);
   expect(result.rerollFree).toBe(true);
   expect(state.score).toBe(before + 150);
+  expect(state.flags.smokeReroll).toBe(true);
   expect(state.activeItems.includes('powder')).toBe(false);
 });
 
@@ -1392,6 +1393,25 @@ test('smoke only rerolls the dice that have not scored yet', () => {
   expect(kept.value).toBe(5);
   expect(kept.scored).toBe(true);
   for (const die of state.dice.filter((entry) => entry.uid !== scoredUid)) expect(die.value).toBe(6);
+});
+
+test('smoke leaves scored dice on the table even while the score is floating', () => {
+  const state = fresh();
+  state.level = 20;
+  state.bossPlan = { ...state.bossPlan, 20: 'suspensor' };
+  state.activeItems = ['smoke'];
+  state.itemCharges = { smoke: 1 };
+  initLevel(state);
+  forceRoll(state, [5, 2, 2, 3, 4, 6]);
+  state.dice[0].scored = true;
+  const scoredUid = state.dice[0].uid;
+  state.phase = 'selecting';
+  expect(useItem(state, 'smoke').ok).toBe(true);
+  rollDice(state, { free: true, forced: [6, 6, 6, 6, 6, 6] });
+  const kept = state.dice.find((die) => die.uid === scoredUid);
+  expect(kept.value).toBe(5);
+  expect(kept.scored).toBe(true);
+  expect(state.dice.filter((die) => die.uid !== scoredUid).every((die) => die.value === 6)).toBe(true);
 });
 
 test('stargazer and caravan sets unlock their unique mechanics', () => {

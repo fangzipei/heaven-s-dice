@@ -1497,7 +1497,8 @@ export function rollDice(state: RunState, { free = false, rng = getRng(state), f
   }
   if (smokeReroll) {
     // Smoke only touches dice that have not scored; scored dice stay on the
-    // table, even when the previous throw ended in a bust.
+    // table, even when the previous throw ended in a bust or under a floating
+    // dealer. Those scored dice are still part of the protected round.
     for (const die of state.dice) {
       if (die.scored) continue;
       die.value = null;
@@ -2143,6 +2144,9 @@ export function useItem(state: RunState, itemId: string): ItemResult {
     const gain = bossScoreAmount(state, 150);
     addScore(state, gain);
     state.selected = [];
+    state.flags.smokeReroll = true;
+    state.flags.rerollAll = false;
+    state.flags.hotDice = false;
     pushLog(state, `幸运粉扬开：+${gain} 分，未计分的骰子重新掷出。`, 'item');
     state.activeItems = state.activeItems.filter((id) => id !== itemId);
     delete state.itemCharges[itemId];
