@@ -331,24 +331,34 @@ function beginCupTrace(
   const guide = info.gesture === 'pentagram'
     ? traceStarPoints(center.x, center.y, radius)
     : traceCirclePoints(center.x, center.y, radius);
-  const guides = samplePath(guide);
   const overlay = document.createElement('div');
   overlay.id = 'cup-trace';
   overlay.setAttribute('aria-hidden', 'true');
-  overlay.innerHTML = `<svg viewBox="0 0 ${window.innerWidth} ${window.innerHeight}">
-    <polyline class="cup-trace-guide" points="${guide.map((p) => `${p.x},${p.y}`).join(' ')}"></polyline>
+  // Keep the SVG in the overlay's own pixel space. A viewBox based on
+  // window.innerWidth gets rescaled on PCs where .game-screen has CSS zoom,
+  // which is what made the pointer trail drift into the bottom-right corner.
+  overlay.innerHTML = `<svg>
+    <polyline class="cup-trace-guide" points=""></polyline>
     <polyline class="cup-trace-drawn" points=""></polyline>
   </svg>`;
   document.body.append(overlay);
+  const overlayRect = overlay.getBoundingClientRect();
+  const origin = { x: overlayRect.left, y: overlayRect.top };
+  const local = (point: { x: number; y: number }) => ({ x: point.x - origin.x, y: point.y - origin.y });
+  const localGuide = guide.map(local);
+  const guides = samplePath(localGuide);
+  $('.cup-trace-guide', overlay)?.setAttribute('points', localGuide.map((p) => `${p.x},${p.y}`).join(' '));
   app.cupTrace = {
-    ...info, center, radius, guide, guides, points: [],
+    ...info, center: local(center), origin, radius, guide: localGuide, guides, points: [],
     drawn: $('.cup-trace-drawn', overlay),
   };
 }
 
-function recordCupTrace(x: number, y: number) {
+function recordCupTrace(clientX: number, clientY: number) {
   const trace = app.cupTrace;
   if (!trace) return;
+  const x = clientX - trace.origin.x;
+  const y = clientY - trace.origin.y;
   const last = trace.points[trace.points.length - 1];
   if (last && Math.hypot(x - last.x, y - last.y) < 3) return;
   trace.points.push({ x, y });
@@ -686,7 +696,7 @@ export function beginRoll({ free = false }: { free?: boolean } = {}): void {
   if (!free && run.phase === 'dead' && run.flags.floatingBustPending && run.rerolls <= 0) {
     settleFloatingBust(run);
     renderGame();
-    showDefeat(true);
+    showDefeat();
     return;
   }
   if (run.rerolls <= 0 && run.phase !== 'hot' && run.phase !== 'ready' && !free && !freeContinuation) {
@@ -1176,7 +1186,7 @@ export function forfeitRun(): void {
   const result = forfeit(app.run);
   if (!result.ok) return;
   renderGame();
-  showDefeat(true);
+  showDefeat();
 }
 
 /* ═══════════════════════════════════════════════════════════════════
@@ -1260,7 +1270,7 @@ export function bindCupDrag(): void {
           if (info) beginCupTrace(traceCenter, traceRadius, info);
         }
       }
-      if (app.cupTrace) recordCupTrace(cupCenter.x + dx, cupCenter.y + dy);
+      if (app.cupTrace) recordCupTrace(event.clientX, event.clientY);
     }
   };
   cup.addEventListener('pointermove', onCupMove);

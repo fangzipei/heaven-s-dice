@@ -1450,7 +1450,7 @@ test('satan is the fixed final boss with 100000 target and +2 rerolls', () => {
   state.level = 25;
   initLevel(state);
   expect(activeBoss(state)?.id).toBe('satan');
-  expect(state.target).toBe(80000);
+  expect(state.target).toBe(88000);
   expect(state.rerolls).toBe(BASE_REROLLS + 2);
 });
 

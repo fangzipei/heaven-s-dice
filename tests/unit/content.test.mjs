@@ -224,8 +224,8 @@ test('the level table uses the no-boss curve, then boss coefficients', () => {
   expect(buildLevelTable()).toEqual(LEVELS);
   expect(LEVELS[0].target).toBe(LEVEL_CURVE.targetBase);
   expect(LEVELS[1].target).toBe(LEVEL_CURVE.nonBossTargets[1]);
-  expect(LEVELS[23].target).toBe(18950);
-  expect(LEVELS[24].target).toBe(80000);
+  expect(LEVELS[23].target).toBe(20850);
+  expect(LEVELS[24].target).toBe(88000);
   expect(LEVELS[0].reward).toBe(LEVEL_CURVE.rewardBase);
   for (const level of LEVELS) {
     const boss = BOSSES.find((entry) => entry.level === level.level);

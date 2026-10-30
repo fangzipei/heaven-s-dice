@@ -21,6 +21,8 @@ export interface CupTrace {
   gesture: string;
   name: string;
   center: CupPoint;
+  /** Trace points use the overlay's local pixel space, not viewport client pixels. */
+  origin: CupPoint;
   radius: number;
   guide: CupPoint[];
   guides: CupPoint[];

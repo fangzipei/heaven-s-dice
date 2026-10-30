@@ -22,7 +22,7 @@ function buildNoBossTargets(): number[] {
     else if (level <= 10) value *= 1.15;
     else if (level <= 15) value *= 1.12;
     else value *= 1.11;
-    targets.push(level > 10 ? value * 0.8 : value);
+    targets.push(level > 10 ? value * 0.88 : value);
   }
   return targets;
 }

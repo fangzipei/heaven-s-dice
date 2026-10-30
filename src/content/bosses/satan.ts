@@ -6,7 +6,7 @@ export default {
   rarity: 'legendary',
   name: '撒旦', title: '天堂的主人', accent: '#d8b56a',
   effectName: '撒旦的恩赐', effectKey: 'satanGift',
-  effectDesc: '最终目标 80000 分；开局额外获得 2 次重投。',
+  effectDesc: '最终目标 88000 分；开局额外获得 2 次重投。',
   intro: '你看见了。很好——能走到这里，靠的不只是运气。我欣赏你的实力，也欣赏你敢看穿这场天堂的胆子。现在，赌上你最原始的那一手。',
   taunts: [
     '你一路赢到这里，不是为了跪下的。',
