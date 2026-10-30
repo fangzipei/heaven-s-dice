@@ -5,6 +5,6 @@ export default {
   id: 'echo', name: '回声骰', setId: null, rarity: 'epic',
   probs: [1 / 6, 1 / 6, 1 / 6, 1 / 6, 1 / 6, 1 / 6],
   flavor: '它把上一次落桌的声音也一起掷了出来。',
-  desc: '六面均衡；计分含此骰时，本次计分 ×1.14。',
-  bonus: { type: 'dieMultiplier', value: 1.14, label: '回声：计分含此骰时 ×1.14' },
+  desc: '六面均衡；计分含此骰时，本次计分 ×1.15。',
+  bonus: { type: 'dieMultiplier', value: 1.15, label: '回声：计分含此骰时 ×1.15' },
 } satisfies DiceDef;

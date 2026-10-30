@@ -537,8 +537,8 @@ test('demon set bonus multiplies only when a joker is used', () => {
   state.dice[0].wild = true;
   state.selected = state.dice.slice(0, 3).map((d) => d.uid);
   const score = buildScore(state, 'reroll');
-  expect(score.breakdown.multipliers.some((m) => m.value === 1.08)).toBeTruthy();
-  expect(score.total).toBe(Math.round(1000 * 1.08));
+  expect(score.breakdown.multipliers.some((m) => m.value === 1.10)).toBeTruthy();
+  expect(score.total).toBe(Math.round(1000 * 1.10));
 });
 
 test('the glove turns a demon die into a joker', () => {
@@ -1381,7 +1381,7 @@ test('stargazer and caravan sets unlock their unique mechanics', () => {
   forceRoll(star, [1, 2, 3, 4, 5, 6]);
   star.selected = star.dice.slice(0, 5).map((die) => die.uid);
   expect(buildScore(star, 'reroll').breakdown.flats.some(
-    (flat) => flat.label === '星轨 2 件 · 三种点数' && flat.value === 150,
+    (flat) => flat.label === '星轨 2 件 · 两种点数' && flat.value === 200,
   )).toBe(true);
 
   const caravan = fresh();
@@ -1469,7 +1469,7 @@ test('new barrel effects: pawn, fuse, nightwatch, twoface and loan', () => {
   fuse.flags.fuseArmed = true;
   forceRoll(fuse, [5, 2, 4, 6, 2, 4]);
   fuse.selected = [fuse.dice[0].uid];
-  expect(buildScore(fuse, 'reroll').total).toBe(170);
+  expect(buildScore(fuse, 'reroll').total).toBe(1050);
 
   const night = fresh();
   night.barrelId = 'nightwatch';

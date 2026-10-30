@@ -3,8 +3,8 @@ import type { DiceDef } from '../../core/types.ts';
 
 export default {
   id: 'balance', name: '衡心骰', setId: 'caravan', rarity: 'rare',
-  probs: [1 / 6, 1 / 6, 1 / 6, 1 / 6, 1 / 6, 1 / 6],
+  probs: [0.25, 0.125, 0.125, 0.125, 0.25, 0.125],
   flavor: '它不偏向任何一面，只偏向选中它的人。',
-  desc: '六面各 16.7%；此骰参与计分时额外 +180 分。',
-  bonus: { type: 'flatScored', value: 180, label: '衡心：此骰计分 +180' },
+  desc: '1、5 各 25%，其余各 12.5%；此骰参与计分时额外 +1000 分（每关一次）。',
+  bonus: { type: 'flatScoredOnce', value: 1000, label: '衡心：此骰计分 +1000（每关一次）' },
 } satisfies DiceDef;

@@ -10,8 +10,8 @@ import {
   type ScoringAnalysis, type Combo, type PlayableDie, type FaceCount, type NKindCombo, type ScoringOptions,
 } from './scoring.ts';
 import type {
-  RunState, BoardDie, BagEntry, DiceDef, PricedDie, BarrelDef, ItemDef, BossDef,
-  MinionDef, Opponent, HandType, LevelRewardInfo, ShopOffer, ShopState, ById, ScoreCondition,
+  RunState, BoardDie, BagEntry, DiceDef, PricedDie, BarrelDef, BarrelVariant, MergedBarrelDef,
+  ItemDef, BossDef, MinionDef, Opponent, HandType, LevelRewardInfo, ShopOffer, ShopState, ById, ScoreCondition,
 } from './types.ts';
 
 function percentConditionMet(
@@ -26,6 +26,7 @@ function percentConditionMet(
     case 'wild': return Boolean(die.wild);
     case 'face': return die.value === when.face;
     case 'hasFace': return (counts[when.face] || 0) >= 1;
+    case 'faceIn': return when.faces.some((face) => (counts[face] || 0) >= 1);
     case 'faceTriple':
       return analysis.combos.some((combo) => combo.type === 'nkind' && combo.face === when.face && combo.count >= 3);
     case 'anyTriple': return hasTriple;
@@ -132,19 +133,94 @@ export function getDieSpec(dieId: string): DiceDef {
 }
 
 export function getBarrel(state: RunState): BarrelDef {
+  if (state.barrelId === REFORGED_BARREL_ID && state.reforgedParts?.length) {
+    const parts = state.reforgedParts
+      .map((id) => BARREL_BY_ID[id])
+      .filter((barrel): barrel is BarrelVariant => Boolean(barrel));
+    if (parts.length) return makeReforgedBarrel(parts);
+  }
   return BARREL_BY_ID[state.barrelId] || BARRELS[0]!;
 }
 
-export function effectiveProbs(dieId: string, barrelId: string, override?: number[], preferredFaces?: number[]): number[] {
+export const REFORGED_BARREL_ID = 'reforged';
+
+export function barrelParts(barrel: BarrelDef): BarrelVariant[] {
+  return barrel.type === 'reforged' ? barrel.parts : [barrel];
+}
+
+export function barrelHasType(barrel: BarrelDef, type: BarrelVariant['type']): boolean {
+  return barrelParts(barrel).some((part) => part.type === type);
+}
+
+function loanPart(state: RunState): Extract<BarrelVariant, { type: 'loan' }> | undefined {
+  return barrelParts(getBarrel(state)).find(
+    (part): part is Extract<BarrelVariant, { type: 'loan' }> => part.type === 'loan',
+  );
+}
+
+export function barrelGesture(barrel: BarrelDef): string | null {
+  for (const part of barrelParts(barrel)) {
+    if (part.type === 'gesture') return part.gesture;
+  }
+  return null;
+}
+
+export function barrelLoanCost(barrel: BarrelDef): number | null {
+  for (const part of barrelParts(barrel)) {
+    if (part.type === 'loan') return part.cost;
+  }
+  return null;
+}
+
+export function barrelGildCoin(barrel: BarrelDef): number {
+  for (const part of barrelParts(barrel)) {
+    if (part.type === 'gild') return part.coin;
+  }
+  return 100;
+}
+
+const RARITY_ORDER = { common: 0, rare: 1, epic: 2, legendary: 3 } as const;
+
+export function makeReforgedBarrel(parts: BarrelVariant[]): MergedBarrelDef {
+  const rarity = parts.reduce(
+    (best, part) => (RARITY_ORDER[part.rarity] > RARITY_ORDER[best] ? part.rarity : best),
+    parts[0]!.rarity,
+  );
+  return {
+    id: REFORGED_BARREL_ID,
+    name: `重铸桶 · ${parts.map((part) => part.name).join(' + ')}`,
+    rarity,
+    type: 'reforged',
+    art: parts[0]!.art,
+    price: 0,
+    parts,
+    desc: parts.map((part) => part.desc).join(' '),
+    short: parts.map((part) => part.short).join(' · '),
+  };
+}
+
+export function effectiveProbs(
+  dieId: string,
+  barrelRef: string | BarrelDef,
+  override?: number[],
+  preferredFaces?: number[],
+): number[] {
   const die = getDieSpec(dieId);
-  const barrel = BARREL_BY_ID[barrelId] || BARRELS[0]!;
-  const bias = 'bias' in barrel && barrel.bias ? barrel.bias : [1, 1, 1, 1, 1, 1];
+  const barrel = typeof barrelRef === 'string'
+    ? (BARREL_BY_ID[barrelRef] || BARRELS[0]!)
+    : barrelRef;
+  const parts = barrelParts(barrel);
   const base = override && override.length === 6 ? override : die.probs;
   const weights = base.map((probability, index) => {
-    const faceBias = barrel.type === 'twoFace' && preferredFaces?.includes(index + 1)
-      ? (barrel.multiplier || 2.4)
-      : 1;
-    return probability * (bias[index] ?? 1) * faceBias;
+    const face = index + 1;
+    let weight = probability;
+    for (const part of parts) {
+      if ('bias' in part && part.bias) weight *= part.bias[index] ?? 1;
+      if (part.type === 'twoFace' && preferredFaces?.includes(face)) {
+        weight *= part.multiplier || 2.4;
+      }
+    }
+    return weight;
   });
   return normalizeWeights(weights);
 }
@@ -193,6 +269,8 @@ export function targetForLevel(state: RunState, level = state.level): number {
 }
 
 function resetLevelFlags(state: RunState) {
+  // 重铸器上膛后要跨关保留，直到玩家真的买下下一只骰桶。
+  const reforgeArmed = state.flags.barrelReforgeArmed;
   state.flags = {
     hunterMark: false,
     bloodContract: false,
@@ -227,6 +305,7 @@ function resetLevelFlags(state: RunState) {
     floatingBustPending: false,
     stargazerRerollUsed: false,
     floatingLocked: false,
+    barrelReforgeArmed: reforgeArmed,
   };
 }
 
@@ -403,7 +482,7 @@ export function initLevel(state: RunState): RunState {
   state.throwNumber = 0;
   state.bossDiceRolled = 0;
   resetLevelFlags(state);
-  if (getBarrel(state).type === 'twoFace') {
+  if (barrelHasType(getBarrel(state), 'twoFace')) {
     state.flags.twoFacePending = true;
     state.flags.twoFaceFaces = [];
   }
@@ -641,6 +720,12 @@ export function buildScore(state: RunState, action = 'reroll'): BuildScoreResult
     } else if (bonus.type === 'flatScored') {
       flatAdd += bonus.value;
       flats.push({ label: `${spec.name} · ${bonus.label}`, value: bonus.value });
+    } else if (bonus.type === 'flatScoredOnce') {
+      if (state.flags.balanceUsed) continue;
+      flatAdd += bonus.value;
+      flats.push({ label: `${spec.name} · ${bonus.label}`, value: bonus.value });
+    } else if (bonus.type === 'loneHot') {
+      continue;
     } else if (bonus.type === 'scorePercent') {
       if (!percentConditionMet(bonus.when, die, analysis, counts, hasTriple)) continue;
       multiplier *= 1 + bonus.percent / 100;
@@ -660,11 +745,9 @@ export function buildScore(state: RunState, action = 'reroll'): BuildScoreResult
     } else if (bonus.type === 'shopRerollMultiplier') {
       const entry = state.bag.find((item) => item.uid === die.bagUid);
       const stacks = entry?.shopRerolls || 0;
-      if (stacks > 0) {
-        const value = 1 + stacks * bonus.value;
-        multiplier *= value;
-        multipliers.push({ label: `${spec.name} · ${bonus.label} ×${stacks}`, value });
-      }
+      const value = 1.6 + stacks * bonus.value;
+      multiplier *= value;
+      multipliers.push({ label: `${spec.name} · ${bonus.label}`, value });
     }
   }
 
@@ -684,38 +767,40 @@ export function buildScore(state: RunState, action = 'reroll'): BuildScoreResult
   }
   if (stargazerCount >= 2) {
     const distinct = new Set(selected.filter((die) => !die.blank).map((die) => die.value)).size;
-    if (distinct >= 3) {
-      flatAdd += 150;
-      flats.push({ label: '星轨 2 件 · 三种点数', value: 150 });
+    if (distinct >= 2) {
+      flatAdd += 200;
+      flats.push({ label: '星轨 2 件 · 两种点数', value: 200 });
     }
   }
   if (demonCount >= 4 && wildDice > 0) {
-    multiplier *= 1.22;
-    multipliers.push({ label: '恶魔 4 件 · 群魔', value: 1.22 });
+    multiplier *= 1.20;
+    multipliers.push({ label: '恶魔 4 件 · 群魔', value: 1.20 });
   } else if (demonCount >= 2 && wildDice > 0) {
-    multiplier *= 1.08;
-    multipliers.push({ label: '恶魔 2 件 · 契约', value: 1.08 });
+    multiplier *= 1.10;
+    multipliers.push({ label: '恶魔 2 件 · 契约', value: 1.10 });
   }
 
   // Barrels pay for what was actually scored: the wolf cup pays for 3s, the
   // demon pact pays for jokers that made a combination legal.
   const barrel = getBarrel(state);
-  if (barrel.type === 'faceScore') {
-    const n = counts[barrel.face] || 0;
-    if (n > 0) {
-      const value = n * barrel.value;
+  for (const part of barrelParts(barrel)) {
+    if (part.type === 'faceScore') {
+      const n = counts[part.face] || 0;
+      if (n > 0) {
+        const value = n * part.value;
+        flatAdd += value;
+        flats.push({ label: `${part.name} · ${n} 颗 ${part.face}`, value });
+      }
+      if (n >= 3 && part.tripleValue) {
+        flatAdd += part.tripleValue;
+        flats.push({ label: `${part.name} · 三条 ${part.face}`, value: part.tripleValue });
+      }
+    }
+    if (part.type === 'wildScore' && wildDice > 0) {
+      const value = wildDice * part.value;
       flatAdd += value;
-      flats.push({ label: `${barrel.name} · ${n} 颗 ${barrel.face}`, value });
+      flats.push({ label: `${part.name} · ${wildDice} 颗恶魔赖子`, value });
     }
-    if (n >= 3 && barrel.tripleValue) {
-      flatAdd += barrel.tripleValue;
-      flats.push({ label: `${barrel.name} · 三条 ${barrel.face}`, value: barrel.tripleValue });
-    }
-  }
-  if (barrel.type === 'wildScore' && wildDice > 0) {
-    const value = wildDice * barrel.value;
-    flatAdd += value;
-    flats.push({ label: `${barrel.name} · ${wildDice} 颗恶魔赖子`, value });
   }
   if (state.passiveItems.includes('cracked_pouch')) {
     multiplier *= 1.25;
@@ -779,12 +864,18 @@ export function buildScore(state: RunState, action = 'reroll'): BuildScoreResult
     multipliers.push({ label: '天使羽 · 总得分 +10%', value: 1.1 });
   }
 
-  if (barrel.type === 'singlesBonus'
+  if (barrelHasType(barrel, 'singlesBonus')
     && state.flags.roundSinglesOnly !== false
     && analysis.combos.length > 0
     && analysis.combos.every((combo) => combo.type === 'single')) {
-    multiplier *= barrel.multiplier;
-    multipliers.push({ label: `${barrel.name} · 全单骰`, value: barrel.multiplier });
+    let singlesMultiplier = 1;
+    for (const part of barrelParts(barrel)) {
+      if (part.type === 'singlesBonus') singlesMultiplier *= part.multiplier;
+    }
+    if (singlesMultiplier > 1) {
+      multiplier *= singlesMultiplier;
+      multipliers.push({ label: `${barrel.name} · 全单骰`, value: singlesMultiplier });
+    }
   }
 
   // Pact die: carrying it is a boon when it scores, a penalty when it sits out.
@@ -825,23 +916,38 @@ export function buildScore(state: RunState, action = 'reroll'): BuildScoreResult
     multipliers.push({ label: '旋涡仪式 · +15%', value: 1.15 });
   }
 
-  if (barrel.type === 'pawn') {
-    const bonus = Math.min(barrel.cap, Math.floor(Math.max(0, state.coins) / Math.max(1, barrel.step)));
-    if (bonus > 0) {
-      flats.push({ label: `${barrel.name} · 银币加成`, value: bonus });
-      flatAdd += bonus;
+  for (const part of barrelParts(barrel)) {
+    if (part.type === 'pawn') {
+      const bonus = Math.min(part.cap, Math.floor(Math.max(0, state.coins) / Math.max(1, part.step)));
+      if (bonus > 0) {
+        flats.push({ label: `${part.name} · 银币加成`, value: bonus });
+        flatAdd += bonus;
+      }
+    }
+    if (part.type === 'fuse' && state.flags.fuseArmed) {
+      flats.push({ label: `${part.name} · 引信`, value: part.value });
+      flatAdd += part.value;
     }
   }
-  if (barrel.type === 'fuse' && state.flags.fuseArmed) {
-    flats.push({ label: `${barrel.name} · 引信`, value: barrel.value });
-    flatAdd += barrel.value;
+  // 独燃骰：上一手触发了“独骰全骰”，这一手整体打折。
+  if (state.flags.loneHotPenalty) {
+    multiplier *= 0.6;
+    multipliers.push({ label: '独燃余烬 · 本手 -40%', value: 0.6 });
+  }
+  // 看客骰：它留在桌上、没有参与计分时反而给分。
+  const unselected = state.dice.filter((die) => !die.scored && !die.blank && !state.selected.includes(die.uid));
+  for (const die of unselected) {
+    const spec = getDieSpec(die.dieId);
+    const bonus = spec.bonus;
+    if (bonus?.type !== 'unselectedFlat') continue;
+    flatAdd += bonus.value;
+    flats.push({ label: `${spec.name} · ${bonus.label}`, value: bonus.value });
   }
   let chainFlat = 0;
-  for (let i = 0; i < selected.length; i += 1) {
-    const bonus = dieSpecs[i]!.bonus;
+  for (const entry of state.bag) {
+    const bonus = dieBonus(entry.dieId);
     if (bonus?.type !== 'afterScoreFlat') continue;
-    const stack = state.dieStacks?.[selected[i]!.bagUid] || 0;
-    chainFlat += bonus.value * stack;
+    chainFlat += bonus.value * (state.dieStacks?.[entry.uid] || 0);
   }
   if (chainFlat > 0) {
     flats.push({ label: '连记 · 已参与计分', value: chainFlat });
@@ -953,9 +1059,12 @@ export function bustRound(state: RunState): number {
   let lost = Math.max(0, state.roundScore || 0);
   if (!lost) return 0;
   const barrel = getBarrel(state);
-  if (barrel.type === 'nightwatch' && !state.flags.nightwatchUsed) {
+  const nightwatch = barrelParts(barrel).find(
+    (part): part is Extract<BarrelVariant, { type: 'nightwatch' }> => part.type === 'nightwatch',
+  );
+  if (nightwatch && !state.flags.nightwatchUsed) {
     state.flags.nightwatchUsed = true;
-    const kept = Math.floor(lost * barrel.keep);
+    const kept = Math.floor(lost * nightwatch.keep);
     const forfeited = lost - kept;
     state.score = Math.max(0, state.score - forfeited);
     state.stats.levelScore = Math.max(0, state.stats.levelScore - forfeited);
@@ -1045,9 +1154,11 @@ function awardLevel(state: RunState): LevelRewardInfo {
   const boss = cfg.boss ? getOpponent(state.level, state) as BossDef | null : null;
   const curveReward = cfg.curve?.reward ?? cfg.reward;
   const bossPremium = boss ? cfg.reward - curveReward : 0;
-  if (state.passiveItems.includes('gold_cuff')) {
-    total += 15;
-    bonuses.push({ label: '镀金袖扣', value: 15 });
+  for (const item of ITEMS) {
+    if (item.type !== 'passive' || !item.levelCoins) continue;
+    if (!state.passiveItems.includes(item.id)) continue;
+    total += item.levelCoins;
+    bonuses.push({ label: item.name, value: item.levelCoins });
   }
   // Leaving with tokens in hand pays: each unused reroll is 20% of base.
   const cash = cashOutValue(state);
@@ -1252,25 +1363,25 @@ export function resolveSaltOffer(state: RunState, use: boolean): { ok: boolean; 
 
 export function resolveLoanOffer(state: RunState, use: boolean): RollResult & { paid?: number } {
   if (!state.flags.loanOffer) return { ok: false, error: '现在没有需要借运的掷空。' };
-  const barrel = getBarrel(state);
+  const loan = loanPart(state);
   state.flags.loanOffer = false;
-  if (!use || barrel.type !== 'loan') {
+  if (!use || !loan) {
     const bust = bustRound(state);
     finalizeStuck(state);
     return { ok: true, values: state.lastRoll || [], hot: false, bust };
   }
-  if (state.coins < barrel.cost) return { ok: false, error: '银币不够。' };
-  state.coins -= barrel.cost;
+  if (state.coins < loan.cost) return { ok: false, error: '银币不够。' };
+  state.coins -= loan.cost;
   state.flags.loanUsed = true;
   state.phase = 'ready';
   state.selected = [];
   state.lastBust = null;
-  pushLog(state, `借运桶付出 ${barrel.cost} 银币：重投这一手。`, 'item');
-  return { ...rollDice(state, { free: true }), paid: barrel.cost };
+  pushLog(state, `借运桶付出 ${loan.cost} 银币：重投这一手。`, 'item');
+  return { ...rollDice(state, { free: true }), paid: loan.cost };
 }
 
 export function setTwoFaceFaces(state: RunState, faces: number[]): { ok: boolean; error?: string } {
-  if (getBarrel(state).type !== 'twoFace') return { ok: false, error: '当前骰桶不是双面桶。' };
+  if (!barrelHasType(getBarrel(state), 'twoFace')) return { ok: false, error: '当前骰桶不是双面桶。' };
   const unique = [...new Set(faces)].filter((face) => Number.isInteger(face) && face >= 1 && face <= 6);
   if (unique.length !== 2) return { ok: false, error: '请选择两个不同的点数。' };
   state.flags.twoFaceFaces = unique;
@@ -1309,23 +1420,25 @@ function applyBarrelRollEffects(
   rng: () => number,
 ): void {
   if (!rolled.length) return;
-  if (barrel.type === 'forceOne' && rng() < barrel.chance) {
-    const die = rolled[Math.floor(rng() * rolled.length)]!;
-    die.value = 1;
-    die.wild = getDieSpec(die.dieId).setId === 'demon';
-    pushLog(state, `${barrel.name}：一颗骰子被指定为 1。`, 'roll');
-  }
-  if (barrel.type === 'gild' && rng() < barrel.chance) {
-    const die = rolled[Math.floor(rng() * rolled.length)]!;
-    die.gilded = true;
-    pushLog(state, `${barrel.name}：一颗骰子染上金痕；它计分时挂 ${barrel.coin} 银币，锁分后入账。`, 'roll');
-  }
-  if (barrel.type === 'straightFix') {
-    const fix = completeStraight(rolled, rng);
-    if (fix) {
-      fix.die.value = fix.face;
-      fix.die.wild = false;
-      pushLog(state, `${barrel.name}：一颗骰子转到 ${fix.face} 点，补成顺子。`, 'roll');
+  for (const part of barrelParts(barrel)) {
+    if (part.type === 'forceOne' && rng() < part.chance) {
+      const die = rolled[Math.floor(rng() * rolled.length)]!;
+      die.value = 1;
+      die.wild = getDieSpec(die.dieId).setId === 'demon';
+      pushLog(state, `${part.name}：一颗骰子被指定为 1。`, 'roll');
+    }
+    if (part.type === 'gild' && rng() < part.chance) {
+      const die = rolled[Math.floor(rng() * rolled.length)]!;
+      die.gilded = true;
+      pushLog(state, `${part.name}：一颗骰子染上金痕；它计分时挂 ${part.coin} 银币，锁分后入账。`, 'roll');
+    }
+    if (part.type === 'straightFix') {
+      const fix = completeStraight(rolled, rng);
+      if (fix) {
+        fix.die.value = fix.face;
+        fix.die.wild = false;
+        pushLog(state, `${part.name}：一颗骰子转到 ${fix.face} 点，补成顺子。`, 'roll');
+      }
     }
   }
 }
@@ -1472,7 +1585,7 @@ export function rollDice(state: RunState, { free = false, rng = getRng(state), f
       return;
     }
     const forcedValue = forced.length ? forced.shift() : undefined;
-    die.value = forcedValue ?? rollValue(effectiveProbs(die.dieId, barrel.id, die.probs, state.flags.twoFaceFaces), rng);
+    die.value = forcedValue ?? rollValue(effectiveProbs(die.dieId, barrel, die.probs, state.flags.twoFaceFaces), rng);
     // Demon dice turn their 1 face into a joker, never a plain 100 points.
     die.wild = getDieSpec(die.dieId).setId === 'demon' && die.value === 1;
     rolledNow.push(die);
@@ -1482,25 +1595,27 @@ export function rollDice(state: RunState, { free = false, rng = getRng(state), f
     if (die.value == null) rollOne(die);
   }
 
-  if (barrel.type === 'extraDie' && rng() < barrel.chance) {
-    const extra: BoardDie = {
-      uid: `extra-${uid('die')}`,
-      bagUid: 'extra',
-      dieId: 'standard',
-      value: null,
-      blank: false,
-      wild: false,
-      scored: false,
-      extra: true,
-      probs: [...STANDARD_DIE.probs],
-    };
-    state.dice.push(extra);
-    rollOne(extra);
-    pushLog(state, `${barrel.name}：多滚出一颗骰子。`, 'roll');
+  for (const part of barrelParts(barrel)) {
+    if (part.type === 'extraDie' && rng() < part.chance) {
+      const extra: BoardDie = {
+        uid: `extra-${uid('die')}`,
+        bagUid: 'extra',
+        dieId: 'standard',
+        value: null,
+        blank: false,
+        wild: false,
+        scored: false,
+        extra: true,
+        probs: [...STANDARD_DIE.probs],
+      };
+      state.dice.push(extra);
+      rollOne(extra);
+      pushLog(state, `${part.name}：多滚出一颗骰子。`, 'roll');
+    }
   }
 
   applyBarrelRollEffects(state, rolledNow, barrel, rng);
-  if (barrel.type === 'rotation' && (state.throwNumber || 0) > 0) {
+  if (barrelHasType(barrel, 'rotation') && (state.throwNumber || 0) > 0) {
     const candidates = state.dice.filter((die) => !die.scored && !die.blank && !die.wild && typeof die.value === 'number');
     if (candidates.length) {
       const die = candidates[Math.floor(rng() * candidates.length)]!;
@@ -1544,12 +1659,11 @@ export function rollDice(state: RunState, { free = false, rng = getRng(state), f
     } else if (ownsSalt(state)) {
       state.flags.saltOffer = true;
       state.lastBust = { saved: Math.max(0, state.roundScore || 0) };
-    } else if (getBarrel(state).type === 'loan'
-      && !state.flags.loanUsed
-      && state.coins >= (getBarrel(state) as Extract<BarrelDef, { type: 'loan' }>).cost) {
+    } else if (loanPart(state) && !state.flags.loanUsed && state.coins >= loanPart(state)!.cost) {
+      const cost = loanPart(state)!.cost;
       state.flags.loanOffer = true;
       state.lastBust = { saved: Math.max(0, state.roundScore || 0) };
-      pushLog(state, '借运桶开口：付 40 银币，可以把这一掷重来。', 'info');
+      pushLog(state, `借运桶开口：付 ${cost} 银币，可以把这一掷重来。`, 'info');
     } else {
       bust = bustRound(state);
     }
@@ -1623,14 +1737,24 @@ export function applyScore(state: RunState, action: ScoreAction): ApplyScoreResu
   const scoringDice = selectedDice(state);
   const scoringValues: (number | string)[] = scoringDice.map((d) => (d.wild ? '魔' : d.value ?? 0));
   let total = chosen.total;
+  // 独燃骰：只留它一颗未计分时，也算作全骰。
+  const loneHung = state.dice.filter(
+    (die) => !die.scored && !scoringDice.includes(die),
+  );
+  const loneHotNow = loneHung.length === 1
+    && getDieSpec(loneHung[0]!.dieId).bonus?.type === 'loneHot';
+  const lonePenaltyApplied = Boolean(state.flags.loneHotPenalty);
+  if (lonePenaltyApplied) state.flags.loneHotPenalty = false;
   // 全骰连击：这一手把六颗骰子全部计分时，本关每多一次全骰就再乘一层。
-  const hotNow = state.dice.every((die) => die.scored || scoringDice.includes(die));
+  const allScoredNow = state.dice.every((die) => die.scored || scoringDice.includes(die));
+  const hotNow = allScoredNow || loneHotNow;
   let hotMultiplier = 1;
   if (hotNow) {
     state.hotCount = (state.hotCount || 0) + 1;
     state.stats.hotDice = (state.stats.hotDice || 0) + 1;
     hotMultiplier = HOT_CHAIN_MULTIPLIER ** state.hotCount;
     total = Math.round(total * hotMultiplier);
+    if (loneHotNow) state.flags.loneHotPenalty = true;
   }
   const bossEffect = bossEffectKey(state);
   if (bossEffect === 'noRepeatType') {
@@ -1702,7 +1826,7 @@ export function applyScore(state: RunState, action: ScoreAction): ApplyScoreResu
   // a continue keeps them pending with the points, so a bust forfeits them too.
   let handCoins = 0;
   const activeBarrel = getBarrel(state);
-  const gildCoin = activeBarrel.type === 'gild' ? activeBarrel.coin : 100;
+  const gildCoin = barrelGildCoin(activeBarrel);
   for (const die of scoringDice) {
     const bonus = getDieSpec(die.dieId).bonus;
     if (bonus?.type === 'coinsPerScore') handCoins += bonus.value;
@@ -1721,8 +1845,8 @@ export function applyScore(state: RunState, action: ScoreAction): ApplyScoreResu
     pushLog(state, `骰子结算：+${paidCoins} 银币。`, 'reward');
   }
   if (hasSetTier(state, 'caravan', 2)) {
-    state.coins += Math.round(10 * COIN_GAIN_MULTIPLIER);
-    pushLog(state, '商旅 2 件 · 计分路费：+11 银币。', 'reward');
+    state.coins += Math.round(50 * COIN_GAIN_MULTIPLIER);
+    pushLog(state, '商旅 2 件 · 计分路费：+55 银币。', 'reward');
   }
   if (bossEffect === 'coinTaxPerDie') {
     const tax = scoringDice.length * 2;
@@ -1748,6 +1872,9 @@ export function applyScore(state: RunState, action: ScoreAction): ApplyScoreResu
   }
 
   for (const die of scoringDice) die.scored = true;
+  if (scoringDice.some((die) => getDieSpec(die.dieId).bonus?.type === 'flatScoredOnce')) {
+    state.flags.balanceUsed = true;
+  }
   state.selected = [];
   pushLog(state, `计分 ${total} 分（${scoringValues.join(' · ')}）。`, 'score');
   if (hotMultiplier > 1) {
@@ -1760,7 +1887,7 @@ export function applyScore(state: RunState, action: ScoreAction): ApplyScoreResu
   }
 
   const allScored = state.dice.every((d) => d.scored);
-  if (allScored) {
+  if (allScored || loneHotNow) {
     state.flags.hotDice = true;
     state.flags.rerollAll = false;
     state.phase = 'hot';
@@ -1768,7 +1895,9 @@ export function applyScore(state: RunState, action: ScoreAction): ApplyScoreResu
       die.value = null;
       die.scored = false;
     }
-    pushLog(state, '全骰！所有骰子都已计分，可以免费重掷全部骰子。', 'hot');
+    pushLog(state, loneHotNow && !allScored
+      ? '独燃骰烧穿了桌面：这一手算作全骰，可以免费重掷全部骰子。'
+      : '全骰！所有骰子都已计分，可以免费重掷全部骰子。', 'hot');
     return { ok: true, total, action, hot: true, won: false, coins: paidCoins, pendingCoins: handCoins, targetReached: reachedTarget, breakdown: chosen.breakdown, hotCount: state.hotCount, hotMultiplier };
   }
 
@@ -1804,8 +1933,8 @@ export interface GestureResult {
 
 export function applyGesture(state: RunState, gesture: string): GestureResult {
   const barrel = getBarrel(state);
-  const barrelGesture = 'gesture' in barrel ? barrel.gesture : undefined;
-  if (barrelGesture !== gesture) {
+  const barrelGestureName = barrelGesture(barrel);
+  if (barrelGestureName !== gesture) {
     return { ok: false, error: '当前骰桶没有这种仪式。' };
   }
   if (state.flags.gestureUsedThisThrow) {
@@ -1942,6 +2071,15 @@ export function useItem(state: RunState, itemId: string): ItemResult {
     addScore(state, gain);
     pushLog(state, `幸运币翻面：+${gain} 分。`, 'item');
     checkWin(state);
+  } else if (itemId === 'ash_pouch') {
+    const gain = bossScoreAmount(state, 120);
+    addScore(state, gain);
+    pushLog(state, `灰烬袋倒空：+${gain} 分。`, 'item');
+    checkWin(state);
+  } else if (itemId === 'whetstone') {
+    state.rerolls += 1;
+    state.maxRerolls += 1;
+    pushLog(state, '磨刀石蹭过骰角：+1 次重投。', 'item');
   } else if (itemId === 'courage') {
     state.rerolls += 1;
     state.maxRerolls += 1;
@@ -2010,9 +2148,10 @@ export function useItem(state: RunState, itemId: string): ItemResult {
   } else {
     state.itemCharges[itemId] = 0;
   }
-  if (getBarrel(state).type === 'fuse') {
+  if (barrelHasType(getBarrel(state), 'fuse')) {
     state.flags.fuseArmed = true;
-    pushLog(state, '引信桶点燃：下一次计分 +120。', 'good');
+    const fuseValue = barrelParts(getBarrel(state)).find((part) => part.type === 'fuse')?.value ?? 0;
+    pushLog(state, `引信桶点燃：下一次计分 +${fuseValue}。`, 'good');
   }
   finalizeStuck(state);
   return { ok: true, item };
@@ -2126,13 +2265,17 @@ export function refreshCost(state: RunState, section: string): number {
   const base = ({ dice: 20, barrel: 26, item: 22 } as Record<string, number>)[section] ?? 20;
   const refreshes = state.shop?.refreshes?.[section] ?? 0;
   let value = base * 1.3 ** refreshes;
-  if (state.passiveItems.includes('gold_cuff')) value *= 0.8;
+  for (const item of ITEMS) {
+    if (item.type !== 'passive' || !item.refreshDiscount) continue;
+    if (state.passiveItems.includes(item.id)) value *= 1 - item.refreshDiscount;
+  }
   return Math.max(1, Math.round(value));
 }
 
 function dicePool(state: RunState): PricedDie[] {
   const owned = new Set(state.bag.map((entry) => entry.dieId));
-  return DICE.filter((die) => !owned.has(die.id));
+  // 只有标注 unique 的骰子整局只能持有一枚；其余允许重复购买。
+  return DICE.filter((die) => !die.unique || !owned.has(die.id));
 }
 
 function barrelPool(state: RunState): BarrelDef[] {
@@ -2144,7 +2287,13 @@ function itemPool(state: RunState): ItemDef[] {
   const uniqueTaken = new Set(
     getAcquiredItemIds(state).filter((id) => ITEM_BY_ID[id]?.unique),
   );
-  return ITEMS.filter((item) => !item.bossOnly && !owned.has(item.id) && !(item.unique && uniqueTaken.has(item.id)));
+  return ITEMS.filter((item) => {
+    if (item.bossOnly || owned.has(item.id)) return false;
+    if (item.unique && uniqueTaken.has(item.id)) return false;
+    if (item.id === 'barrel_reforger'
+      && (state.flags.barrelReforgeArmed || getBarrel(state).type === 'reforged')) return false;
+    return true;
+  });
 }
 
 export function getOwnedItemIds(state: RunState): string[] {
@@ -2387,6 +2536,8 @@ export function buyDie(state: RunState, index: number, replaceBagUid: string | n
     if (!target) return { ok: false, error: '请选择要替换的骰子。' };
     target.dieId = die.id;
     delete target.probs;
+    delete target.shopRerolls;
+    delete target.lastShopRerollLevel;
     prepareRandomFaces(target, getRng(state));
   } else {
     const added: BagEntry = { uid: uid('bag'), dieId: die.id };
@@ -2405,11 +2556,26 @@ export function buyBarrel(state: RunState, index: number): BuyResult {
   const entry = state.shop!.barrel[index]!;
   const price = shopPrice(state, barrel.price);
   if (state.coins < price) return { ok: false, error: `需要 ${price} 银币。` };
+  if (state.flags.barrelReforgeArmed && getBarrel(state).type === 'reforged') {
+    return { ok: false, error: '当前已经是重铸桶，先换一只普通骰桶才能再次重铸。' };
+  }
+  const merging = Boolean(state.flags.barrelReforgeArmed);
   state.coins -= price;
-  state.barrelId = barrel.id;
+  if (merging) {
+    const parts = [...barrelParts(getBarrel(state)), barrel];
+    state.barrelId = REFORGED_BARREL_ID;
+    state.reforgedParts = parts.map((part) => part.id);
+    state.flags.barrelReforgeArmed = false;
+    pushLog(state, `重铸器熔合：「${parts.map((part) => part.name).join('」+「')}」变成一只重铸桶。`, 'shop');
+  } else {
+    state.barrelId = barrel.id;
+    state.reforgedParts = undefined;
+  }
   if (!state.ownedBarrels.includes(barrel.id)) state.ownedBarrels.push(barrel.id);
   entry.sold = true;
-  pushLog(state, `换上「${barrel.name}」，花费 ${price} 银币。`, 'shop');
+  pushLog(state, merging
+    ? `换上重铸桶，花费 ${price} 银币。`
+    : `换上「${barrel.name}」，花费 ${price} 银币。`, 'shop');
   return { ok: true, barrel, price };
 }
 
@@ -2431,6 +2597,10 @@ export function buyItem(state: RunState, index: number): BuyResult {
   }
   const price = shopPrice(state, item.price);
   if (state.coins < price) return { ok: false, error: `需要 ${price} 银币。` };
+  if (item.id === 'barrel_reforger' && getBarrel(state).type === 'reforged') {
+    return { ok: false, error: '当前骰桶已经是重铸桶，无法再使用重铸器。' };
+  }
+  const beforeSlots = shopSlots(state);
   state.coins -= price;
   if (item.type === 'active') {
     state.activeItems.push(item.id);
@@ -2442,11 +2612,32 @@ export function buyItem(state: RunState, index: number): BuyResult {
   } else {
     state.passiveItems.push(item.id);
     if (item.id === 'dice_bag' || item.id === 'cracked_pouch') syncBag(state);
+    if (item.id === 'barrel_reforger') {
+      state.flags.barrelReforgeArmed = true;
+      pushLog(state, '重铸器上膛：下一只购入的骰桶会与当前骰桶熔合。', 'shop');
+    }
   }
   if (!getAcquiredItemIds(state).includes(item.id)) {
     getAcquiredItemIds(state).push(item.id);
   }
   entry.sold = true;
+  /* 购买立即作用于当前货架：货架类物品买下后就多出一个货位。 */
+  const afterSlots = shopSlots(state);
+  if (state.shop) {
+    const rng = getRng(state);
+    if (afterSlots.dice > beforeSlots.dice) {
+      state.shop.dice.push(...diceOffers(state, afterSlots.dice - beforeSlots.dice, rng)
+        .filter((offer) => !state.shop!.dice.some((existing) => existing.id === offer.id)));
+    }
+    if (afterSlots.barrel > beforeSlots.barrel) {
+      state.shop.barrel.push(...offers(barrelPool(state), afterSlots.barrel - beforeSlots.barrel, 'barrel', rng)
+        .filter((offer) => !state.shop!.barrel.some((existing) => existing.id === offer.id)));
+    }
+    if (afterSlots.item > beforeSlots.item) {
+      state.shop.item.push(...itemOffers(state, afterSlots.item - beforeSlots.item, rng)
+        .filter((offer) => !state.shop!.item.some((existing) => existing.id === offer.id)));
+    }
+  }
   pushLog(state, `购入「${item.name}」，花费 ${price} 银币。`, 'shop');
   return { ok: true, item, price };
 }

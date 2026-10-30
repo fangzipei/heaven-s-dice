@@ -6,6 +6,7 @@
 import { ITEM_BY_ID, LEVEL_COUNT, getOpponent, rarityOf, DICE_SETS } from '../content/index.ts';
 import {
   advanceLevel, applyGesture, applyItemGrant, applyScore, canUseItem, forfeit, getBarrel,
+  barrelGesture, barrelLoanCost,
   getDieSpec, getScorePreview, resolveSaltOffer as engineResolveSaltOffer, resolveLoanOffer as engineResolveLoanOffer,
   setTwoFaceFaces, settleFloatingBust, selectBestScoring, rollDice, selectedDice,
   handTypeName, activeBoss,
@@ -275,7 +276,7 @@ function resetCupVisuals(): void {
 
 function cupGestureInfo(run: RunState): { gesture: string; name: string } | null {
   const barrel = run ? getBarrel(run) : null;
-  const gesture = barrel?.type === 'gesture' ? barrel.gesture : null;
+  const gesture = barrel ? barrelGesture(barrel) : null;
   if (!gesture) return null;
   if (gesture === 'pentagram' && run.flags.starUsed) return null;
   if (gesture === 'circle' && run.flags.vortexUsed) return null;
@@ -596,15 +597,16 @@ export function showLoanOffer(): void {
   const run = app.run;
   if (!run || !run.flags.loanOffer) return;
   const barrel = getBarrel(run);
+  const loanCost = barrelLoanCost(barrel) ?? 40;
   const saved = Math.max(0, run.roundScore || 0);
   openOverlay(`
     <div class="modal result-modal" style="width:min(440px,100%);padding:34px">
       <p class="modal-kicker">A BUST ON THE TABLE</p>
       <h2 style="font-size:26px;margin-top:6px">要借运重投吗？</h2>
-      <p class="result-sub">${saved > 0 ? `本轮 ${num(saved)} 分还摆在桌上。` : '本轮还没有分数可保。'}支付 ${barrel.type === 'loan' ? barrel.cost : 40} 银币，这一手可以重来一次；每关只能借一次。</p>
+      <p class="result-sub">${saved > 0 ? `本轮 ${num(saved)} 分还摆在桌上。` : '本轮还没有分数可保。'}支付 ${loanCost} 银币，这一手可以重来一次；每关只能借一次。</p>
       <div class="modal-actions" style="margin-top:22px">
         <button class="secondary-button" data-action="loan-decline">不借，认栽</button>
-        <button class="primary-button" data-action="loan-pay">借运 · 付 ${barrel.type === 'loan' ? barrel.cost : 40} 银币重投</button>
+        <button class="primary-button" data-action="loan-pay">借运 · 付 ${loanCost} 银币重投</button>
       </div>
     </div>
   `, { dismissible: false });

@@ -206,7 +206,7 @@ export function dieTooltip(dieId: string): string {
     ? (app.run.dice.find((die) => die.dieId === spec.id)?.probs
       ?? app.run.bag.find((entry) => entry.dieId === spec.id)?.probs)
     : undefined;
-  const probs = effectiveProbs(spec.id, barrel.id, override);
+  const probs = effectiveProbs(spec.id, barrel, override);
   const bars = probs.map((p, i) => {
     const height = Math.max(3, Math.round(p * 30));
     return `<div class="tip-prob"><i style="height:${height}px"></i><span>${i + 1}</span><em>${Math.round(p * 100)}%</em></div>`;
@@ -257,6 +257,7 @@ export function setTooltip(setId: string): string {
 }
 
 export function barrelTypeLabel(barrel: BarrelDef): string {
+  if (barrel.type === 'reforged') return '重铸';
   if (barrel.type === 'gesture') return '仪式';
   if (barrel.type === 'probability') return '概率';
   if (barrel.type === 'faceScore') return '点数加成';
@@ -270,8 +271,17 @@ export function barrelTypeLabel(barrel: BarrelDef): string {
 }
 
 export function barrelTooltip(barrelId: string): string {
-  const barrel = BARREL_BY_ID[barrelId];
+  const active = app.run ? getBarrel(app.run) : null;
+  const barrel = active && active.id === barrelId ? active : BARREL_BY_ID[barrelId];
   if (!barrel) return '';
+  if (barrel.type === 'reforged') {
+    return `
+      <h5>${h(barrel.name)}</h5>
+      <div class="tip-sub">${h(rarityOf(barrel).name)} · 重铸桶</div>
+      <p>两只骰桶熔在一起，效果同时生效：</p>
+      ${barrel.parts.map((part) => `<p class="tip-bonus">「${h(part.name)}」${h(part.desc)}</p>`).join('')}
+    `;
+  }
   return `
     <h5>${h(barrel.name)}</h5>
     <div class="tip-sub">${h(rarityOf(barrel).name)} · ${barrelTypeLabel(barrel)}骰桶</div>
@@ -279,7 +289,7 @@ export function barrelTooltip(barrelId: string): string {
     ${barrel.type === 'probability' ? `<p class="tip-bonus">偏向：${h(barrel.short)}</p>` : ''}
     ${barrel.type === 'faceScore' ? `<p class="tip-bonus">指定点数：${h(barrel.short)}</p>` : ''}
     ${barrel.type === 'wildScore' ? `<p class="tip-bonus">赖子加成：${h(barrel.short)}</p>` : ''}
-    ${['gild', 'forceOne', 'straightFix', 'extraDie', 'singlesBonus'].includes(barrel.type) ? `<p class="tip-bonus">${h(barrel.short)}</p>` : ''}
+    ${['gild', 'forceOne', 'straightFix', 'extraDie', 'singlesBonus', 'fuse', 'pawn', 'nightwatch', 'loan', 'rotation', 'twoFace'].includes(barrel.type) ? `<p class="tip-bonus">${h(barrel.short)}</p>` : ''}
     ${'gesture' in barrel && barrel.gesture ? '<p class="tip-bonus">完成仪式后，本次投掷获得加成。</p>' : ''}
   `;
 }

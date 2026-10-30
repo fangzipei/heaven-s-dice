@@ -7,4 +7,5 @@ export default {
   rarity: 'common', price: 50, charges: 0,
   desc: '每关胜利额外获得 15 银币，商店刷新费用 -20%。',
   flavor: '真正的财富不在钱袋里，而在别人看见你袖口时的表情里。',
+  levelCoins: 15, refreshDiscount: 0.2,
 } satisfies ItemDef;

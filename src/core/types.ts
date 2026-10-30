@@ -37,6 +37,7 @@ export type ScoreCondition =
   | { kind: 'wild' }
   | { kind: 'face'; face: number }
   | { kind: 'hasFace'; face: number }
+  | { kind: 'faceIn'; faces: number[] }
   | { kind: 'faceTriple'; face: number }
   | { kind: 'anyTriple' }
   | { kind: 'fiveAndSix' }
@@ -54,6 +55,13 @@ export type DieBonus =
   | { type: 'straightFlat'; value: number; label: string }
   /* Flat points whenever this die is part of the scoring selection. */
   | { type: 'flatScored'; value: number; label: string }
+  /* Flat points the first time this die scores in a level. */
+  | { type: 'flatScoredOnce'; value: number; label: string }
+  /* Flat points whenever this die sits unscored on the table. */
+  | { type: 'unselectedFlat'; value: number; label: string }
+  /* Counts as all-dice scored when it is the only die left unscored; the next
+     scoring hand then takes a percentage penalty. */
+  | { type: 'loneHot'; penalty: number; label: string }
   /* Percentage of the whole hand, added when this die is scored. */
   | { type: 'scorePercent'; percent: number; label: string; when?: ScoreCondition }
   /* Scores one extra share when this die is part of a 条子 (3+ identical). */
@@ -83,6 +91,8 @@ export interface DiceDef {
   bonus: DieBonus | null;
   price?: number;
   isStandard?: boolean;
+  /** Only one copy may ever be owned/offered when true. */
+  unique?: boolean;
 }
 
 export type ById<T> = Record<string, T | undefined>;
@@ -90,7 +100,7 @@ export type ById<T> = Record<string, T | undefined>;
 /** Shop stock is always priced: every `DICE` entry gets `price` at load. */
 export type PricedDie = DiceDef & { price: number };
 
-export type BarrelDef =
+export type BarrelVariant =
   | {
       id: string; name: string; rarity: RarityId; type: 'none'; art: string;
       price: number; bias: number[]; desc: string; short: string;
@@ -156,6 +166,21 @@ export type BarrelDef =
       price: number; cost: number; desc: string; short: string;
     };
 
+/** 重铸桶：由重铸器把两只骰桶熔在一起，两边效果同时生效。 */
+export interface MergedBarrelDef {
+  id: string;
+  name: string;
+  rarity: RarityId;
+  type: 'reforged';
+  art: string;
+  price: number;
+  parts: BarrelVariant[];
+  desc: string;
+  short: string;
+}
+
+export type BarrelDef = BarrelVariant | MergedBarrelDef;
+
 export type HandTag =
   | 'triple' | 'quad' | 'quint' | 'sext'
   | 'straight' | 'straight16' | 'oneOrFive';
@@ -183,6 +208,10 @@ export type ItemDef =
       bossOnly?: string;
       /** Passive hand-type multipliers, applied to the whole score. */
       scoreRule?: ItemScoreRule;
+      /** Coins added to every cleared level. */
+      levelCoins?: number;
+      /** Fraction knocked off every shop refresh cost (0.2 = -20%). */
+      refreshDiscount?: number;
     };
 
 export interface TableDef {
@@ -359,6 +388,12 @@ export interface RunFlags {
   stargazerRerollUsed?: boolean;
   /** 悬秤人：浮动分已经被一次计分并重投/结算锁定。 */
   floatingLocked?: boolean;
+  /** 衡心骰：本关的一次性 +1000 是否已经用掉。 */
+  balanceUsed?: boolean;
+  /** 独燃骰：触发“独骰全骰”后，下一手计分 -40%。 */
+  loneHotPenalty?: boolean;
+  /** 重铸器：下一次购买骰桶时与当前骰桶融合。 */
+  barrelReforgeArmed?: boolean;
 }
 
 export interface LogEntry {
@@ -435,6 +470,8 @@ export interface RunState {
   coins: number;
   bag: BagEntry[];
   barrelId: string;
+  /** 重铸桶的两只原始骰桶 id（barrelId 为 'reforged' 时生效）。 */
+  reforgedParts?: string[];
   ownedBarrels: string[];
   activeItems: string[];
   passiveItems: string[];

@@ -3,7 +3,7 @@
 // 从 app.js「Gesture minigame」一节原样搬出。画布与判定阈值被
 // tools/cup-trace-test.mjs 依赖；成功之后由 game.ts 的 renderGame 重画牌桌，
 // 所以这里 import 的是对局控制而不是组装层。
-import { applyGesture, getBarrel } from '../../core/engine.ts';
+import { applyGesture, barrelGesture, getBarrel } from '../../core/engine.ts';
 import { h } from '../../core/util.ts';
 import { sound } from '../../platform/sound.ts';
 import { closeOverlay, openOverlay } from '../components/overlay.ts';
@@ -18,7 +18,7 @@ import { app } from '../state.ts';
 export function openGesture(): void {
   if (!app.run || app.busy) return;
   const barrel = getBarrel(app.run);
-  const gesture = barrel.type === 'gesture' ? barrel.gesture : null;
+  const gesture = barrelGesture(barrel);
   if (!gesture) return;
   if (app.run.flags.gestureUsedThisThrow) { showToast('本次投掷已经完成过仪式。'); return; }
   if (gesture === 'pentagram' && app.run.flags.starUsed) { showToast('五芒星每关只能生效一次。'); return; }
