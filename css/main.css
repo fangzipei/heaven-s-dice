@@ -2547,3 +2547,11 @@ body.rail-collapsed .cup-zone { right: 4.2% !important; }
 .hint-score-button:hover { color: #ffe0a0; border-color: rgba(255,220,150,.7); }
 .hint-score-button svg { width: 14px; height: 14px; }
 @media (max-width: 760px) { .hint-score-button { font-size: 10px; min-height: 34px; padding: 0 9px; } }
+
+/* 顺遂桶补顺时的短暂金色仪式特效 */
+#barrel-fx.guide-fix-fx { position: fixed; z-index: 75; width: 0; height: 0; pointer-events: none; color: #f0d18d; }
+.guide-fix-fx i { position: absolute; left: 50%; top: 50%; width: 148px; height: 148px; border: 1.5px solid rgba(255,220,145,.85); border-radius: 50%; transform: translate(-50%,-50%) scale(.2); animation: guide-fix-ring .9s cubic-bezier(.18,.8,.2,1) forwards; box-shadow: 0 0 28px rgba(255,206,110,.35), inset 0 0 24px rgba(255,206,110,.15); }
+.guide-fix-fx b { position: absolute; left: 50%; top: 50%; transform: translate(-50%,-50%); font-family: var(--serif); font-size: 24px; font-weight: 400; letter-spacing: .18em; color: #ffe2a0; text-shadow: 0 0 18px rgba(255,196,86,.8), 0 2px 8px rgba(0,0,0,.8); animation: guide-fix-copy .9s ease-out forwards; }
+.guide-fix-fx small { position: absolute; left: 50%; top: calc(50% + 30px); transform: translateX(-50%); white-space: nowrap; font-size: 10px; letter-spacing: .16em; color: #e7c98c; text-shadow: 0 1px 6px #000; animation: guide-fix-copy .9s ease-out forwards; }
+@keyframes guide-fix-ring { 0% { opacity: 0; transform: translate(-50%,-50%) scale(.2); } 24% { opacity: 1; } 100% { opacity: 0; transform: translate(-50%,-50%) scale(1.18); } }
+@keyframes guide-fix-copy { 0% { opacity: 0; } 20% { opacity: 1; } 72% { opacity: 1; } 100% { opacity: 0; } }

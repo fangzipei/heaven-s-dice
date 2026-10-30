@@ -30,6 +30,9 @@ import { app } from '../state.ts';
 
 export function openShopScreen(): void {
   closeOverlay();
+  // A restored or grant-opened shop can render before the engine phase has
+  // caught up. Keep the shop authority in sync with the visible screen.
+  if (app.run?.shop) app.run.phase = 'shop';
   app.shopOpen = true;
   let screen = $('.shop-screen');
   if (screen) screen.remove();
@@ -283,6 +286,7 @@ export function buyBarrel(index: number): void {
 
 export function buyItem(index: number): void {
   if (!app.run) return;
+  if (app.run.shop) app.run.phase = 'shop';
   const result = engineBuyItem(app.run, index);
   if (!result.ok) { showToast(result.error!, 'error'); return; }
   recordShop(app.run, { action: 'buy', kind: 'item', id: result.item!.id, name: result.item!.name, price: result.price });

@@ -131,7 +131,7 @@ export type BarrelVariant =
     }
   | {
       id: string; name: string; rarity: RarityId; type: 'straightFix'; art: string;
-      price: number; desc: string; short: string;
+      price: number; chance: number; desc: string; short: string;
     }
   | {
       id: string; name: string; rarity: RarityId; type: 'extraDie'; art: string;
@@ -388,6 +388,8 @@ export interface RunFlags {
   stargazerRerollUsed?: boolean;
   /** 悬秤人：浮动分已经被一次计分并重投/结算锁定。 */
   floatingLocked?: boolean;
+  /** 顺遂桶：本次投掷成功补成顺子，供 UI 播放特效。 */
+  guideTriggered?: boolean;
   /** 衡心骰：本关的一次性 +1000 是否已经用掉。 */
   balanceUsed?: boolean;
   /** 独燃骰：触发“独骰全骰”后，下一手计分 -40%。 */

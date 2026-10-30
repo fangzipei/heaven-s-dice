@@ -3,10 +3,6 @@
 // 新增一项 = 建一个 <id>.ts，再在下方数组里按想要的顺序插一行；
 // tests/unit/content-registry.test.mjs 会抓住漏注册的文件。
 import lucky_coin from './lucky_coin.ts';
-import ash_pouch from './ash_pouch.ts';
-import tin_cuff from './tin_cuff.ts';
-import whetstone from './whetstone.ts';
-import side_bet from './side_bet.ts';
 import barrel_reforger from './barrel_reforger.ts';
 import hunter_mark from './hunter_mark.ts';
 import glove from './glove.ts';
@@ -54,7 +50,6 @@ import type { ItemDef } from '../../core/types.ts';
 export const ITEM_DEFS: ItemDef[] = [
   // ── 主动物品 · 每关恢复一次 ────────────────────────────────────────────
   lucky_coin,
-  ash_pouch,
   hunter_mark,
   glove,
   smoke,
@@ -67,14 +62,11 @@ export const ITEM_DEFS: ItemDef[] = [
   wager,
   powder,
   salt,
-  whetstone,
   boss_ward,
   epic_chest,
   rare_pair,
   // ── 被动物品 · 永久生效 ────────────────────────────────────────────────
   gold_cuff,
-  tin_cuff,
-  side_bet,
   barrel_reforger,
   shelf_barrel,
   dice_bag,

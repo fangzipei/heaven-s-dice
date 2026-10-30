@@ -153,6 +153,10 @@ export const DIE_SKINS: Record<string, DieSkin> = {
     'rgba(246,238,254,.6)', 'rgba(208,182,250,.66)', 'comet', grain.night('58,44,88'), 'rgba(208,182,250,.54)'),
   chain_note: S(ramp('#efe4c8', '#d3bd91 42%', '#a48658 72%', '#695334'), '#211608', '#8a6d42',
     'rgba(255,245,218,.6)', 'rgba(238,202,126,.66)', 'scales', grain.bone('84,64,34'), 'rgba(238,202,126,.5)'),
+  scavenger: S(ramp('#e9dcc1', '#cdb68c 42%', '#a08458 72%', '#6d5636'), '#1e1608', '#806944',
+    'rgba(248,238,214,.58)', 'rgba(216,184,126,.58)', 'coin', grain.bone('86,66,38'), 'rgba(216,184,126,.48)'),
+  aftershock: S(ramp('#e4daf0', '#bdaed8 42%', '#8d7aae 72%', '#5c4c77'), '#140f20', '#756496',
+    'rgba(246,238,254,.6)', 'rgba(206,180,246,.66)', 'comet', grain.night('54,42,84'), 'rgba(206,180,246,.54)'),
   ace: S(ramp('#6a5a52', '#3d2f2b 44%', '#241a18 72%', '#120c0b'), '#f6d8c8', '#9c6d5c',
     'rgba(250,216,196,.62)', 'rgba(255,142,112,.7)', 'skull', grain.ember('56,22,16'), 'rgba(255,132,96,.55)'),
   jack: S(ramp('#f4e8c6', '#e0c98c 36%', '#b89a4c 64%', '#886d26'), '#1c1404', '#9d8038',
@@ -244,6 +248,7 @@ export const DIE_FAMILY: Record<string, GrainId> = {
   ace: 'ember', jack: 'metal',
   balance: 'metal', cliff: 'bone', refrain: 'night', shifting: 'night',
   merchant: 'metal', gilded_trace: 'metal', last_road: 'bone', shadow: 'night',
+  scavenger: 'bone', aftershock: 'night',
   neighbor: 'scale', bias_one: 'bone', bias_two: 'bone', bias_three: 'bone',
   bias_four: 'metal', bias_five: 'bone', bias_six: 'metal',
 };

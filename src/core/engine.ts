@@ -305,6 +305,7 @@ function resetLevelFlags(state: RunState) {
     floatingBustPending: false,
     stargazerRerollUsed: false,
     floatingLocked: false,
+    guideTriggered: false,
     barrelReforgeArmed: reforgeArmed,
   };
 }
@@ -745,7 +746,7 @@ export function buildScore(state: RunState, action = 'reroll'): BuildScoreResult
     } else if (bonus.type === 'shopRerollMultiplier') {
       const entry = state.bag.find((item) => item.uid === die.bagUid);
       const stacks = entry?.shopRerolls || 0;
-      const value = 1.6 + stacks * bonus.value;
+      const value = 1 + 0.6 + stacks * bonus.value;
       multiplier *= value;
       multipliers.push({ label: `${spec.name} · ${bonus.label}`, value });
     }
@@ -768,16 +769,20 @@ export function buildScore(state: RunState, action = 'reroll'): BuildScoreResult
   if (stargazerCount >= 2) {
     const distinct = new Set(selected.filter((die) => !die.blank).map((die) => die.value)).size;
     if (distinct >= 2) {
-      flatAdd += 200;
-      flats.push({ label: '星轨 2 件 · 两种点数', value: 200 });
+      flatAdd += 350;
+      flats.push({ label: '星轨 2 件 · 两种点数', value: 350 });
     }
   }
-  if (demonCount >= 4 && wildDice > 0) {
-    multiplier *= 1.20;
-    multipliers.push({ label: '恶魔 4 件 · 群魔', value: 1.20 });
-  } else if (demonCount >= 2 && wildDice > 0) {
+  if (stargazerCount >= 4) {
     multiplier *= 1.10;
-    multipliers.push({ label: '恶魔 2 件 · 契约', value: 1.10 });
+    multipliers.push({ label: '星轨 4 件 · 星盘', value: 1.10 });
+  }
+  if (demonCount >= 4 && wildDice > 0) {
+    multiplier *= 1.35;
+    multipliers.push({ label: '恶魔 4 件 · 群魔', value: 1.35 });
+  } else if (demonCount >= 2 && wildDice > 0) {
+    multiplier *= 1.18;
+    multipliers.push({ label: '恶魔 2 件 · 契约', value: 1.18 });
   }
 
   // Barrels pay for what was actually scored: the wolf cup pays for 3s, the
@@ -1419,6 +1424,7 @@ function applyBarrelRollEffects(
   barrel: BarrelDef,
   rng: () => number,
 ): void {
+  state.flags.guideTriggered = false;
   if (!rolled.length) return;
   for (const part of barrelParts(barrel)) {
     if (part.type === 'forceOne' && rng() < part.chance) {
@@ -1432,11 +1438,12 @@ function applyBarrelRollEffects(
       die.gilded = true;
       pushLog(state, `${part.name}：一颗骰子染上金痕；它计分时挂 ${part.coin} 银币，锁分后入账。`, 'roll');
     }
-    if (part.type === 'straightFix') {
+    if (part.type === 'straightFix' && rng() < part.chance) {
       const fix = completeStraight(rolled, rng);
       if (fix) {
         fix.die.value = fix.face;
         fix.die.wild = false;
+        state.flags.guideTriggered = true;
         pushLog(state, `${part.name}：一颗骰子转到 ${fix.face} 点，补成顺子。`, 'roll');
       }
     }

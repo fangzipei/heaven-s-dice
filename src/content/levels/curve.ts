@@ -21,8 +21,8 @@ function buildNoBossTargets(): number[] {
     else if (level <= 7) value *= 1.15;
     else if (level <= 10) value *= 1.15;
     else if (level <= 15) value *= 1.12;
-    else value *= 1.11;
-    targets.push(level > 10 ? value * 0.88 : value);
+    else value *= 1.13;
+    targets.push(value);
   }
   return targets;
 }
@@ -55,7 +55,8 @@ export function buildLevelTable(bosses: BossDef[] = BOSSES, curve: LevelCurveDef
     const boss = at.get(level) || null;
     const scale = boss?.curve || { target: 1, reward: 1 };
     const roundedCurveTarget = roundTo(baseTarget, curve.targetStep);
-    const scaledTarget = roundTo(baseTarget * (scale.target ?? 1), curve.targetStep);
+    const lateBossScale = boss && level > 7 && level < 25 ? 1.1 : 1;
+    const scaledTarget = roundTo(baseTarget * (scale.target ?? 1) * lateBossScale, curve.targetStep);
     const row: LevelRow = {
       level,
       target: scaledTarget,

@@ -11,9 +11,9 @@ const countBy = (list, key) => list.reduce((counts, entry) => {
   return counts;
 }, {});
 
-test('dice roster: four 4-piece sets + 20 free agents, rarity 11/10/9/6', () => {
+test('dice roster: four 4-piece sets + 20 free agents, rarity 11/10/10/5', () => {
   expect(DICE.length).toBe(36);
-  expect(countBy(DICE, 'rarity')).toEqual({ common: 11, rare: 10, epic: 9, legendary: 6 });
+  expect(countBy(DICE, 'rarity')).toEqual({ common: 11, rare: 10, epic: 10, legendary: 5 });
   expect(Object.keys(DICE_SETS)).toEqual(['wolf', 'demon', 'stargazer', 'caravan']);
   for (const set of Object.values(DICE_SETS)) {
     expect(DICE.filter((die) => die.setId === set.id).length).toBe(4);
@@ -86,18 +86,18 @@ test('shop rarity weights open up across four level bands, legendary capped at 1
   }
 });
 
-test('item mix: 47 items, 17 active / 30 passive, 12 one-shot consumables', () => {
-  expect(ITEMS.length).toBe(47);
-  expect(countBy(ITEMS, 'type')).toEqual({ active: 17, passive: 30 });
+test('item mix: 43 items, 15 active / 28 passive, 10 one-shot consumables', () => {
+  expect(ITEMS.length).toBe(43);
+  expect(countBy(ITEMS, 'type')).toEqual({ active: 15, passive: 28 });
   expect(ITEMS.filter((item) => item.consumable).map((item) => item.id).sort()).toEqual([
-    'ash_pouch', 'boss_ward', 'courage', 'devil_reset', 'epic_chest', 'glove', 'hunter_mark',
+    'boss_ward', 'courage', 'devil_reset', 'epic_chest', 'glove', 'hunter_mark',
     'lucky_coin', 'powder', 'rare_pair', 'salt', 'wager',
   ]);
   for (const item of ITEMS.filter((entry) => entry.consumable)) {
     expect(item.type).toBe('active');
   }
   const scoreItems = ITEMS.filter((item) => item.scoreRule);
-  expect(scoreItems.length).toBe(8);
+  expect(scoreItems.length).toBe(7);
   for (const item of scoreItems) {
     expect(item.type).toBe('passive');
     expect(item.scoreRule.multiplier > 1).toBeTruthy();
@@ -121,7 +121,7 @@ test('every non-final boss has a legendary drop-only relic', () => {
 
 test('shop prices sit in the 32–444 band', () => {
   const prices = ITEMS.filter((item) => !item.bossOnly).map((item) => item.price);
-  expect(Math.min(...prices)).toBe(32);
+  expect(Math.min(...prices)).toBe(35);
   expect(Math.max(...prices)).toBe(444);
   // 时间沙漏 is epic now and must out-price the rare tier.
   const hourglass = ITEMS.find((item) => item.id === 'hourglass');
@@ -145,13 +145,13 @@ test('three shelf passives each open one extra shop slot', () => {
 });
 
 test('barrel composition: starter + probability + score + interaction + gesture', () => {
-  expect(BARRELS.length).toBe(23);
-  expect(BARRELS.filter((barrel) => barrel.type === 'probability').length).toBe(4);
+  expect(BARRELS.length).toBe(19);
+  expect(BARRELS.filter((barrel) => barrel.type === 'probability').length).toBe(3);
   expect(BARRELS.filter((barrel) => barrel.type === 'gesture').length).toBe(2);
   expect(BARRELS.filter((barrel) => barrel.type === 'none').length).toBe(1);
   const face = BARRELS.filter((b) => b.type === 'faceScore');
   const wild = BARRELS.filter((b) => b.type === 'wildScore');
-  expect(face.length).toBe(2);
+  expect(face.length).toBe(1);
   expect(wild.length).toBe(1);
   for (const barrel of face) {
     expect(barrel.face >= 1 && barrel.face <= 6).toBeTruthy();
@@ -161,8 +161,8 @@ test('barrel composition: starter + probability + score + interaction + gesture'
   for (const type of ['gild', 'straightFix', 'singlesBonus', 'pawn', 'nightwatch', 'fuse', 'rotation', 'twoFace', 'loan']) {
     expect(BARRELS.filter((barrel) => barrel.type === type).length, type).toBe(1);
   }
-  expect(BARRELS.filter((barrel) => barrel.type === 'forceOne').length).toBe(2);
-  expect(BARRELS.filter((barrel) => barrel.type === 'extraDie').length).toBe(2);
+  expect(BARRELS.filter((barrel) => barrel.type === 'forceOne').length).toBe(1);
+  expect(BARRELS.filter((barrel) => barrel.type === 'extraDie').length).toBe(1);
 });
 
 test('25 levels with seven dealers at 3/7/11/15/20/24/25', () => {
@@ -224,8 +224,8 @@ test('the level table uses the no-boss curve, then boss coefficients', () => {
   expect(buildLevelTable()).toEqual(LEVELS);
   expect(LEVELS[0].target).toBe(LEVEL_CURVE.targetBase);
   expect(LEVELS[1].target).toBe(LEVEL_CURVE.nonBossTargets[1]);
-  expect(LEVELS[23].target).toBe(20850);
-  expect(LEVELS[24].target).toBe(88000);
+  expect(LEVELS[23].target).toBe(30060);
+  expect(LEVELS[24].target).toBe(100000);
   expect(LEVELS[0].reward).toBe(LEVEL_CURVE.rewardBase);
   for (const level of LEVELS) {
     const boss = BOSSES.find((entry) => entry.level === level.level);
@@ -236,7 +236,7 @@ test('the level table uses the no-boss curve, then boss coefficients', () => {
     }
     expect(level.reward > level.curve.reward).toBeTruthy();
     const idealReward = level.curve.reward * boss.curve.reward;
-    const idealTarget = level.curve.target * boss.curve.target;
+    const idealTarget = level.curve.target * boss.curve.target * (level.level > 7 && level.level < 25 ? 1.1 : 1);
     expect(Math.abs(level.reward - idealReward) <= LEVEL_CURVE.rewardStep * 2).toBeTruthy();
     expect(Math.abs(level.target - idealTarget) <= LEVEL_CURVE.targetStep).toBeTruthy();
   }

@@ -725,6 +725,7 @@ function showCoinGainNotice(): void {
 
 function leaveShop(): void {
   if (!app.run) return;
+  if (app.run.shop) app.run.phase = 'shop';
   const next = app.run.level + 1;
   recordShop(app.run, { action: 'leave' });
   endLevelRecord(app.run);

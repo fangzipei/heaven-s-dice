@@ -765,7 +765,7 @@ footer code{color:#93836b;font-family:Consolas,monospace;font-size:9.5px}
     </div>
     <div class="market-card">
       <h4>关卡目标与基础奖励（★ 庄家关）</h4>
-      <p style="color:#8d7e66;font-size:10px;line-height:1.7;margin:0 0 8px">无庄家目标：第 1 关 500，第 2 关 1000；2–7 关每关 +15%；第 8 关在 7 关基础上 +500，8–15 关每关 +15%；第 16 关在 15 关基础上 +1000，16–24 关每关 +12%，11 关后整体再 ×0.88；第 25 关撒旦固定 88000。Boss 只把自己那一行的“无 Boss 目标”乘上目标系数，不会抬高下一关。赏金 = ${LEVEL_CURVE.rewardBase} × ${LEVEL_CURVE.rewardGrowth}<sup>关-1</sup> × Boss 赏金系数。</p>
+      <p style="color:#8d7e66;font-size:10px;line-height:1.7;margin:0 0 8px">无庄家目标：第 1 关 500，第 2 关 1000；2–7 关每关 +15%；第 8 关在 7 关基础上 +500，8–15 关每关 +15%；第 16 关在 15 关基础上 +1000，16–24 关每关 +13%；第 24 关约 30060，第 25 关撒旦固定 100000；7 关后的普通庄家目标额外 +10%，撒旦不受影响。Boss 只把自己那一行的“无 Boss 目标”乘上目标系数，不会抬高下一关。赏金 = ${LEVEL_CURVE.rewardBase} × ${LEVEL_CURVE.rewardGrowth}<sup>关-1</sup> × Boss 赏金系数。</p>
       <div class="ov-wrap"><table><thead><tr><th>关</th><th>无 Boss 目标</th><th>实际目标</th><th>基础赏金</th><th>Boss / 类型</th></tr></thead><tbody>${levelTable}</tbody></table></div>
       <div class="m-line" style="margin-top:10px"><span>庄家</span><b>${BOSS_CATALOG.length} 位</b></div>
       <div class="m-line"><span>悬赏系数</span><b>×${Math.min(...BOSS_CATALOG.map((b) => b.curve.reward)).toFixed(2)} – ×${Math.max(...BOSS_CATALOG.map((b) => b.curve.reward)).toFixed(2)}</b></div>

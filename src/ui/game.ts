@@ -503,6 +503,10 @@ async function performCupRoll({ free = false, prepared = false, from = null }: {
       return;
     }
     guideEvent('roll', run);
+    if (run.flags.guideTriggered) {
+      run.flags.guideTriggered = false;
+      showGuideFixFx();
+    }
     if (activeBoss(run)?.effectKey === 'banTypeEachThrow' && run.flags.bossBannedType) {
       showToast(`路西法封禁「${handTypeName(run.flags.bossBannedType)}」：本投该骰型不计分。`, 'error');
     }
@@ -878,6 +882,22 @@ let longScoreValue = 0;
 
 function scoreFloatHtml(total: number, tier: (typeof FIRE_TIERS)[number] | undefined, hotMultiplier = 1): string {
   return `${tier ? scoreFireHtml(tier.flames) : ''}+${num(total)}<small>SCORE</small>${hotMultiplier > 1 ? `<em class="float-chain">全骰连击 ×${hotMultiplier.toFixed(2)}</em>` : ''}`;
+}
+
+function showGuideFixFx(): void {
+  const cup = $('#cup');
+  const rect = cup?.getBoundingClientRect();
+  const x = rect ? rect.left + rect.width / 2 : window.innerWidth / 2;
+  const y = rect ? rect.top + rect.height / 2 : window.innerHeight / 2;
+  const fx = document.createElement('div');
+  fx.id = 'barrel-fx';
+  fx.className = 'guide-fix-fx';
+  fx.style.left = `${x}px`;
+  fx.style.top = `${y}px`;
+  fx.innerHTML = '<i></i><b>顺遂</b><small>补成顺子</small>';
+  document.body.append(fx);
+  sound.tone(760, .12, 'sine', .025);
+  window.setTimeout(() => fx.remove(), 950);
 }
 
 function showScoreFloat(total: number, rect: DOMRect | null | undefined, hotMultiplier = 1) {

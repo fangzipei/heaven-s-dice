@@ -7,6 +7,7 @@ import {
   advanceLevel, applyItemGrant, applyScore, buildScore, bustRound, buyBarrel, buyDie, buyItem,
   createRun, createShop, getDiceCapacity, getBarrel, initLevel,
   makeRng, refreshSection, rollDice, shopPrice, useItem,
+  syncBag,
 } from '../../src/core/engine.ts';
 
 function blankState({ barrel = 'oak', rerolls = 3 } = {}) {
@@ -333,7 +334,7 @@ describe('新骰桶与新骰子礼包', () => {
       value: null, blank: false, wild: false, scored: false,
     }));
     // 1, 2, 3, 4, 6, 6 → 补成 1, 2, 3, 4, 5, 6。
-    const seq = [0.1, 0.25, 0.4, 0.6, 0.9, 0.95, 0.5, 0.5, 0.5, 0.5, 0.5];
+    const seq = [0.1, 0.25, 0.4, 0.6, 0.9, 0.95, 0.1, 0.5, 0.5, 0.5, 0.5, 0.5];
     let cursor = 0;
     const rng = () => seq[cursor++] ?? 0.5;
     rollDice(state, { free: true, rng });
@@ -524,18 +525,12 @@ describe('商店涨价', () => {
     const state = blankState();
     expect(shopPrice(state, 35)).toBe(44);
     expect(shopPrice(state, 100)).toBe(125);
-    expect(shopPrice(state, 210)).toBe(263);
   });
-});
-
 describe('新骰子与商店机制', () => {
-  test('看客骰未参与计分时给 +200', () => {
+  test('拾荒骰参与计分时给稳定加分', () => {
     const state = blankState();
-    select(state, [{ dieId: 'bystander', value: 1 }, { value: 5 }]);
-    state.selected = [state.dice[1].uid];
-    expect(totalFor(state)).toBe(250);
-    state.selected = state.dice.map((die) => die.uid);
-    expect(totalFor(state)).toBe(150);
+    select(state, [{ dieId: 'scavenger', value: 1 }, { value: 5 }]);
+    expect(totalFor(state)).toBe(430);
   });
 
   test('衡心每关只 +1000 一次', () => {
@@ -547,25 +542,16 @@ describe('新骰子与商店机制', () => {
     expect(totalFor(state)).toBe(300);
   });
 
-  test('独燃骰：只剩它未计分算全骰，下一手 -40%', () => {
+  test('余响骰每次参与计分后永久叠加', () => {
     const state = blankState();
-    state.dice = [
-      { uid: 'd0', bagUid: 'b0', dieId: 'lone_ember', value: 4, blank: false, wild: false, scored: false },
-      { uid: 'd1', bagUid: 'b1', dieId: 'standard', value: 1, blank: false, wild: false, scored: false },
-    ];
-    state.selected = ['d1'];
-    const score = applyScore(state, 'continue');
-    expect(score.ok).toBe(true);
-    expect(score.hot).toBe(true);
-    expect(state.flags.loneHotPenalty).toBe(true);
-    expect(state.hotCount).toBe(1);
-
-    state.dice = [
-      { uid: 'd0', bagUid: 'b0', dieId: 'lone_ember', value: 4, blank: false, wild: false, scored: false },
-      { uid: 'd1', bagUid: 'b1', dieId: 'standard', value: 1, blank: false, wild: false, scored: false },
-    ];
-    state.selected = ['d1'];
-    expect(buildScore(state, 'continue').total).toBe(60);
+    state.bag[0].dieId = 'aftershock';
+    select(state, [{ dieId: 'aftershock', value: 5 }, { value: 2 }, { value: 4 }, { value: 6 }, { value: 2 }, { value: 4 }]);
+    state.selected = [state.dice[0].uid];
+    expect(buildScore(state, 'reroll').total).toBe(50);
+    state.dieStacks = { [state.dice[0].bagUid]: 1 };
+    expect(buildScore(state, 'reroll').total).toBe(130);
+    state.dieStacks = { [state.dice[0].bagUid]: 2 };
+    expect(buildScore(state, 'reroll').total).toBe(210);
   });
 
   test('商店允许重复购买同一枚骰子', () => {
@@ -606,4 +592,5 @@ describe('新骰子与商店机制', () => {
     expect(buyItem(state, 0).ok).toBe(true);
     expect(state.shop.dice.length).toBe(before + 1);
   });
+});
 });

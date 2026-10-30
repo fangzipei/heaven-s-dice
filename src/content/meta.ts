@@ -41,16 +41,16 @@ export const DICE_SETS: Record<'wolf' | 'demon' | 'stargazer' | 'caravan', DiceS
     id: 'demon', name: '恶魔', icon: 'demon', color: '#c05a6a',
     motto: '它不掷点数，它借用别人的点数。',
     bonuses: [
-      { pieces: 2, key: 'demonPact', text: '计分使用了恶魔赖子时，本次计分 ×1.10。' },
-      { pieces: 4, key: 'demonLegion', text: '恶魔赖子参与计分时，本次计分 ×1.20（替代 2 件）。' },
+      { pieces: 2, key: 'demonPact', text: '计分使用了恶魔赖子时，本次计分 ×1.18。' },
+      { pieces: 4, key: 'demonLegion', text: '恶魔赖子参与计分时，本次计分 ×1.35（替代 2 件）。' },
     ],
   },
   stargazer: {
     id: 'stargazer', name: '星轨', icon: 'star', color: '#7fa9c9',
     motto: '不同的点数连成一条线，星盘才会转动。',
     bonuses: [
-      { pieces: 2, key: 'starFaces', text: '计分含 2 种及以上不同点数时，本手 +200。' },
-      { pieces: 4, key: 'starReroll', text: '每关第一次重投免费。' },
+      { pieces: 2, key: 'starFaces', text: '计分含 2 种及以上不同点数时，本手 +350。' },
+      { pieces: 4, key: 'starReroll', text: '每关第一次重投免费，且本次计分 ×1.10。' },
     ],
   },
   caravan: {

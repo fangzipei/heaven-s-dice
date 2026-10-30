@@ -3,7 +3,7 @@ import type { BarrelDef } from '../../core/types.ts';
 
 export default {
   id: 'guide', name: '顺遂桶', rarity: 'legendary', type: 'straightFix',
-  art: 'guide', price: 330,
-  desc: '若本次摇出的骰型只差一颗就能组成顺子，桶会转动其中一颗骰子，补成顺子。',
-  short: '差一颗成顺时自动补顺',
+  art: 'guide', price: 330, chance: 0.35,
+  desc: '每次摇动有 35% 概率，把一颗骰子转到缺少的点数上，补成顺子。',
+  short: '35% 概率自动补顺',
 } satisfies BarrelDef;

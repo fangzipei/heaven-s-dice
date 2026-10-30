@@ -537,8 +537,8 @@ test('demon set bonus multiplies only when a joker is used', () => {
   state.dice[0].wild = true;
   state.selected = state.dice.slice(0, 3).map((d) => d.uid);
   const score = buildScore(state, 'reroll');
-  expect(score.breakdown.multipliers.some((m) => m.value === 1.10)).toBeTruthy();
-  expect(score.total).toBe(Math.round(1000 * 1.10));
+  expect(score.breakdown.multipliers.some((m) => m.value === 1.18)).toBeTruthy();
+  expect(score.total).toBe(Math.round(1000 * 1.18));
 });
 
 test('the glove turns a demon die into a joker', () => {
@@ -1381,7 +1381,7 @@ test('stargazer and caravan sets unlock their unique mechanics', () => {
   forceRoll(star, [1, 2, 3, 4, 5, 6]);
   star.selected = star.dice.slice(0, 5).map((die) => die.uid);
   expect(buildScore(star, 'reroll').breakdown.flats.some(
-    (flat) => flat.label === '星轨 2 件 · 两种点数' && flat.value === 200,
+    (flat) => flat.label === '星轨 2 件 · 两种点数' && flat.value === 350,
   )).toBe(true);
 
   const caravan = fresh();
@@ -1431,7 +1431,7 @@ test('glove can rescue a dead throw and reopens scoring', () => {
   expect(state.phase).toBe('selecting');
 });
 
-test('chain-note die adds +100 after the first successful score', () => {
+test('chain-note die adds +60 after the first successful score', () => {
   const state = fresh();
   state.bag[0].dieId = 'chain_note';
   syncBag(state);
@@ -1440,9 +1440,9 @@ test('chain-note die adds +100 after the first successful score', () => {
   state.selected = [state.dice[0].uid];
   expect(buildScore(state, 'reroll').total).toBe(50);
   state.dieStacks = { [state.dice[0].bagUid]: 1 };
-  expect(buildScore(state, 'reroll').total).toBe(150);
+  expect(buildScore(state, 'reroll').total).toBe(110);
   state.dieStacks = { [state.dice[0].bagUid]: 2 };
-  expect(buildScore(state, 'reroll').total).toBe(250);
+  expect(buildScore(state, 'reroll').total).toBe(170);
 });
 
 test('satan is the fixed final boss with 100000 target and +2 rerolls', () => {
@@ -1450,7 +1450,7 @@ test('satan is the fixed final boss with 100000 target and +2 rerolls', () => {
   state.level = 25;
   initLevel(state);
   expect(activeBoss(state)?.id).toBe('satan');
-  expect(state.target).toBe(88000);
+  expect(state.target).toBe(100000);
   expect(state.rerolls).toBe(BASE_REROLLS + 2);
 });
 

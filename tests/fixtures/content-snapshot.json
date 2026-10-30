@@ -63,12 +63,12 @@
         {
           "pieces": 2,
           "key": "demonPact",
-          "text": "计分使用了恶魔赖子时，本次计分 ×1.10。"
+          "text": "计分使用了恶魔赖子时，本次计分 ×1.18。"
         },
         {
           "pieces": 4,
           "key": "demonLegion",
-          "text": "恶魔赖子参与计分时，本次计分 ×1.20（替代 2 件）。"
+          "text": "恶魔赖子参与计分时，本次计分 ×1.35（替代 2 件）。"
         }
       ]
     },
@@ -82,12 +82,12 @@
         {
           "pieces": 2,
           "key": "starFaces",
-          "text": "计分含 2 种及以上不同点数时，本手 +200。"
+          "text": "计分含 2 种及以上不同点数时，本手 +350。"
         },
         {
           "pieces": 4,
           "key": "starReroll",
-          "text": "每关第一次重投免费。"
+          "text": "每关第一次重投免费，且本次计分 ×1.10。"
         }
       ]
     },
@@ -609,11 +609,11 @@
         0.16666666666666666
       ],
       "flavor": "它记得每一次讨价还价，也记得每一次你忍不住重随。",
-      "desc": "六面均衡；初始计分 ×1.60，每间商店最多一次重随后永久再 +15%。",
+      "desc": "六面均衡；初始额外 +0.6 倍分数（+60%），每间商店最多一次重随后永久再 +15%。",
       "bonus": {
         "type": "shopRerollMultiplier",
         "value": 0.15,
-        "label": "商旅：初始 +60%，每次商店重随再 +15%"
+        "label": "商旅：初始 +0.6 倍（+60%），每次商店重随再 +15%"
       },
       "price": 130
     },
@@ -718,17 +718,17 @@
         0.16666666666666666
       ],
       "flavor": "账房先生说，第一笔只是开场，第二笔才算利息。",
-      "desc": "六面均衡；此骰每成功参与一次计分，之后每一手计分都永久 +100（可叠加）。",
+      "desc": "六面均衡；此骰每成功参与一次计分，之后每一手计分都永久 +60（可叠加）。",
       "bonus": {
         "type": "afterScoreFlat",
-        "value": 100,
-        "label": "连记：每次成功计分后，之后每一手 +100"
+        "value": 60,
+        "label": "连记：每次成功计分后，之后每一手 +60"
       },
       "price": 150
     },
     {
-      "id": "bystander",
-      "name": "看客骰",
+      "id": "scavenger",
+      "name": "拾荒骰",
       "setId": null,
       "rarity": "common",
       "probs": [
@@ -739,36 +739,36 @@
         0.16666666666666666,
         0.16666666666666666
       ],
-      "flavor": "它从不抢戏，只在别人算账的时候轻轻敲一下桌沿。",
-      "desc": "六面均衡；它没有被包含进本次计分时，本手 +200 分。",
+      "flavor": "别人算完账离开后，它把桌缝里的零钱一枚枚捡起来。",
+      "desc": "六面均衡；此骰参与计分时额外 +280 分。",
       "bonus": {
-        "type": "unselectedFlat",
-        "value": 200,
-        "label": "看客：未被计分时，本手 +200"
+        "type": "flatScored",
+        "value": 280,
+        "label": "拾荒：此骰计分 +280"
       },
       "price": 35
     },
     {
-      "id": "lone_ember",
-      "name": "独燃骰",
+      "id": "aftershock",
+      "name": "余响骰",
       "setId": null,
-      "rarity": "legendary",
+      "rarity": "epic",
       "probs": [
-        0.1,
-        0.1,
-        0.1,
-        0.5,
-        0.1,
-        0.1
+        0.16666666666666666,
+        0.16666666666666666,
+        0.16666666666666666,
+        0.16666666666666666,
+        0.16666666666666666,
+        0.16666666666666666
       ],
-      "flavor": "火种只在最后一颗骰子上亮着；它烧完的那一瞬，桌面会当作整桌都算过了。",
-      "desc": "4 点概率 50%；当它是唯一一颗未计分的骰子时，本次计分算作全骰。触发后，下一手计分 -40%。",
+      "flavor": "骰子已经停了，桌面还在震；第二次响声比第一次更久。",
+      "desc": "六面均衡；此骰每成功参与一次计分，之后每一手计分都永久 +80（可叠加）。",
       "bonus": {
-        "type": "loneHot",
-        "penalty": 40,
-        "label": "独燃：只剩它未计分时算作全骰，下一手 -40%"
+        "type": "afterScoreFlat",
+        "value": 80,
+        "label": "余响：每次成功计分后，之后每一手 +80"
       },
-      "price": 210
+      "price": 130
     },
     {
       "id": "bias_one",
@@ -947,35 +947,6 @@
       "short": "没有额外效果"
     },
     {
-      "id": "cracked",
-      "name": "裂口桶",
-      "rarity": "common",
-      "type": "forceOne",
-      "art": "cracked",
-      "price": 42,
-      "chance": 0.08,
-      "desc": "每次摇动有 8% 概率指定一颗骰子的点数为 1。",
-      "short": "8% 指定一颗骰子为 1"
-    },
-    {
-      "id": "twin_six",
-      "name": "双六桶",
-      "rarity": "common",
-      "type": "probability",
-      "art": "twin-six",
-      "price": 48,
-      "bias": [
-        1,
-        1,
-        1,
-        1,
-        1.35,
-        1.35
-      ],
-      "desc": "桶底刻着两个并排的六。5 与 6 的出现率提高（各约 20.1%），其余四面各约 14.9%。",
-      "short": "5、6 各约 20.1%"
-    },
-    {
       "id": "lead",
       "name": "铅心桶",
       "rarity": "rare",
@@ -1010,30 +981,6 @@
       ],
       "desc": "鳞片在掌心下滑动。2、3、4 的出现率提高，1 更少。",
       "short": "2、3、4 概率 + / 1 概率 −"
-    },
-    {
-      "id": "ember",
-      "name": "余烬桶",
-      "rarity": "rare",
-      "type": "faceScore",
-      "art": "ember",
-      "price": 80,
-      "face": 1,
-      "value": 35,
-      "tripleValue": 100,
-      "desc": "每颗参与本次计分的 1 额外 +35 分；本次计分含三条 1 再 +100 分。",
-      "short": "每颗计分的 1 +35 分 · 三条 1 再 +100"
-    },
-    {
-      "id": "gale",
-      "name": "疾风桶",
-      "rarity": "rare",
-      "type": "extraDie",
-      "art": "gale",
-      "price": 120,
-      "chance": 0.03,
-      "desc": "每次摇动有 3% 概率多滚出一颗骰子；多出的骰子只参与本次投掷。",
-      "short": "3% 多出一颗临时骰"
     },
     {
       "id": "astral",
@@ -1129,8 +1076,9 @@
       "type": "straightFix",
       "art": "guide",
       "price": 330,
-      "desc": "若本次摇出的骰型只差一颗就能组成顺子，桶会转动其中一颗骰子，补成顺子。",
-      "short": "差一颗成顺时自动补顺"
+      "chance": 0.35,
+      "desc": "每次摇动有 35% 概率，把一颗骰子转到缺少的点数上，补成顺子。",
+      "short": "35% 概率自动补顺"
     },
     {
       "id": "brood",
@@ -1233,18 +1181,6 @@
       "consumable": true,
       "desc": "立即获得 250 分。一次性消耗。",
       "flavor": "正面是国王，反面也是国王。这枚硬币从来不做选择。"
-    },
-    {
-      "id": "ash_pouch",
-      "name": "灰烬袋",
-      "type": "active",
-      "icon": "powder",
-      "rarity": "common",
-      "price": 32,
-      "charges": 1,
-      "consumable": true,
-      "desc": "立即获得 120 分。一次性消耗。",
-      "flavor": "袋口一松，烧剩下的东西也还是热的。"
     },
     {
       "id": "hunter_mark",
@@ -1375,17 +1311,6 @@
       "flavor": "洒在桌角，据说能挡住那些不该落下的骰子。"
     },
     {
-      "id": "whetstone",
-      "name": "磨刀石",
-      "type": "active",
-      "icon": "hourglass",
-      "rarity": "rare",
-      "price": 90,
-      "charges": 1,
-      "desc": "每关一次，立即获得 1 次重投。",
-      "flavor": "磨的不是骰子，是你下一次还敢不敢掷的手。"
-    },
-    {
       "id": "boss_ward",
       "name": "静默赦令",
       "type": "active",
@@ -1443,35 +1368,6 @@
       "flavor": "真正的财富不在钱袋里，而在别人看见你袖口时的表情里。",
       "levelCoins": 15,
       "refreshDiscount": 0.2
-    },
-    {
-      "id": "tin_cuff",
-      "name": "锡袖扣",
-      "type": "passive",
-      "icon": "cuff",
-      "rarity": "common",
-      "price": 32,
-      "charges": 0,
-      "desc": "每关胜利额外获得 8 银币，商店刷新费用 -10%。",
-      "flavor": "镀金的是给客人看的，锡的才是自己留着吃饭的。",
-      "levelCoins": 8,
-      "refreshDiscount": 0.1
-    },
-    {
-      "id": "side_bet",
-      "name": "边注铜牌",
-      "type": "passive",
-      "icon": "coin",
-      "rarity": "rare",
-      "price": 85,
-      "charges": 0,
-      "desc": "计分包含 1 或 5 时，本次计分 +15%。",
-      "flavor": "主桌的输赢归主桌，边桌上的铜牌只认自己的账。",
-      "scoreRule": {
-        "hand": "oneOrFive",
-        "multiplier": 1.15,
-        "label": "边注 +15%"
-      }
     },
     {
       "id": "barrel_reforger",
@@ -2127,7 +2023,7 @@
       "accent": "#d8b56a",
       "effectName": "撒旦的恩赐",
       "effectKey": "satanGift",
-      "effectDesc": "最终目标 88000 分；开局额外获得 2 次重投。",
+      "effectDesc": "最终目标 100000 分；开局额外获得 2 次重投。",
       "intro": "你看见了。很好——能走到这里，靠的不只是运气。我欣赏你的实力，也欣赏你敢看穿这场天堂的胆子。现在，赌上你最原始的那一手。",
       "taunts": [
         "你一路赢到这里，不是为了跪下的。",
@@ -2205,21 +2101,21 @@
       2511.3571875,
       2888.0607656249995,
       3321.2698804687493,
-      3273.4435941899997,
-      3666.2568254928,
-      4106.207644551936,
-      4598.952561898169,
-      5150.82686932595,
-      6030.82686932595,
-      6694.217824951804,
-      7430.581785696502,
-      8247.945782123119,
-      9155.219818156664,
-      10162.293998153898,
-      11280.146337950828,
-      12520.96243512542,
-      13898.268302989218,
-      88000
+      3719.8222661249997,
+      4166.20093806,
+      4666.1450506272,
+      5226.082456702465,
+      5853.212351506761,
+      6853.212351506761,
+      7744.129957202639,
+      8750.86685163898,
+      9888.479542352048,
+      11173.981882857814,
+      12626.599527629329,
+      14268.05746622114,
+      16122.904936829887,
+      18218.88257861777,
+      100000
     ]
   },
   "LEVELS": [
@@ -2317,140 +2213,140 @@
     },
     {
       "level": 11,
-      "target": 3930,
+      "target": 4910,
       "reward": 180,
       "curve": {
-        "target": 3270,
+        "target": 3720,
         "reward": 100
       },
       "boss": true
     },
     {
       "level": 12,
-      "target": 3670,
+      "target": 4170,
       "reward": 105,
       "curve": {
-        "target": 3670,
+        "target": 4170,
         "reward": 105
       }
     },
     {
       "level": 13,
-      "target": 4110,
+      "target": 4670,
       "reward": 110,
       "curve": {
-        "target": 4110,
+        "target": 4670,
         "reward": 110
       }
     },
     {
       "level": 14,
-      "target": 4600,
+      "target": 5230,
       "reward": 115,
       "curve": {
-        "target": 4600,
+        "target": 5230,
         "reward": 115
       }
     },
     {
       "level": 15,
-      "target": 4120,
+      "target": 5150,
       "reward": 230,
       "curve": {
-        "target": 5150,
+        "target": 5850,
         "reward": 125
       },
       "boss": true
     },
     {
       "level": 16,
-      "target": 6030,
+      "target": 6850,
       "reward": 130,
       "curve": {
-        "target": 6030,
+        "target": 6850,
         "reward": 130
       }
     },
     {
       "level": 17,
-      "target": 6690,
+      "target": 7740,
       "reward": 140,
       "curve": {
-        "target": 6690,
+        "target": 7740,
         "reward": 140
       }
     },
     {
       "level": 18,
-      "target": 7430,
+      "target": 8750,
       "reward": 150,
       "curve": {
-        "target": 7430,
+        "target": 8750,
         "reward": 150
       }
     },
     {
       "level": 19,
-      "target": 8250,
+      "target": 9890,
       "reward": 155,
       "curve": {
-        "target": 8250,
+        "target": 9890,
         "reward": 155
       }
     },
     {
       "level": 20,
-      "target": 12360,
+      "target": 16590,
       "reward": 360,
       "curve": {
-        "target": 9160,
+        "target": 11170,
         "reward": 165
       },
       "boss": true
     },
     {
       "level": 21,
-      "target": 10160,
+      "target": 12630,
       "reward": 175,
       "curve": {
-        "target": 10160,
+        "target": 12630,
         "reward": 175
       }
     },
     {
       "level": 22,
-      "target": 11280,
+      "target": 14270,
       "reward": 185,
       "curve": {
-        "target": 11280,
+        "target": 14270,
         "reward": 185
       }
     },
     {
       "level": 23,
-      "target": 12520,
+      "target": 16120,
       "reward": 200,
       "curve": {
-        "target": 12520,
+        "target": 16120,
         "reward": 200
       }
     },
     {
       "level": 24,
-      "target": 20850,
+      "target": 30060,
       "reward": 450,
       "curve": {
-        "target": 13900,
+        "target": 18220,
         "reward": 210
       },
       "boss": true
     },
     {
       "level": 25,
-      "target": 88000,
+      "target": 100000,
       "reward": 445,
       "curve": {
-        "target": 88000,
+        "target": 100000,
         "reward": 225
       },
       "boss": true
