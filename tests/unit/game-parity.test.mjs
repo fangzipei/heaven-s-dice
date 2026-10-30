@@ -153,7 +153,7 @@ describe('主动物品先问再用', () => {
     readyWithCoin();
     requestUseItem('lucky_coin');
     confirmUseItem('lucky_coin');
-    expect(app.run.score).toBe(250);
+    expect(app.run.score).toBe(350);
     expect(app.run.activeItems).not.toContain('lucky_coin');
   });
 

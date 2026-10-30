@@ -9,7 +9,7 @@ import {
 } from '../../content/index.ts';
 import {
   buyBarrel as engineBuyBarrel, buyDie as engineBuyDie,
-  buyItem as engineBuyItem, canSellItem,
+  buyItem as engineBuyItem, canSellItem, useItem as engineUseItem,
   getBarrel, getDiceCapacity, getDieSpec, getOwnedItemIds, itemSellPrice,
   refreshCost, refreshSection, sectionLabel, sellItem, shopPrice, shopSlots, activeItemCapacity,
 } from '../../core/engine.ts';
@@ -287,6 +287,15 @@ export function buyItem(index: number): void {
   if (!result.ok) { showToast(result.error!, 'error'); return; }
   recordShop(app.run, { action: 'buy', kind: 'item', id: result.item!.id, name: result.item!.name, price: result.price });
   sound.item();
+  if (result.item! && 'grant' in result.item! && result.item!.grant) {
+    const opened = engineUseItem(app.run, result.item!.id);
+    if (opened.ok && opened.grant) {
+      app.pendingGrant = { itemId: result.item!.id, candidates: opened.grant.candidates };
+      renderShopScreen();
+      void import('../game.ts').then(({ showGrantModal }) => showGrantModal());
+      return;
+    }
+  }
   renderShopScreen();
   showToast(`购入「${result.item!.name}」，花费 ${result.price} 银币。`, 'good');
 }

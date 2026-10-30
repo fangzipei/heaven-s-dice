@@ -1331,14 +1331,15 @@ function applyBarrelRollEffects(
 }
 
 function applyOrderedDieEffects(state: RunState, rng: () => number): void {
-  // The copy die reads the first slot after the table order is shuffled.
-  const first = state.dice[0];
-  if (first && !first.blank && first.value != null) {
-    for (let index = 1; index < state.dice.length; index += 1) {
-      const die = state.dice[index]!;
-      if (die.scored) continue;
+  // Scored dice have left the table, so "first die" means the first die still
+  // visible in this throw. If the shadow die itself is first, its copy effect
+  // has no source and stays idle.
+  const first = state.dice.find((die) => !die.scored && !die.blank && die.value != null);
+  if (first && getDieSpec(first.dieId).bonus?.type !== 'copyFirst') {
+    for (const die of state.dice) {
+      if (die === first || die.scored || die.blank) continue;
       const bonus = getDieSpec(die.dieId).bonus;
-      if (bonus?.type !== 'copyFirst' || die.blank) continue;
+      if (bonus?.type !== 'copyFirst') continue;
       die.value = first.value;
       die.wild = getDieSpec(die.dieId).setId === 'demon' && die.value === 1;
     }
@@ -1888,7 +1889,7 @@ export function canUseItem(state: RunState, itemId: string): ItemResult {
   if (!state.activeItems.includes(itemId)) return { ok: false, error: '你还没有这件物品。' };
   if ((state.itemCharges[itemId] || 0) <= 0) return { ok: false, error: '本关已经使用过了。' };
   if (state.phase === 'won' || state.phase === 'run-won' || state.phase === 'lost' || state.phase === 'shop') {
-    if (!(itemId === 'devil_reset' && state.phase === 'lost')) {
+    if (!(item.grant && state.phase === 'shop') && !(itemId === 'devil_reset' && state.phase === 'lost')) {
       return { ok: false, error: '当前阶段不能使用物品。' };
     }
   }
@@ -1937,7 +1938,7 @@ export function useItem(state: RunState, itemId: string): ItemResult {
       pushLog(state, '静默赦令已封存：下一场庄家的被动将被消除。', 'good');
     }
   } else if (itemId === 'lucky_coin') {
-    const gain = bossScoreAmount(state, 150);
+    const gain = bossScoreAmount(state, 250);
     addScore(state, gain);
     pushLog(state, `幸运币翻面：+${gain} 分。`, 'item');
     checkWin(state);
@@ -1993,7 +1994,7 @@ export function useItem(state: RunState, itemId: string): ItemResult {
     state.flags.wagerMark = true;
     pushLog(state, '加注契约生效：+1 次重投，下一次计分 ×1.6。', 'item');
   } else if (itemId === 'powder') {
-    const gain = bossScoreAmount(state, 80);
+    const gain = bossScoreAmount(state, 150);
     addScore(state, gain);
     state.selected = [];
     pushLog(state, `幸运粉扬开：+${gain} 分，未计分的骰子重新掷出。`, 'item');

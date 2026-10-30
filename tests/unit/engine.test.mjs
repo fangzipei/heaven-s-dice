@@ -261,13 +261,13 @@ test('no reroll tokens means scoring settles the level', () => {
   expect(applyScore(state, 'continue').ok).toBe(false);
 });
 
-test('lucky coin adds 150 points and is consumed for good', () => {
+test('lucky coin adds 250 points and is consumed for good', () => {
   const state = fresh();
   const itemId = 'lucky_coin';
   expect(canUseItem(state, itemId).ok).toBe(true);
   const result = useItem(state, itemId);
   expect(result.ok).toBe(true);
-  expect(state.score).toBe(150);
+  expect(state.score).toBe(250);
   expect(state.activeItems.includes(itemId)).toBe(false);
   expect(state.itemCharges[itemId]).toBe(undefined);
   expect(canUseItem(state, itemId).ok).toBe(false);
@@ -1093,7 +1093,7 @@ test('gambler charm lowers the target by 15%', () => {
   expect(state.itemCharges.charm).toBe(0);
 });
 
-test('lucky powder pays 80, frees the reroll and vanishes', () => {
+test('lucky powder pays 150, frees the reroll and vanishes', () => {
   const state = fresh();
   initLevel(state);
   state.activeItems = ['powder'];
@@ -1103,7 +1103,7 @@ test('lucky powder pays 80, frees the reroll and vanishes', () => {
   const result = useItem(state, 'powder');
   expect(result.ok).toBe(true);
   expect(result.rerollFree).toBe(true);
-  expect(state.score).toBe(before + 80);
+  expect(state.score).toBe(before + 150);
   expect(state.activeItems.includes('powder')).toBe(false);
 });
 

@@ -1069,7 +1069,7 @@ export function useItem(itemId: string): void {
   }
 }
 
-function showGrantModal(): void {
+export function showGrantModal(): void {
   if (!app.run || !app.pendingGrant) return;
   const { itemId, candidates } = app.pendingGrant;
   const item = ITEM_BY_ID[itemId]!;
@@ -1145,11 +1145,15 @@ export function confirmGrantReplace(bagUid: string): void {
 }
 
 function finishGrant(result: ReturnType<typeof applyItemGrant>): void {
+  const inShop = app.run?.phase === 'shop';
   app.pendingGrant = null;
   app.pendingGrantReplace = null;
   closeOverlay();
   sound.item();
   renderGame();
+  if (inShop) {
+    void import('./screens/shop.ts').then(({ renderShopScreen }) => renderShopScreen());
+  }
   const suffix = result.replaced ? `，替换了「${result.replaced.name}」` : '';
   showToast(`获得「${result.die!.name}」${suffix}。`, 'good');
 }

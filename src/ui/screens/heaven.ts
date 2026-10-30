@@ -12,7 +12,7 @@ export function showHeavenGate(): void {
   const run = app.run;
   if (!run) return;
   const hots = run.stats.hotDice || 0;
-  const suspicious = hots > 50;
+  const suspicious = hots >= 50;
   openOverlay(`
     <div class="heaven-scene ${suspicious ? 'is-suspicious' : ''}">
       <div class="heaven-rays" aria-hidden="true"></div>

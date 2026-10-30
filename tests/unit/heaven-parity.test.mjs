@@ -17,7 +17,7 @@ beforeEach(() => {
 });
 
 test('heaven gate offers the final fight only after 50 hot dice', () => {
-  app.run.stats.hotDice = 51;
+  app.run.stats.hotDice = 50;
   showHeavenGate();
   const html = dom.html('#overlay-root');
   expect(html).toContain('这里好像并不是天堂');

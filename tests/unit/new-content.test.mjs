@@ -87,14 +87,14 @@ describe('条子术语与新被动物品', () => {
 });
 
 describe('新骰子计分规则', () => {
-  test('衡心 +100 / 孤崖 +300', () => {
+  test('衡心 +180 / 孤崖 +400', () => {
     const balance = blankState();
     select(balance, [{ dieId: 'balance', value: 3 }, { value: 3 }, { value: 3 }]);
-    expect(totalFor(balance)).toBe(400);
+    expect(totalFor(balance)).toBe(480);
 
     const cliff = blankState();
     select(cliff, [{ dieId: 'cliff', value: 3 }, { value: 3 }, { value: 3 }]);
-    expect(totalFor(cliff)).toBe(600);
+    expect(totalFor(cliff)).toBe(700);
   });
 
   test('重奏在条子里额外结算一次', () => {
@@ -151,7 +151,7 @@ describe('新骰子计分规则', () => {
     const result = applyScore(state, 'continue');
     expect(result.ok).toBe(true);
     expect(state.coins).toBe(0);
-    expect(state.roundCoins).toBe(22);
+    expect(state.roundCoins).toBe(33);
     expect(result.coins).toBe(0);
 
     // Banking the round pays every 金痕 die scored during it.
@@ -159,30 +159,30 @@ describe('新骰子计分规则', () => {
     select(state, [{ value: 1 }, { value: 5 }]);
     const bank = applyScore(state, 'bank');
     expect(bank.ok).toBe(true);
-    expect(state.coins).toBe(22);
+    expect(state.coins).toBe(33);
     expect(state.roundCoins).toBe(0);
-    expect(bank.coins).toBe(22);
+    expect(bank.coins).toBe(33);
   });
 
   test('过关离开赌桌时金痕挂账照常入账', () => {
     const state = blankState();
     select(state, [{ dieId: 'gilded_trace', value: 1 }, { value: 5 }]);
     applyScore(state, 'continue');
-    expect(state.roundCoins).toBe(22);
+    expect(state.roundCoins).toBe(33);
     state.score = state.target;
     expect(advanceLevel(state).ok).toBe(true);
     // The level reward lands on top, so only the floor and the cleared pool
     // are pinned here.
-    expect(state.coins).toBeGreaterThanOrEqual(20);
+    expect(state.coins).toBeGreaterThanOrEqual(33);
     expect(state.roundCoins).toBe(0);
-    expect(state.log.some((entry) => String(entry.text || '').includes('+22 银币'))).toBe(true);
+    expect(state.log.some((entry) => String(entry.text || '').includes('+33 银币'))).toBe(true);
   });
 
   test('金痕骰在掷空时连同挂账一起作废', () => {
     const state = blankState();
     select(state, [{ dieId: 'gilded_trace', value: 1 }, { value: 5 }]);
     applyScore(state, 'continue');
-    expect(state.roundCoins).toBe(22);
+    expect(state.roundCoins).toBe(33);
     bustRound(state);
     expect(state.coins).toBe(0);
     expect(state.roundCoins).toBe(0);
@@ -193,8 +193,8 @@ describe('新骰子计分规则', () => {
     select(state, [{ dieId: 'gilded_trace', value: 1 }, { value: 5 }]);
     const result = applyScore(state, 'reroll');
     expect(result.ok).toBe(true);
-    expect(state.coins).toBe(22);
-    expect(result.coins).toBe(22);
+    expect(state.coins).toBe(33);
+    expect(result.coins).toBe(33);
   });
 
   test('鎏金桶的金币与金痕骰一样，锁分后才入账', () => {
