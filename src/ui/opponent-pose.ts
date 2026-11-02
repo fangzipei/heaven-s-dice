@@ -7,8 +7,8 @@ let swapTimer: ReturnType<typeof setTimeout> | null = null;
 let settleTimer: ReturnType<typeof setTimeout> | null = null;
 let loadToken = 0;
 
-function currentArt(): string {
-  return $('#opponent')?.dataset.paperArt || '';
+function currentId(): string {
+  return $('#opponent')?.dataset.paperId || '';
 }
 
 function clearPoseTimers(): void {
@@ -27,10 +27,10 @@ function clearPoseTimers(): void {
  * The portrait shakes left with the old frame, then swaps on the right swing.
  */
 export function setOpponentPose(state: PortraitState, holdMs = 0): void {
-  const art = currentArt();
+  const id = currentId();
   const image = $<HTMLImageElement>('#opponent-image');
-  if (!art || !image || !hasPortraitStates(art)) return;
-  const next = portraitStateArt(art, state);
+  if (!id || !image || !hasPortraitStates(id)) return;
+  const next = portraitStateArt(id, state);
   clearPoseTimers();
   if (image.dataset.portraitState === state && image.getAttribute('src') === next) {
     if (holdMs) idleTimer = setTimeout(() => setOpponentPose('idle'), holdMs);
@@ -61,9 +61,4 @@ export function setOpponentPose(state: PortraitState, holdMs = 0): void {
 export function resetOpponentPose(): void {
   clearPoseTimers();
   setOpponentPose('idle');
-}
-
-export function opponentIdleArt(): string {
-  const art = currentArt();
-  return art ? portraitFor(art, 'idle') : '';
 }

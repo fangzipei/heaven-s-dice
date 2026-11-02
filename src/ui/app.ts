@@ -639,11 +639,12 @@ export function setupLevelScene(force = false): void {
   const opponentEl = $('#opponent')!;
   opponentEl.classList.toggle('is-boss', isBoss);
   opponentEl.classList.toggle('is-minion', !isBoss);
-  opponentEl.classList.toggle('has-state', hasPortraitStates(opponent.art));
+  opponentEl.classList.toggle('has-state', hasPortraitStates(opponent.id));
   opponentEl.dataset.paperArt = opponent.art;
+  opponentEl.dataset.paperId = opponent.id;
   opponentEl.style.setProperty('--boss-accent', opponent.accent || '#c25b5b');
   const image = $<HTMLImageElement>('#opponent-image')!;
-  image.src = portraitFor(opponent.art, 'idle');
+  image.src = portraitFor(opponent.id, opponent.art, 'idle');
   image.dataset.portraitState = 'idle';
   image.alt = opponent.name;
   $('#opponent-name')!.textContent = opponent.name;
@@ -696,7 +697,7 @@ export function showLevelIntro(): void {
   openOverlay(`
     <div class="modal intro-modal ${isBoss ? 'is-boss-intro' : ''}" role="dialog" aria-modal="true" aria-label="第 ${run.level} 关">
       <div class="intro-portrait">
-        <img src="${portraitFor(opponent.art, 'idle')}" data-portrait-state="idle" alt="${h(opponent.name)}">
+        <img src="${portraitFor(opponent.id, opponent.art, 'idle')}" data-portrait-state="idle" alt="${h(opponent.name)}">
       </div>
       <div class="intro-body">
         <div class="intro-eyebrow"><i></i>${isBoss ? 'DEALER’S TABLE' : 'A CHALLENGER APPEARS'} · ${isBoss ? '庄家' : '小兵'}<i></i></div>

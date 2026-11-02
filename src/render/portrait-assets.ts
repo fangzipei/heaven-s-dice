@@ -1,14 +1,41 @@
 import { portraitStateArt, type PortraitState } from '../render/portrait-states.ts';
 
-/** Assets that have the four-state portrait set ready. */
-const READY = new Set(['minion-rat']);
+/**
+ * Characters that have the four-state portrait set installed.
+ *
+ * Keyed by character id (slug). Bosses that share one art id still get their
+ * own entry here, because every one of them ships a distinct look.
+ */
+const READY = new Set([
+  // minions
+  'rat',
+  'gargoyle',
+  'forge',
+  'gilt',
+  'crystal',
+  // bosses
+  'rotfang',
+  'judge',
+  'soulsmith',
+  'ashclerk',
+  'gildedking',
+  'startax',
+  'suspensor',
+  'seraph',
+  'lucifer',
+  'twinsix',
+  'toll',
+  'mirror',
+  'pairbane',
+  'satan',
+]);
 
-export function hasPortraitStates(art: string): boolean {
-  return READY.has(art);
+export function hasPortraitStates(id: string): boolean {
+  return READY.has(id);
 }
 
-export function portraitFor(art: string, state: PortraitState): string {
-  return hasPortraitStates(art)
-    ? portraitStateArt(art, state)
+export function portraitFor(id: string, art: string, state: PortraitState): string {
+  return hasPortraitStates(id)
+    ? portraitStateArt(id, state)
     : `assets/portraits/paper/${art}.svg`;
 }
