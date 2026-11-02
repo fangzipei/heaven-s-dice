@@ -10,3 +10,8 @@ Thumbs.db
 
 .deploy/
 dist/
+
+# Local reference material, prototypes and screenshot artifacts
+balatro-reference/
+demo/
+tools/_shots/

@@ -1,0 +1,857 @@
+[
+  {
+    "setId": "wolf",
+    "setName": "狼裔",
+    "barrelId": "wolf_totem",
+    "barrelName": "狼图腾桶",
+    "hotRate": 0.23333333333333334,
+    "expectedScore": 3307.727,
+    "legalRate": 0.9971666666666666
+  },
+  {
+    "setId": "wolf",
+    "setName": "狼裔",
+    "barrelId": "serpent",
+    "barrelName": "蛇纹桶",
+    "hotRate": 0.23316666666666666,
+    "expectedScore": 3294.063,
+    "legalRate": 0.9948333333333333
+  },
+  {
+    "setId": "wolf",
+    "setName": "狼裔",
+    "barrelId": "guide",
+    "barrelName": "顺遂桶",
+    "hotRate": 0.25583333333333336,
+    "expectedScore": 2929.3476666666666,
+    "legalRate": 0.9978333333333333
+  },
+  {
+    "setId": "wolf",
+    "setName": "狼裔",
+    "barrelId": "singles",
+    "barrelName": "独注桶",
+    "hotRate": 0.22416666666666665,
+    "expectedScore": 2879.4353333333333,
+    "legalRate": 0.9975
+  },
+  {
+    "setId": "wolf",
+    "setName": "狼裔",
+    "barrelId": "twoface",
+    "barrelName": "双面桶",
+    "hotRate": 0.22416666666666665,
+    "expectedScore": 2839.9103333333333,
+    "legalRate": 0.9975
+  },
+  {
+    "setId": "wolf",
+    "setName": "狼裔",
+    "barrelId": "brood",
+    "barrelName": "增殖桶",
+    "hotRate": 0.22316666666666668,
+    "expectedScore": 2839.150666666667,
+    "legalRate": 0.9971666666666666
+  },
+  {
+    "setId": "wolf",
+    "setName": "狼裔",
+    "barrelId": "demon_pact",
+    "barrelName": "恶魔契桶",
+    "hotRate": 0.23333333333333334,
+    "expectedScore": 2814.4015,
+    "legalRate": 0.9971666666666666
+  },
+  {
+    "setId": "wolf",
+    "setName": "狼裔",
+    "barrelId": "nightwatch",
+    "barrelName": "守夜桶",
+    "hotRate": 0.23333333333333334,
+    "expectedScore": 2814.4015,
+    "legalRate": 0.9971666666666666
+  },
+  {
+    "setId": "wolf",
+    "setName": "狼裔",
+    "barrelId": "pentagram",
+    "barrelName": "五芒桶",
+    "hotRate": 0.22833333333333333,
+    "expectedScore": 2803.858833333333,
+    "legalRate": 0.9971666666666666
+  },
+  {
+    "setId": "wolf",
+    "setName": "狼裔",
+    "barrelId": "pawn",
+    "barrelName": "当铺桶",
+    "hotRate": 0.21866666666666668,
+    "expectedScore": 2786.990333333333,
+    "legalRate": 0.9958333333333333
+  },
+  {
+    "setId": "wolf",
+    "setName": "狼裔",
+    "barrelId": "fuse",
+    "barrelName": "引信桶",
+    "hotRate": 0.21866666666666668,
+    "expectedScore": 2786.990333333333,
+    "legalRate": 0.9958333333333333
+  },
+  {
+    "setId": "wolf",
+    "setName": "狼裔",
+    "barrelId": "loan",
+    "barrelName": "借运桶",
+    "hotRate": 0.21866666666666668,
+    "expectedScore": 2786.990333333333,
+    "legalRate": 0.9958333333333333
+  },
+  {
+    "setId": "wolf",
+    "setName": "狼裔",
+    "barrelId": "oak",
+    "barrelName": "旧橡木桶",
+    "hotRate": 0.22383333333333333,
+    "expectedScore": 2785.1901666666668,
+    "legalRate": 0.997
+  },
+  {
+    "setId": "wolf",
+    "setName": "狼裔",
+    "barrelId": "rotation",
+    "barrelName": "轮转桶",
+    "hotRate": 0.2245,
+    "expectedScore": 2773.146333333333,
+    "legalRate": 0.9966666666666667
+  },
+  {
+    "setId": "wolf",
+    "setName": "狼裔",
+    "barrelId": "vortex",
+    "barrelName": "旋涡桶",
+    "hotRate": 0.22566666666666665,
+    "expectedScore": 2772.7591666666667,
+    "legalRate": 0.9973333333333333
+  },
+  {
+    "setId": "wolf",
+    "setName": "狼裔",
+    "barrelId": "gilded",
+    "barrelName": "鎏金桶",
+    "hotRate": 0.22483333333333333,
+    "expectedScore": 2770.2518333333333,
+    "legalRate": 0.9975
+  },
+  {
+    "setId": "wolf",
+    "setName": "狼裔",
+    "barrelId": "marker",
+    "barrelName": "定一桶",
+    "hotRate": 0.228,
+    "expectedScore": 2729.7613333333334,
+    "legalRate": 0.9975
+  },
+  {
+    "setId": "wolf",
+    "setName": "狼裔",
+    "barrelId": "lead",
+    "barrelName": "铅心桶",
+    "hotRate": 0.22866666666666666,
+    "expectedScore": 2512.0783333333334,
+    "legalRate": 0.9985
+  },
+  {
+    "setId": "caravan",
+    "setName": "商旅",
+    "barrelId": "guide",
+    "barrelName": "顺遂桶",
+    "hotRate": 0.17166666666666666,
+    "expectedScore": 2436.045,
+    "legalRate": 0.9833333333333333
+  },
+  {
+    "setId": "wolf",
+    "setName": "狼裔",
+    "barrelId": "astral",
+    "barrelName": "星象桶",
+    "hotRate": 0.18183333333333335,
+    "expectedScore": 2431.218,
+    "legalRate": 0.9966666666666667
+  },
+  {
+    "setId": "caravan",
+    "setName": "商旅",
+    "barrelId": "singles",
+    "barrelName": "独注桶",
+    "hotRate": 0.06566666666666666,
+    "expectedScore": 2358.4346666666665,
+    "legalRate": 0.977
+  },
+  {
+    "setId": "stargazer",
+    "setName": "星轨",
+    "barrelId": "astral",
+    "barrelName": "星象桶",
+    "hotRate": 0.108,
+    "expectedScore": 2102.52,
+    "legalRate": 0.9733333333333334
+  },
+  {
+    "setId": "caravan",
+    "setName": "商旅",
+    "barrelId": "lead",
+    "barrelName": "铅心桶",
+    "hotRate": 0.0685,
+    "expectedScore": 2033.483,
+    "legalRate": 0.9841666666666666
+  },
+  {
+    "setId": "caravan",
+    "setName": "商旅",
+    "barrelId": "wolf_totem",
+    "barrelName": "狼图腾桶",
+    "hotRate": 0.06366666666666666,
+    "expectedScore": 1901.5611666666666,
+    "legalRate": 0.9731666666666666
+  },
+  {
+    "setId": "caravan",
+    "setName": "商旅",
+    "barrelId": "brood",
+    "barrelName": "增殖桶",
+    "hotRate": 0.0605,
+    "expectedScore": 1895.0128333333334,
+    "legalRate": 0.9773333333333334
+  },
+  {
+    "setId": "caravan",
+    "setName": "商旅",
+    "barrelId": "marker",
+    "barrelName": "定一桶",
+    "hotRate": 0.066,
+    "expectedScore": 1884.9231666666667,
+    "legalRate": 0.9783333333333334
+  },
+  {
+    "setId": "caravan",
+    "setName": "商旅",
+    "barrelId": "oak",
+    "barrelName": "旧橡木桶",
+    "hotRate": 0.06816666666666667,
+    "expectedScore": 1870.3718333333334,
+    "legalRate": 0.9756666666666667
+  },
+  {
+    "setId": "caravan",
+    "setName": "商旅",
+    "barrelId": "pentagram",
+    "barrelName": "五芒桶",
+    "hotRate": 0.069,
+    "expectedScore": 1869.8451666666667,
+    "legalRate": 0.978
+  },
+  {
+    "setId": "caravan",
+    "setName": "商旅",
+    "barrelId": "twoface",
+    "barrelName": "双面桶",
+    "hotRate": 0.06566666666666666,
+    "expectedScore": 1866.5711666666666,
+    "legalRate": 0.977
+  },
+  {
+    "setId": "caravan",
+    "setName": "商旅",
+    "barrelId": "rotation",
+    "barrelName": "轮转桶",
+    "hotRate": 0.067,
+    "expectedScore": 1863.9716666666666,
+    "legalRate": 0.977
+  },
+  {
+    "setId": "caravan",
+    "setName": "商旅",
+    "barrelId": "gilded",
+    "barrelName": "鎏金桶",
+    "hotRate": 0.06816666666666667,
+    "expectedScore": 1860.0206666666666,
+    "legalRate": 0.9765
+  },
+  {
+    "setId": "caravan",
+    "setName": "商旅",
+    "barrelId": "demon_pact",
+    "barrelName": "恶魔契桶",
+    "hotRate": 0.06366666666666666,
+    "expectedScore": 1857.2696666666666,
+    "legalRate": 0.9731666666666666
+  },
+  {
+    "setId": "caravan",
+    "setName": "商旅",
+    "barrelId": "nightwatch",
+    "barrelName": "守夜桶",
+    "hotRate": 0.06366666666666666,
+    "expectedScore": 1857.2696666666666,
+    "legalRate": 0.9731666666666666
+  },
+  {
+    "setId": "caravan",
+    "setName": "商旅",
+    "barrelId": "pawn",
+    "barrelName": "当铺桶",
+    "hotRate": 0.0665,
+    "expectedScore": 1853.3645,
+    "legalRate": 0.9738333333333333
+  },
+  {
+    "setId": "caravan",
+    "setName": "商旅",
+    "barrelId": "fuse",
+    "barrelName": "引信桶",
+    "hotRate": 0.0665,
+    "expectedScore": 1853.3645,
+    "legalRate": 0.9738333333333333
+  },
+  {
+    "setId": "caravan",
+    "setName": "商旅",
+    "barrelId": "loan",
+    "barrelName": "借运桶",
+    "hotRate": 0.0665,
+    "expectedScore": 1853.3645,
+    "legalRate": 0.9738333333333333
+  },
+  {
+    "setId": "caravan",
+    "setName": "商旅",
+    "barrelId": "vortex",
+    "barrelName": "旋涡桶",
+    "hotRate": 0.06266666666666666,
+    "expectedScore": 1853.3573333333334,
+    "legalRate": 0.9778333333333333
+  },
+  {
+    "setId": "caravan",
+    "setName": "商旅",
+    "barrelId": "astral",
+    "barrelName": "星象桶",
+    "hotRate": 0.0635,
+    "expectedScore": 1834.6975,
+    "legalRate": 0.9778333333333333
+  },
+  {
+    "setId": "stargazer",
+    "setName": "星轨",
+    "barrelId": "singles",
+    "barrelName": "独注桶",
+    "hotRate": 0.07766666666666666,
+    "expectedScore": 1755.1075,
+    "legalRate": 0.964
+  },
+  {
+    "setId": "stargazer",
+    "setName": "星轨",
+    "barrelId": "guide",
+    "barrelName": "顺遂桶",
+    "hotRate": 0.1345,
+    "expectedScore": 1753.0743333333332,
+    "legalRate": 0.9711666666666666
+  },
+  {
+    "setId": "caravan",
+    "setName": "商旅",
+    "barrelId": "serpent",
+    "barrelName": "蛇纹桶",
+    "hotRate": 0.06066666666666667,
+    "expectedScore": 1695.3176666666666,
+    "legalRate": 0.9566666666666667
+  },
+  {
+    "setId": "stargazer",
+    "setName": "星轨",
+    "barrelId": "pawn",
+    "barrelName": "当铺桶",
+    "hotRate": 0.07766666666666666,
+    "expectedScore": 1649.296,
+    "legalRate": 0.9621666666666666
+  },
+  {
+    "setId": "stargazer",
+    "setName": "星轨",
+    "barrelId": "fuse",
+    "barrelName": "引信桶",
+    "hotRate": 0.07766666666666666,
+    "expectedScore": 1649.296,
+    "legalRate": 0.9621666666666666
+  },
+  {
+    "setId": "stargazer",
+    "setName": "星轨",
+    "barrelId": "loan",
+    "barrelName": "借运桶",
+    "hotRate": 0.07766666666666666,
+    "expectedScore": 1649.296,
+    "legalRate": 0.9621666666666666
+  },
+  {
+    "setId": "stargazer",
+    "setName": "星轨",
+    "barrelId": "brood",
+    "barrelName": "增殖桶",
+    "hotRate": 0.07766666666666666,
+    "expectedScore": 1645.2725,
+    "legalRate": 0.9611666666666666
+  },
+  {
+    "setId": "stargazer",
+    "setName": "星轨",
+    "barrelId": "rotation",
+    "barrelName": "轮转桶",
+    "hotRate": 0.07366666666666667,
+    "expectedScore": 1640.4445,
+    "legalRate": 0.9631666666666666
+  },
+  {
+    "setId": "stargazer",
+    "setName": "星轨",
+    "barrelId": "pentagram",
+    "barrelName": "五芒桶",
+    "hotRate": 0.07516666666666667,
+    "expectedScore": 1638.8875,
+    "legalRate": 0.9606666666666667
+  },
+  {
+    "setId": "stargazer",
+    "setName": "星轨",
+    "barrelId": "wolf_totem",
+    "barrelName": "狼图腾桶",
+    "hotRate": 0.07216666666666667,
+    "expectedScore": 1635.542,
+    "legalRate": 0.963
+  },
+  {
+    "setId": "stargazer",
+    "setName": "星轨",
+    "barrelId": "twoface",
+    "barrelName": "双面桶",
+    "hotRate": 0.07766666666666666,
+    "expectedScore": 1634.96,
+    "legalRate": 0.964
+  },
+  {
+    "setId": "stargazer",
+    "setName": "星轨",
+    "barrelId": "demon_pact",
+    "barrelName": "恶魔契桶",
+    "hotRate": 0.07216666666666667,
+    "expectedScore": 1631.5646666666667,
+    "legalRate": 0.963
+  },
+  {
+    "setId": "stargazer",
+    "setName": "星轨",
+    "barrelId": "nightwatch",
+    "barrelName": "守夜桶",
+    "hotRate": 0.07216666666666667,
+    "expectedScore": 1631.5646666666667,
+    "legalRate": 0.963
+  },
+  {
+    "setId": "stargazer",
+    "setName": "星轨",
+    "barrelId": "gilded",
+    "barrelName": "鎏金桶",
+    "hotRate": 0.06966666666666667,
+    "expectedScore": 1627.5006666666666,
+    "legalRate": 0.9673333333333334
+  },
+  {
+    "setId": "stargazer",
+    "setName": "星轨",
+    "barrelId": "lead",
+    "barrelName": "铅心桶",
+    "hotRate": 0.0915,
+    "expectedScore": 1624.034,
+    "legalRate": 0.9781666666666666
+  },
+  {
+    "setId": "stargazer",
+    "setName": "星轨",
+    "barrelId": "oak",
+    "barrelName": "旧橡木桶",
+    "hotRate": 0.073,
+    "expectedScore": 1621.9925,
+    "legalRate": 0.9626666666666667
+  },
+  {
+    "setId": "stargazer",
+    "setName": "星轨",
+    "barrelId": "vortex",
+    "barrelName": "旋涡桶",
+    "hotRate": 0.07066666666666667,
+    "expectedScore": 1616.1663333333333,
+    "legalRate": 0.9651666666666666
+  },
+  {
+    "setId": "stargazer",
+    "setName": "星轨",
+    "barrelId": "marker",
+    "barrelName": "定一桶",
+    "hotRate": 0.07316666666666667,
+    "expectedScore": 1611.1566666666668,
+    "legalRate": 0.9715
+  },
+  {
+    "setId": "demon",
+    "setName": "恶魔",
+    "barrelId": "lead",
+    "barrelName": "铅心桶",
+    "hotRate": 0.30566666666666664,
+    "expectedScore": 1567.0655,
+    "legalRate": 0.981
+  },
+  {
+    "setId": "demon",
+    "setName": "恶魔",
+    "barrelId": "guide",
+    "barrelName": "顺遂桶",
+    "hotRate": 0.31066666666666665,
+    "expectedScore": 1463.4748333333334,
+    "legalRate": 0.9758333333333333
+  },
+  {
+    "setId": "demon",
+    "setName": "恶魔",
+    "barrelId": "demon_pact",
+    "barrelName": "恶魔契桶",
+    "hotRate": 0.229,
+    "expectedScore": 1431.1591666666666,
+    "legalRate": 0.963
+  },
+  {
+    "setId": "demon",
+    "setName": "恶魔",
+    "barrelId": "marker",
+    "barrelName": "定一桶",
+    "hotRate": 0.25416666666666665,
+    "expectedScore": 1420.188,
+    "legalRate": 0.9705
+  },
+  {
+    "setId": "demon",
+    "setName": "恶魔",
+    "barrelId": "wolf_totem",
+    "barrelName": "狼图腾桶",
+    "hotRate": 0.229,
+    "expectedScore": 1399.9546666666668,
+    "legalRate": 0.963
+  },
+  {
+    "setId": "stargazer",
+    "setName": "星轨",
+    "barrelId": "serpent",
+    "barrelName": "蛇纹桶",
+    "hotRate": 0.050833333333333335,
+    "expectedScore": 1365.0838333333334,
+    "legalRate": 0.931
+  },
+  {
+    "setId": "demon",
+    "setName": "恶魔",
+    "barrelId": "vortex",
+    "barrelName": "旋涡桶",
+    "hotRate": 0.24133333333333334,
+    "expectedScore": 1348.96,
+    "legalRate": 0.9715
+  },
+  {
+    "setId": "demon",
+    "setName": "恶魔",
+    "barrelId": "brood",
+    "barrelName": "增殖桶",
+    "hotRate": 0.22316666666666668,
+    "expectedScore": 1346.6201666666666,
+    "legalRate": 0.9691666666666666
+  },
+  {
+    "setId": "demon",
+    "setName": "恶魔",
+    "barrelId": "astral",
+    "barrelName": "星象桶",
+    "hotRate": 0.22583333333333333,
+    "expectedScore": 1344.2736666666667,
+    "legalRate": 0.9705
+  },
+  {
+    "setId": "demon",
+    "setName": "恶魔",
+    "barrelId": "gilded",
+    "barrelName": "鎏金桶",
+    "hotRate": 0.23283333333333334,
+    "expectedScore": 1340.5086666666666,
+    "legalRate": 0.9668333333333333
+  },
+  {
+    "setId": "demon",
+    "setName": "恶魔",
+    "barrelId": "oak",
+    "barrelName": "旧橡木桶",
+    "hotRate": 0.23783333333333334,
+    "expectedScore": 1340.4983333333332,
+    "legalRate": 0.9695
+  },
+  {
+    "setId": "demon",
+    "setName": "恶魔",
+    "barrelId": "singles",
+    "barrelName": "独注桶",
+    "hotRate": 0.22883333333333333,
+    "expectedScore": 1340.0381666666667,
+    "legalRate": 0.968
+  },
+  {
+    "setId": "demon",
+    "setName": "恶魔",
+    "barrelId": "rotation",
+    "barrelName": "轮转桶",
+    "hotRate": 0.23233333333333334,
+    "expectedScore": 1333.143,
+    "legalRate": 0.9703333333333334
+  },
+  {
+    "setId": "demon",
+    "setName": "恶魔",
+    "barrelId": "pentagram",
+    "barrelName": "五芒桶",
+    "hotRate": 0.23,
+    "expectedScore": 1332.9711666666667,
+    "legalRate": 0.9703333333333334
+  },
+  {
+    "setId": "demon",
+    "setName": "恶魔",
+    "barrelId": "pawn",
+    "barrelName": "当铺桶",
+    "hotRate": 0.22883333333333333,
+    "expectedScore": 1330.1125,
+    "legalRate": 0.9646666666666667
+  },
+  {
+    "setId": "demon",
+    "setName": "恶魔",
+    "barrelId": "fuse",
+    "barrelName": "引信桶",
+    "hotRate": 0.22883333333333333,
+    "expectedScore": 1330.1125,
+    "legalRate": 0.9646666666666667
+  },
+  {
+    "setId": "demon",
+    "setName": "恶魔",
+    "barrelId": "loan",
+    "barrelName": "借运桶",
+    "hotRate": 0.22883333333333333,
+    "expectedScore": 1330.1125,
+    "legalRate": 0.9646666666666667
+  },
+  {
+    "setId": "demon",
+    "setName": "恶魔",
+    "barrelId": "twoface",
+    "barrelName": "双面桶",
+    "hotRate": 0.22883333333333333,
+    "expectedScore": 1329.0985,
+    "legalRate": 0.968
+  },
+  {
+    "setId": "demon",
+    "setName": "恶魔",
+    "barrelId": "nightwatch",
+    "barrelName": "守夜桶",
+    "hotRate": 0.229,
+    "expectedScore": 1325.7036666666668,
+    "legalRate": 0.963
+  },
+  {
+    "setId": "demon",
+    "setName": "恶魔",
+    "barrelId": "serpent",
+    "barrelName": "蛇纹桶",
+    "hotRate": 0.146,
+    "expectedScore": 958.3605,
+    "legalRate": 0.9443333333333334
+  },
+  {
+    "setId": "free",
+    "setName": "无套组",
+    "barrelId": "guide",
+    "barrelName": "顺遂桶",
+    "hotRate": 0.16566666666666666,
+    "expectedScore": 535.3833333333333,
+    "legalRate": 0.9751666666666666
+  },
+  {
+    "setId": "free",
+    "setName": "无套组",
+    "barrelId": "singles",
+    "barrelName": "独注桶",
+    "hotRate": 0.059833333333333336,
+    "expectedScore": 476.55833333333334,
+    "legalRate": 0.9693333333333334
+  },
+  {
+    "setId": "free",
+    "setName": "无套组",
+    "barrelId": "lead",
+    "barrelName": "铅心桶",
+    "hotRate": 0.068,
+    "expectedScore": 450.60833333333335,
+    "legalRate": 0.9815
+  },
+  {
+    "setId": "free",
+    "setName": "无套组",
+    "barrelId": "wolf_totem",
+    "barrelName": "狼图腾桶",
+    "hotRate": 0.06166666666666667,
+    "expectedScore": 419.85833333333335,
+    "legalRate": 0.965
+  },
+  {
+    "setId": "free",
+    "setName": "无套组",
+    "barrelId": "marker",
+    "barrelName": "定一桶",
+    "hotRate": 0.06316666666666666,
+    "expectedScore": 412.73333333333335,
+    "legalRate": 0.9725
+  },
+  {
+    "setId": "free",
+    "setName": "无套组",
+    "barrelId": "astral",
+    "barrelName": "星象桶",
+    "hotRate": 0.06116666666666667,
+    "expectedScore": 405.3333333333333,
+    "legalRate": 0.9686666666666667
+  },
+  {
+    "setId": "free",
+    "setName": "无套组",
+    "barrelId": "brood",
+    "barrelName": "增殖桶",
+    "hotRate": 0.05633333333333333,
+    "expectedScore": 404.75,
+    "legalRate": 0.97
+  },
+  {
+    "setId": "free",
+    "setName": "无套组",
+    "barrelId": "pentagram",
+    "barrelName": "五芒桶",
+    "hotRate": 0.06433333333333334,
+    "expectedScore": 401.46666666666664,
+    "legalRate": 0.9706666666666667
+  },
+  {
+    "setId": "free",
+    "setName": "无套组",
+    "barrelId": "pawn",
+    "barrelName": "当铺桶",
+    "hotRate": 0.063,
+    "expectedScore": 400.43333333333334,
+    "legalRate": 0.9658333333333333
+  },
+  {
+    "setId": "free",
+    "setName": "无套组",
+    "barrelId": "fuse",
+    "barrelName": "引信桶",
+    "hotRate": 0.063,
+    "expectedScore": 400.43333333333334,
+    "legalRate": 0.9658333333333333
+  },
+  {
+    "setId": "free",
+    "setName": "无套组",
+    "barrelId": "loan",
+    "barrelName": "借运桶",
+    "hotRate": 0.063,
+    "expectedScore": 400.43333333333334,
+    "legalRate": 0.9658333333333333
+  },
+  {
+    "setId": "free",
+    "setName": "无套组",
+    "barrelId": "gilded",
+    "barrelName": "鎏金桶",
+    "hotRate": 0.06416666666666666,
+    "expectedScore": 399.30833333333334,
+    "legalRate": 0.9695
+  },
+  {
+    "setId": "free",
+    "setName": "无套组",
+    "barrelId": "oak",
+    "barrelName": "旧橡木桶",
+    "hotRate": 0.06433333333333334,
+    "expectedScore": 398.44166666666666,
+    "legalRate": 0.9678333333333333
+  },
+  {
+    "setId": "free",
+    "setName": "无套组",
+    "barrelId": "vortex",
+    "barrelName": "旋涡桶",
+    "hotRate": 0.061,
+    "expectedScore": 398.23333333333335,
+    "legalRate": 0.9706666666666667
+  },
+  {
+    "setId": "free",
+    "setName": "无套组",
+    "barrelId": "rotation",
+    "barrelName": "轮转桶",
+    "hotRate": 0.06316666666666666,
+    "expectedScore": 397.875,
+    "legalRate": 0.9698333333333333
+  },
+  {
+    "setId": "free",
+    "setName": "无套组",
+    "barrelId": "demon_pact",
+    "barrelName": "恶魔契桶",
+    "hotRate": 0.06166666666666667,
+    "expectedScore": 396.76666666666665,
+    "legalRate": 0.965
+  },
+  {
+    "setId": "free",
+    "setName": "无套组",
+    "barrelId": "nightwatch",
+    "barrelName": "守夜桶",
+    "hotRate": 0.06166666666666667,
+    "expectedScore": 396.76666666666665,
+    "legalRate": 0.965
+  },
+  {
+    "setId": "free",
+    "setName": "无套组",
+    "barrelId": "twoface",
+    "barrelName": "双面桶",
+    "hotRate": 0.059833333333333336,
+    "expectedScore": 392.95,
+    "legalRate": 0.9693333333333334
+  },
+  {
+    "setId": "free",
+    "setName": "无套组",
+    "barrelId": "serpent",
+    "barrelName": "蛇纹桶",
+    "hotRate": 0.05466666666666667,
+    "expectedScore": 346.94166666666666,
+    "legalRate": 0.9455
+  }
+]
