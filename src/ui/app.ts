@@ -11,7 +11,7 @@ import type { BossDef, Opponent } from '../core/types.ts';
 import { clamp, h, num } from '../core/util.ts';
 import { motion } from '../render/motion.ts';
 import { barrelCupArt, paperTableArt } from '../render/art.ts';
-import { portraitFor } from '../render/portrait-assets.ts';
+import { hasPortraitStates, portraitFor } from '../render/portrait-assets.ts';
 import { sound } from '../platform/sound.ts';
 import {
   bindDiscovery, discoverLoadout,
@@ -639,12 +639,13 @@ export function setupLevelScene(force = false): void {
   const opponentEl = $('#opponent')!;
   opponentEl.classList.toggle('is-boss', isBoss);
   opponentEl.classList.toggle('is-minion', !isBoss);
+  opponentEl.classList.toggle('has-state', hasPortraitStates(opponent.art));
   opponentEl.dataset.paperArt = opponent.art;
   opponentEl.style.setProperty('--boss-accent', opponent.accent || '#c25b5b');
   const image = $<HTMLImageElement>('#opponent-image')!;
   image.src = portraitFor(opponent.art, 'idle');
   image.dataset.portraitState = 'idle';
-  image.alt = opponent.name;;
+  image.alt = opponent.name;
   $('#opponent-name')!.textContent = opponent.name;
   $('#opponent-kicker')!.textContent = isBoss ? `第 ${app.run.level} 关 · 庄家` : opponent.title;
   $('#opponent-inline')!.textContent = `对手：${opponent.name}`;

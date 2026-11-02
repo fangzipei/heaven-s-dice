@@ -171,3 +171,38 @@ body #tutorial-guide .guide-card .primary-button {
     max-height: 100% !important;
   }
 }
+
+/* Four-state portraits sit directly on the table; only the legacy SVG
+   portraits keep their paper card frame. */
+.opponent.has-state .opponent-image-wrap {
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  overflow: visible !important;
+}
+.opponent.has-state .opponent-image-wrap::before,
+.opponent.has-state .opponent-image-wrap::after {
+  display: none !important;
+}
+.opponent.has-state .opponent-image-wrap img {
+  filter: drop-shadow(0 14px 16px rgba(40, 26, 14, .28));
+}
+
+/* Left swing keeps the old portrait; the swap lands on the right swing. */
+.opponent-image-wrap.is-state-swapping {
+  animation: opponent-pose-shake .44s cubic-bezier(.36, .07, .19, .97) both;
+  transform-origin: 50% 70%;
+}
+@keyframes opponent-pose-shake {
+  0% { transform: rotate(0deg) translateX(0); }
+  16% { transform: rotate(-3.5deg) translateX(-9px); }
+  32% { transform: rotate(-4.5deg) translateX(-6px); }
+  50% { transform: rotate(3.5deg) translateX(8px); }
+  68% { transform: rotate(2deg) translateX(4px); }
+  84% { transform: rotate(-1deg) translateX(-2px); }
+  100% { transform: rotate(0deg) translateX(0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .opponent-image-wrap.is-state-swapping { animation: none !important; }
+}
