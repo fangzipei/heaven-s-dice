@@ -1,4 +1,5 @@
 // platform/api.ts — 与 /heavens-dice/api 通信。开发时由 Vite 代理，线上由 Nginx 代理。
+import type { ChangelogEntry } from '../content/changelog.ts';
 import type { RunRecord } from './run-record.ts';
 
 const API_BASE = './api';
@@ -159,6 +160,11 @@ export async function deleteActiveSave(token: string): Promise<void> {
 export async function fetchLeaderboard(board: 'time' | 'luck', limit = 20): Promise<LeaderboardRow[]> {
   const result = await request<{ rows: LeaderboardRow[] }>(`leaderboards?board=${board}&limit=${limit}`);
   return result.rows;
+}
+
+export async function fetchChangelog(): Promise<ChangelogEntry[]> {
+  const result = await request<{ entries: ChangelogEntry[] }>('changelog', { timeoutMs: 6000 });
+  return Array.isArray(result.entries) ? result.entries : [];
 }
 
 export async function fetchRunHistory(token: string, limit = 50): Promise<HistoryEntry[]> {

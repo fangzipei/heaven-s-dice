@@ -13,7 +13,7 @@ import { renderDiceTrayDom } from '../render/dice-dom.ts';
 import type { DiceTable as DiceTableRow } from '../render/dice-table.ts';
 import { motion } from '../render/motion.ts';
 import { hideTooltip, dieTooltip, positionTooltipAt, showTooltipHtml } from './components/tooltip.ts';
-import { guideEvent } from './tutorial-guide.ts';
+import { guideAllows, guideEvent, isTutorialGuideActive } from './tutorial-guide.ts';
 import { $ } from './dom.ts';
 import { app } from './state.ts';
 
@@ -71,6 +71,7 @@ export async function ensureDiceTable() {
 function handleDiePick(uid: string | null) {
   if (!uid) return;
   if (!app.run || app.busy || app.introOpen) return;
+  if (isTutorialGuideActive() && !guideAllows(document.querySelector('.dice-zone'))) return;
   if (toggleDie(app.run, uid)) {
     motion.tapDie(diceTable, uid);
     repaint();

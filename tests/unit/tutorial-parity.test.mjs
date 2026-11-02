@@ -90,9 +90,11 @@ describe('规则表与开始页提示', () => {
   test('开始页：两条去向的文案', () => {
     showStartPrompt();
     const html = overlay();
-    expect(html).toContain('data-action="open-tutorial">进入图解教程');
+    expect(html).toContain('data-action="start-guided">进入教程');
     expect(html).toContain('data-action="start-direct">不用了，直接开局');
-    expect(html).toContain('开局后也可以随时点右上角规则查看简版');
+    expect(html).toContain('本作脱胎于 Farkle 骰子游戏');
+    expect(html).toContain('新手建议先查看教程');
+    expect(html).not.toContain('data-action="open-tutorial"');
   });
 });
 

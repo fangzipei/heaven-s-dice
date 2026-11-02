@@ -51,7 +51,7 @@ import {
   refreshShop, sellShopItem,
 } from './screens/shop.ts';
 import { openRules, openTutorial, scrollTutorial, showStartPrompt } from './screens/tutorial.ts';
-import { guideEvent, startTutorialGuide } from './tutorial-guide.ts';
+import { guideAllows, guideEvent, isTutorialGuideActive, startTutorialGuide } from './tutorial-guide.ts';
 import { loadGameConfig } from '../platform/game-config.ts';
 import { app } from './state.ts';
 import { diceTable, ensureDiceTable, renderDiceTray, setTrayRepaint } from './tray.ts';
@@ -75,7 +75,7 @@ document.addEventListener('DOMContentLoaded', () => {
   setTrayRepaint(renderSelectionUi);
   bindSceneParallax();
   renderStartDecor();
-  refreshHomeChangelog();
+  void refreshHomeChangelog();
   refreshAccountButton();
   refreshResumeButton();
   compactStoredHistory();
@@ -95,7 +95,7 @@ document.addEventListener('DOMContentLoaded', () => {
 /* Checkpoints are written only when a level or shop is finished, so continuing
    always drops the player at a clean level start instead of a half-played hand. */
 export function saveCheckpoint(): void {
-  if (!app.run) return;
+  if (!app.run || app.run.flags.tutorial) return;
   const record = getRunRecord();
   saveGame(app.run, record);
   if (record) void uploadActiveGame(app.run, record);
@@ -238,6 +238,7 @@ function bindRailResize(): void {
 function bindGlobalEvents(): void {
   document.addEventListener('click', (event: MouseEvent) => {
     hideTooltip();
+    if (isTutorialGuideActive() && !guideAllows(event.target)) return;
     const die = (event.target as Element).closest<HTMLButtonElement>('[data-die-uid]');
     if (die && die.getAttribute('aria-disabled') !== 'true' && app.run?.phase === 'selecting' && !app.busy && !app.introOpen) {
       sound.unlock();
@@ -261,6 +262,7 @@ function bindGlobalEvents(): void {
 
   document.addEventListener('keydown', (event: KeyboardEvent) => {
     if (event.defaultPrevented) return;
+    if (isTutorialGuideActive()) return;
     if (event.key === 'Escape') {
       if (app.overlayDismissible) {
         closeOverlay();
@@ -333,7 +335,7 @@ async function handleAction(action: string, target: HTMLElement, _event?: MouseE
       openTutorial();
       break;
     case 'open-changelog':
-      openChangelog();
+      void openChangelog();
       break;
     case 'heaven-fight':
       fightSatan();
@@ -382,6 +384,7 @@ async function handleAction(action: string, target: HTMLElement, _event?: MouseE
     case 'close-rail':
       document.body.classList.add('rail-collapsed');
       sound.click();
+      if (app.run) guideEvent('closeRail', app.run);
       break;
     case 'toggle-rail': {
       // One switch for every width: the sheet is the same floating element,
@@ -390,6 +393,7 @@ async function handleAction(action: string, target: HTMLElement, _event?: MouseE
       const collapsed = document.body.classList.contains('rail-collapsed');
       target.setAttribute('aria-expanded', String(!collapsed));
       if (!collapsed) sound.paperUnfold();
+      if (app.run) guideEvent('rail', app.run);
       break;
     }
     case 'auto-roll':
@@ -552,8 +556,16 @@ export async function startRun({ guide = false }: { guide?: boolean } = {}): Pro
     closeShopScreen();
     clearGameSave();
     app.run = Engine.createRun();
-    beginRunRecord(app.run!, profile.id);
-    discoverLoadout(app.run!);
+    if (guide) {
+      // A dedicated, hard-coded teaching table. It never enters the save,
+      // history or upload path; completing it starts a fresh level 1.
+      app.run.flags.tutorial = true;
+      app.run.target = 5000;
+      app.run.targetBase = 5000;
+    } else {
+      beginRunRecord(app.run, profile.id);
+    }
+    discoverLoadout(app.run);
     app.screen = 'game';
     app.busy = false;
     app.rolling = false;
@@ -563,12 +575,12 @@ export async function startRun({ guide = false }: { guide?: boolean } = {}): Pro
     document.body.classList.add('rail-collapsed');
     setupLevelScene(true);
     renderGame();
-    saveCheckpoint();
+    if (!guide) saveCheckpoint();
   }, () => {
     // The run only exists once the paper wipe commits, so the guide has to be
     // started from this callback rather than after `await startRun()`.
-    if (guide) startTutorialGuide();
-    showLevelIntro();
+    if (guide) startTutorialGuide(() => { void startRun(); });
+    else showLevelIntro();
   });
   sound.unlock();
   refreshResumeButton();

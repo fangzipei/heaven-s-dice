@@ -1,42 +1,130 @@
-// ui/tutorial-guide.ts — first-level, action-gated 15-step guide.
+// ui/tutorial-guide.ts — first-level, action-gated guide for the current UI.
 import { showToast } from './components/toast.ts';
 import type { RunState } from '../core/types.ts';
 
-type Gate = 'next' | 'roll' | 'selectOneFive' | 'continue' | 'selectTriple' | 'reroll'
-  | 'selectStraight' | 'bust' | 'selectFullStraight' | 'selectFour';
+type Gate = 'next' | 'rail' | 'closeRail' | 'roll' | 'hint' | 'continue'
+  | 'reroll' | 'selectTriple' | 'selectFullStraight';
 
-interface Step { selector: string; title: string; body: string; gate: Gate }
+interface Step {
+  selector: string;
+  extraSelector?: string;
+  allowAction?: string;
+  title: string;
+  body: string;
+  gate: Gate;
+}
 
 const STEPS: Step[] = [
-  { selector: '.score-panel', title: '先认识牌桌', body: '左上角是本关得分与目标；中间是骰桌；右侧是随身物品。点「下一步」继续。', gate: 'next' },
-  { selector: '.cup-zone', title: '手动摇桶', body: '按住右侧骰桶，左右拖动约 2 秒后松手。教程会固定给你 1·5·1·5·2·3。', gate: 'roll' },
-  { selector: '.dice-zone', title: '点选 1 和 5', body: '点选两颗 1 和两颗 5；选中后浮动分会出现在计分板。', gate: 'selectOneFive' },
-  { selector: '.action-dock', title: '点「计分并继续」', body: '点击「计分并继续」：这四颗骰子移出，教程会继续发下一手。', gate: 'continue' },
-  { selector: '.action-dock', title: '点「自动投掷」', body: '这次点「自动投掷」，让系统代摇。教程会固定给你三颗 3。', gate: 'roll' },
-  { selector: '.dice-zone', title: '点选三条 3', body: '选中三颗 3，组成条子。三个 3 = 300 分。', gate: 'selectTriple' },
-  { selector: '.action-dock', title: '点「计分并重投」', body: '点击「计分并重投」结束本轮，把累计分落袋，并消耗一次重投。', gate: 'reroll' },
-  { selector: '.cup-zone', title: '再摇一手顺子', body: '手动摇桶。教程会固定给你 1·2·3·4·5·6。', gate: 'roll' },
-  { selector: '.dice-zone', title: '点选小顺子', body: '点选 1、2、3、4、5，组成小顺子。', gate: 'selectStraight' },
-  { selector: '.action-dock', title: '点「计分并继续」', body: '把顺子计分并继续。教程会发一手没有分型的骰子，让你看掷空。', gate: 'continue' },
-  { selector: '.score-panel', title: '摇出掷空', body: '现在摇桶。这一手没有任何分型，本轮浮动分会清零。', gate: 'bust' },
-  { selector: '.cup-zone', title: '点「重投」', body: '掷空后消耗一次重投，重新摇桶。教程会固定给你通天顺。', gate: 'roll' },
-  { selector: '.dice-zone', title: '点选通天顺', body: '点选 1 到 6 六颗骰子，组成通天顺。', gate: 'selectFullStraight' },
-  { selector: '.action-dock', title: '点「计分并继续」', body: '六颗骰子全部得分时，继续会把六颗一起免费重投，形成全骰。', gate: 'continue' },
-  { selector: '.action-dock', title: '选四条并「计分并重投」', body: '选中四颗 2，再点「计分并重投」结束本轮。条子按点数 × 数量倍率计算，四条远高于三条。', gate: 'reroll' },
+  {
+    selector: '.score-panel',
+    title: '先看分数面板',
+    body: '左上角的大数字是已经落袋的分数；旁边是本轮还没入袋的浮动分；右边是本关目标。教程结束后会从正式第一关重新开始。',
+    gate: 'next',
+  },
+  {
+    selector: '.rail-paper-ball',
+    title: '认识废纸团',
+    body: '右侧现在默认收成一颗废纸团。点开它，就能查看随身物品、骰型规则、套组和赌桌记录。',
+    gate: 'rail',
+  },
+  {
+    selector: '.rail-card.items-card',
+    title: '随身物品',
+    body: '这里会放主动物品和被动物品。现在还是空的；之后的市集才会给你第一件物品。',
+    gate: 'next',
+  },
+  {
+    selector: '.rail-collapse',
+    title: '收起情报',
+    body: '看完后点右上角的 X 收起废纸团，回到牌桌。',
+    gate: 'closeRail',
+  },
+  {
+    selector: '.cup-zone',
+    extraSelector: '.action-dock',
+    title: '摇第一手',
+    body: '按住右侧骰桶摇动约 2 秒，骰子会落桌；也可以直接点下方「自动投掷」。',
+    gate: 'roll',
+  },
+  {
+    selector: '.hint-score-button',
+    title: '提示最高分',
+    body: '不用自己算。点「提示最高分」，系统会选出当前能组成的最高分组合；你仍然可以手动改选。',
+    gate: 'hint',
+  },
+  {
+    selector: '[data-action="score-reroll"]',
+    allowAction: 'score-reroll',
+    title: '计分并重投',
+    body: '点「计分并重投」：本轮分数落袋，六颗骰子重新开始，并消耗 1 次重投。',
+    gate: 'reroll',
+  },
+  {
+    selector: '[data-action="auto-roll"]',
+    allowAction: 'auto-roll',
+    title: '自动投掷',
+    body: '点「自动投掷」，让六颗骰子重新落桌。',
+    gate: 'roll',
+  },
+  {
+    selector: '.dice-zone',
+    title: '选出三条 3',
+    body: '点选三颗 3，组成三条。三条 3 的基础分是 300。',
+    gate: 'selectTriple',
+  },
+  {
+    selector: '[data-action="score-reroll"]',
+    allowAction: 'score-reroll',
+    title: '计分并重投',
+    body: '点「计分并重投」：本轮分数落袋，六颗骰子重新开始，并消耗 1 次重投。',
+    gate: 'reroll',
+  },
+  {
+    selector: '.cup-zone',
+    extraSelector: '.action-dock',
+    title: '再摇一手',
+    body: '摇出这一手的完整顺子。',
+    gate: 'roll',
+  },
+  {
+    selector: '.dice-zone',
+    title: '选中完整顺子',
+    body: '点选 1、2、3、4、5、6 六颗骰子，组成天地顺。基础分是 1500。',
+    gate: 'selectFullStraight',
+  },
+  {
+    selector: '[data-action="score-continue"]',
+    allowAction: 'score-continue',
+    title: '全骰与继续',
+    body: '点「计分并继续」。六颗骰子全部计分会触发全骰：免费重投六颗，但本轮不会结束。',
+    gate: 'continue',
+  },
+  {
+    selector: '.score-panel',
+    extraSelector: '.score-pending',
+    title: '红框里的浮动分',
+    body: '红框标出的是本轮浮动分：它还没有真正落袋。下一次掷空会清空它；只有「计分并重投」才会把它收进本关已得。',
+    gate: 'next',
+  },
+  {
+    selector: '.action-dock',
+    title: '教程结束',
+    body: '你已走完一手完整流程。点下面按钮进入正式第一关；之后随时可以点右上角规则重看说明。',
+    gate: 'next',
+  },
 ];
 
 const ROLLS: number[][] = [
   [1, 5, 1, 5, 2, 3],
   [3, 3, 3, 5, 2, 3],
   [1, 2, 3, 4, 5, 6],
-  [2, 3, 4, 6, 2, 3],
-  [1, 2, 3, 4, 5, 6],
-  [2, 2, 2, 2, 5, 6],
 ];
 
 let guideIndex = 0;
 let guideRoot: HTMLElement | null = null;
 let rollIndex = 0;
+let highlightObserver: MutationObserver | null = null;
+let onComplete: (() => void) | null = null;
 
 function counts(run: RunState): Map<number, number> {
   const map = new Map<number, number>();
@@ -60,26 +148,35 @@ function hasStraight(run: RunState, length: number): boolean {
 function gateMet(step: Step, run: RunState): boolean {
   const c = counts(run);
   switch (step.gate) {
-    case 'selectOneFive': return run.selected.some((uid) => run.dice.find((d) => d.uid === uid)?.value === 1)
-      && run.selected.some((uid) => run.dice.find((d) => d.uid === uid)?.value === 5);
     case 'selectTriple': return [...c.values()].some((n) => n >= 3);
-    case 'selectStraight': return hasStraight(run, 5);
     case 'selectFullStraight': return hasStraight(run, 6);
-    case 'selectFour': return [...c.values()].some((n) => n >= 4);
     default: return false;
   }
 }
 
-function advance(): void {
-  if (guideIndex >= STEPS.length - 1) { endTutorialGuide(); showToast('引导结束，继续完成这一关吧。', 'good'); return; }
-  guideIndex += 1;
-  paint();
+function highlightedNodes(): HTMLElement[] {
+  const step = STEPS[guideIndex];
+  if (!step) return [];
+  return [step.selector, step.extraSelector]
+    .filter((selector): selector is string => Boolean(selector))
+    .map((selector) => document.querySelector<HTMLElement>(selector))
+    .filter((node): node is HTMLElement => Boolean(node));
+}
+
+function applyHighlights(): void {
+  const step = STEPS[guideIndex];
+  if (!step) return;
+  document.querySelectorAll('.guide-highlight').forEach((el) => el.classList.remove('guide-highlight'));
+  document.querySelectorAll('.guide-focus-red').forEach((el) => el.classList.remove('guide-focus-red'));
+  highlightedNodes().forEach((node) => node.classList.add('guide-highlight'));
+  if (step.extraSelector === '.score-pending') {
+    document.querySelector('.score-pending')?.classList.add('guide-focus-red');
+  }
 }
 
 function paint(): void {
   const step = STEPS[guideIndex]!;
-  document.querySelectorAll('.guide-highlight').forEach((el) => el.classList.remove('guide-highlight'));
-  document.querySelector(step.selector)?.classList.add('guide-highlight');
+  applyHighlights();
   if (!guideRoot) return;
   const manual = step.gate === 'next';
   guideRoot.innerHTML = `
@@ -93,55 +190,101 @@ function paint(): void {
       </div>
     </section>`;
   guideRoot.querySelector('[data-guide="next"]')?.addEventListener('click', advance);
-  guideRoot.querySelector('[data-guide="close"]')?.addEventListener('click', () => endTutorialGuide());
+  guideRoot.querySelector('[data-guide="close"]')?.addEventListener('click', () => finishGuide());
   placeCard();
 }
 
-/** Keep the card out of every interactive zone: the left gutter beside the
- *  dice tray when it is wide enough, otherwise the free band above the tray. */
+function advance(): void {
+  if (guideIndex >= STEPS.length - 1) { finishGuide(true); return; }
+  guideIndex += 1;
+  paint();
+  // Some steps introduce a control during the same action's deferred render
+  // (for example the hint button after the first throw). Re-apply the frame
+  // once that render has landed.
+  requestAnimationFrame(paint);
+}
+
+function finishGuide(completed = false): void {
+  if (completed) showToast('教程完成，进入第一关。', 'good');
+  endTutorialGuide();
+}
+
+/** Keep the card out of the dice tray and action dock at every viewport. */
 function placeCard(): void {
   const card = guideRoot?.querySelector<HTMLElement>('.guide-card');
   if (!card) return;
+  const step = STEPS[guideIndex];
   const rect = (selector: string) => document.querySelector(selector)?.getBoundingClientRect();
   const tray = rect('.dice-zone');
   const dock = rect('.action-dock');
   const cup = rect('.cup-zone');
   const score = rect('.score-panel');
-  const topEdge = Math.max(score?.bottom ?? 0, 64) + 6;
+  const topEdge = Math.max(score?.bottom ?? 0, 64) + 8;
   const bottomEdge = Math.min(
     tray?.top ?? Infinity,
     cup?.top ?? Infinity,
     dock?.top ?? Infinity,
-  ) - 6;
-  const gutter = (tray?.left ?? 0) - 16;
+  ) - 8;
 
   card.style.bottom = 'auto';
-  card.style.left = '10px';
-  if (gutter - 10 >= 240) {
-    card.style.width = `${Math.min(360, Math.round(gutter - 10))}px`;
-    card.style.right = 'auto';
-    card.style.top = '0px';
-    const height = card.offsetHeight;
-    const standAt = (dock?.top ?? bottomEdge + height) - 8 - height;
-    card.style.top = `${Math.round(Math.max(topEdge, standAt))}px`;
+  card.style.overflowY = 'auto';
+  card.style.maxHeight = Math.max(160, Math.min(380, bottomEdge - topEdge)) + 'px';
+  const railStep = Boolean(step?.selector.includes('rail'));
+  if (window.innerWidth >= 1000) {
+    // Desktop never scrolls the teaching card; its copy is short and the
+    // right/top band is kept clear of the dice tray.
+    card.style.overflowY = 'visible';
+    card.style.maxHeight = 'none';
+    card.style.width = '360px';
+    card.style.top = '88px';
+    if (railStep) {
+      card.style.left = '12px';
+      card.style.right = 'auto';
+    } else {
+      card.style.left = 'auto';
+      card.style.right = '20px';
+    }
     return;
   }
-  card.style.right = '10px';
+  card.style.left = '12px';
+  card.style.right = '12px';
   card.style.width = 'auto';
-  card.style.top = '0px';
-  const height = card.offsetHeight;
-  card.style.top = `${Math.round(Math.max(topEdge, bottomEdge - height))}px`;
+  card.style.top = Math.round(topEdge) + 'px';
 }
 
-export function startTutorialGuide(): void {
+export function startTutorialGuide(complete?: () => void): void {
   endTutorialGuide();
   guideIndex = 0;
   rollIndex = 0;
+  onComplete = complete || null;
   guideRoot = document.createElement('div');
   guideRoot.id = 'tutorial-guide';
   document.body.appendChild(guideRoot);
+  document.body.classList.add('guide-active');
+  highlightObserver = new MutationObserver(() => applyHighlights());
+  highlightObserver.observe(document.body, { childList: true, subtree: true });
   window.addEventListener('resize', placeCard);
   paint();
+}
+
+export function isTutorialGuideActive(): boolean {
+  return Boolean(guideRoot);
+}
+
+/** The click dispatcher uses this to block everything except the highlighted area. */
+export function guideAllows(target: EventTarget | null): boolean {
+  if (!guideRoot) return true;
+  const element = target instanceof Element ? target : null;
+  if (!element) return false;
+  if (element.closest('#tutorial-guide')) return true;
+  const step = STEPS[guideIndex];
+  if (!step) return false;
+  if (step.allowAction) {
+    return Boolean(element.closest(`[data-action="${step.allowAction}"]`));
+  }
+  return [step.selector, step.extraSelector]
+    .filter((selector): selector is string => Boolean(selector))
+    .some((selector) => Boolean(element.closest(selector)));
 }
 
 export function nextTutorialRoll(): number[] | undefined {
@@ -151,23 +294,34 @@ export function nextTutorialRoll(): number[] | undefined {
   return values ? [...values] : undefined;
 }
 
-/** Game calls this after a throw / selection / score action. */
-export function guideEvent(kind: 'roll' | 'selection' | 'continue' | 'reroll', run: RunState): void {
+/** Game calls this after a throw / selection / score / hint / rail action. */
+export function guideEvent(
+  kind: 'roll' | 'selection' | 'continue' | 'reroll' | 'hint' | 'rail' | 'closeRail',
+  run: RunState,
+): void {
   if (!guideRoot) return;
   const step = STEPS[guideIndex]!;
-  if (kind === 'roll') {
-    if (step.gate === 'roll') { advance(); return; }
-    if (step.gate === 'bust' && run.phase === 'dead') { advance(); return; }
-    return;
-  }
+  if (kind === 'roll' && step.gate === 'roll') { advance(); return; }
   if (kind === 'selection' && step.gate.startsWith('select') && gateMet(step, run)) { advance(); return; }
   if (kind === 'continue' && step.gate === 'continue') { advance(); return; }
-  if (kind === 'reroll' && step.gate === 'reroll') advance();
+  if (kind === 'reroll' && step.gate === 'reroll') { advance(); return; }
+  if (kind === 'hint' && step.gate === 'hint') { advance(); return; }
+  if (kind === 'rail' && step.gate === 'rail') { advance(); return; }
+  if (kind === 'closeRail' && step.gate === 'closeRail') advance();
 }
 
 export function endTutorialGuide(): void {
+  if (!guideRoot) return;
+  const callback = onComplete;
+  onComplete = null;
+  document.body.classList.remove('guide-active');
+  highlightObserver?.disconnect();
+  highlightObserver = null;
   window.removeEventListener('resize', placeCard);
-  document.querySelectorAll('.guide-highlight').forEach((el) => el.classList.remove('guide-highlight'));
-  guideRoot?.remove();
+  document.querySelectorAll('.guide-highlight, .guide-focus-red').forEach((el) => {
+    el.classList.remove('guide-highlight', 'guide-focus-red');
+  });
+  guideRoot.remove();
   guideRoot = null;
+  callback?.();
 }

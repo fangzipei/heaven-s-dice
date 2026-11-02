@@ -698,6 +698,7 @@ export function hintBestScore(): void {
   if (!result.ok) { showToast(result.error!, 'error'); return; }
   renderGame();
   showToast(`已选择本次最高分组合：+${num(result.total || 0)}`, 'good');
+  guideEvent('hint', run);
 }
 
 export function beginRoll({ free = false }: { free?: boolean } = {}): void {

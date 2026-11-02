@@ -341,6 +341,8 @@ export interface BoardDie {
 export type HandType = 'single' | 'pair' | 'triple' | 'quad' | 'quint' | 'sext' | 'straight' | 'mixed';
 
 export interface RunFlags {
+  /** Dedicated tutorial run: never saved, recorded, or uploaded. */
+  tutorial?: boolean;
   hunterMark?: boolean;
   bloodContract?: boolean;
   wagerMark?: boolean;

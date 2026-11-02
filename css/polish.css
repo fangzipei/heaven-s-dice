@@ -109,3 +109,65 @@ button:focus-visible,
   0%, 100% { text-shadow: 0 2px 22px rgba(255, 216, 136, .14); }
   50% { text-shadow: 0 2px 30px rgba(255, 224, 158, .38); }
 }
+
+/* The tutorial card is deliberately not paper-gold: it is a dark ink panel
+   with a red teaching frame, so it reads as an overlay instead of table UI. */
+body #tutorial-guide .guide-card {
+  background:
+    linear-gradient(155deg, rgba(53, 28, 20, .98), rgba(25, 13, 10, .99)) !important;
+  border: 2px solid #d53627 !important;
+  color: #f3dfc2 !important;
+  box-shadow:
+    0 22px 70px rgba(0, 0, 0, .58),
+    0 0 0 1px rgba(255, 169, 125, .14),
+    0 0 34px rgba(213, 54, 39, .18) !important;
+  overflow: visible !important;
+  max-height: none !important;
+}
+body #tutorial-guide .guide-card header {
+  color: #ff9f82 !important;
+  font-weight: 700 !important;
+}
+body #tutorial-guide .guide-card header em {
+  color: #d8b79d !important;
+}
+body #tutorial-guide .guide-card h3 {
+  color: #fff0cc !important;
+  font-weight: 700 !important;
+}
+body #tutorial-guide .guide-card p {
+  color: #efdcc1 !important;
+  font-weight: 600 !important;
+}
+body #tutorial-guide .guide-card .guide-wait {
+  color: #ffb39a !important;
+}
+body #tutorial-guide .guide-card .text-button {
+  color: #d8bda8 !important;
+}
+body #tutorial-guide .guide-card .primary-button {
+  background: #e7c57d !important;
+  border-color: #f7dda5 !important;
+  color: #25150b !important;
+}
+
+/* Keep the opponent portrait fully inside its chair; paper-scene's cover crop
+   was cutting tall portraits off at the top. */
+.opponent-image-wrap img {
+  width: auto !important;
+  height: auto !important;
+  max-width: 88% !important;
+  max-height: 88% !important;
+  object-fit: contain !important;
+  object-position: center bottom !important;
+}
+.opponent.is-boss .opponent-image-wrap img {
+  max-width: 90% !important;
+  max-height: 90% !important;
+}
+@media (max-width: 760px) {
+  .opponent-image-wrap img {
+    max-width: 100% !important;
+    max-height: 100% !important;
+  }
+}

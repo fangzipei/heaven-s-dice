@@ -13,6 +13,7 @@ const DB_PASSWORD = process.env.DB_PASSWORD || '';
 const DB_NAME = process.env.DB_NAME || 'wanjie';
 const SESSION_DAYS = Number(process.env.SESSION_DAYS || 30);
 const MAX_BODY = 8 * 1024 * 1024;
+const CHANGELOG = JSON.parse(readFileSync(new URL('./changelog.json', import.meta.url), 'utf8'));
 
 const pool = mysql.createPool({
   host: DB_HOST, port: DB_PORT, user: DB_USER, password: DB_PASSWORD, database: DB_NAME,
@@ -525,6 +526,7 @@ const server = http.createServer(async (req, res) => {
     if (req.method === 'GET' && path === '/active-run') return await getActiveSave(req, res);
     if (req.method === 'POST' && path === '/active-run') return await putActiveSave(req, res);
     if (req.method === 'DELETE' && path === '/active-run') return await deleteActiveSave(req, res);
+    if (req.method === 'GET' && path === '/changelog') return json(res, 200, { entries: CHANGELOG });
     if (req.method === 'GET' && path === '/history') return await history(req, res, url);
     if (req.method === 'GET' && path.startsWith('/history/')) {
       return await historyDetail(req, res, decodeURIComponent(path.slice('/history/'.length)));

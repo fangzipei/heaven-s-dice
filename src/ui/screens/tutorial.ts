@@ -213,12 +213,12 @@ export function showStartPrompt(): void {
       <p class="modal-kicker">FIRST TIME AT THE TABLE?</p>
       <div class="start-choice-mark"><svg><use href="#i-die"></use></svg></div>
       <h2>要先看看怎么玩吗？</h2>
-      <p class="start-choice-lede">计分规矩会用骰子图一张张画出来：三个 3 = 300，四个 3 = 600，五个 3 = 1200，六个 3 = 2400。第一次坐下的话，建议先看一遍。</p>
+      <p class="start-choice-lede">先走一遍约一分钟的引导关：摇骰、选骰、计分、重投和提示最高分都会带你实际操作。</p>
       <div class="start-choice-actions">
-        <button class="primary-button" data-action="open-tutorial">进入图解教程 <svg><use href="#i-book"></use></svg></button>
+        <button class="primary-button" data-action="start-guided">进入教程 <svg><use href="#i-arrow"></use></svg></button>
         <button class="secondary-button" data-action="start-direct">不用了，直接开局</button>
       </div>
-      <p class="start-choice-note">开局后也可以随时点右上角规则查看简版；完整图解教程会保留在开始页。</p>
+      <p class="start-choice-note">本作脱胎于 Farkle 骰子游戏，沿用了部分游戏规则。新手建议先查看教程。</p>
     </div>
   `, { dismissible: true });
 }

@@ -2618,3 +2618,159 @@ body.rail-collapsed .cup-zone { right: 4.2% !important; }
   .history-throw { grid-template-columns: minmax(62px, 1fr) minmax(80px, 1.2fr) 50px; }
   .history-throw small { display: none; }
 }
+
+/* ── Tutorial onboarding v2 ─────────────────────────────────────────── */
+.start-choice-lede {
+  color: #ddc9a8 !important;
+  font-size: 13px !important;
+  line-height: 1.95 !important;
+  opacity: 1 !important;
+}
+.start-choice-note {
+  color: #bfae91 !important;
+  font-size: 10px !important;
+  line-height: 1.8 !important;
+  opacity: 1 !important;
+}
+.start-choice-actions .primary-button {
+  color: #1c1408 !important;
+  background: #e7c57d !important;
+  border-color: #f2d79c !important;
+}
+
+/* During the guide only the highlighted control accepts input. */
+body.guide-active .topbar,
+body.guide-active .rail,
+body.guide-active .rail-paper-ball,
+body.guide-active .cup-zone,
+body.guide-active .dice-zone,
+body.guide-active .action-dock,
+body.guide-active .score-panel,
+body.guide-active .danger-strip {
+  pointer-events: none;
+}
+body.guide-active .guide-highlight,
+body.guide-active .guide-highlight * {
+  pointer-events: auto !important;
+}
+body.guide-active .guide-card {
+  pointer-events: auto !important;
+  max-height: min(54vh, 360px);
+  overflow-y: auto;
+}
+body.guide-active .guide-highlight {
+  outline: 2px solid rgba(193, 74, 51, .92) !important;
+  outline-offset: 4px;
+  box-shadow: 0 0 0 6px rgba(193, 74, 51, .12), 0 0 32px rgba(193, 74, 51, .28) !important;
+}
+body.guide-active .guide-focus-red {
+  outline: 2px solid #c14937 !important;
+  outline-offset: 3px;
+  animation: guide-red-pulse 1.5s ease-in-out infinite;
+}
+@keyframes guide-red-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(193, 74, 51, .28); }
+  50% { box-shadow: 0 0 0 7px rgba(193, 74, 51, .05); }
+}
+
+/* Mobile action dock: hint gets its own row; the two score actions share a
+   row without their secondary copy fighting the score number. */
+@media (max-width: 760px) {
+  .action-dock .action-buttons {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 7px;
+  }
+  .action-dock .hint-score-button {
+    grid-column: 1 / -1;
+    width: 100%;
+  }
+  .action-dock .score-action {
+    min-width: 0;
+    min-height: 54px;
+    padding: 7px 8px;
+    gap: 5px;
+  }
+  .action-dock .score-action .action-copy {
+    min-width: 0;
+    overflow: hidden;
+  }
+  .action-dock .score-action b {
+    font-size: 13px !important;
+    line-height: 1.25;
+    white-space: normal;
+  }
+  .action-dock .score-action em { display: none !important; }
+  .action-dock .score-action .action-points {
+    min-width: 0;
+    padding-left: 3px;
+    font-size: 15px;
+    white-space: nowrap;
+  }
+}
+
+/* Paper start prompt: keep the explanatory copy dark enough to read. */
+.start-choice-modal h2 {
+  color: #1b1007 !important;
+  font-weight: 700 !important;
+  font-size: 31px !important;
+  letter-spacing: .04em !important;
+  text-shadow: 0 1px 0 rgba(255, 250, 238, .85) !important;
+}
+.start-choice-modal .start-choice-lede {
+  color: #3c2a19 !important;
+  font-weight: 600;
+  font-size: 13.5px !important;
+  text-shadow: none !important;
+}
+.start-choice-modal .start-choice-note {
+  color: #4f3b27 !important;
+  font-size: 10.5px !important;
+  font-weight: 500;
+  text-shadow: none !important;
+}
+
+/* Guide focus: heavy red frame + breathing pulse + heavier copy. */
+body.guide-active .guide-highlight {
+  outline: 5px solid #ff2a18 !important;
+  outline-offset: 6px !important;
+  box-shadow:
+    0 0 0 10px rgba(255, 42, 24, .22),
+    0 0 48px rgba(255, 42, 24, .58) !important;
+  animation: guide-frame-breathe 1.35s ease-in-out infinite !important;
+}
+.guide-card h3 {
+  font-weight: 700 !important;
+  color: #24160a !important;
+  letter-spacing: .045em !important;
+}
+.guide-card p {
+  font-weight: 600 !important;
+  color: #3d2c1c !important;
+  line-height: 1.75 !important;
+}
+.guide-card header span {
+  font-weight: 700 !important;
+  color: #8c2f23 !important;
+}
+.guide-wait {
+  font-weight: 700 !important;
+  color: #7c2c22 !important;
+}
+@keyframes guide-frame-breathe {
+  0%, 100% {
+    outline-color: #ff2a18;
+    box-shadow: 0 0 0 9px rgba(255, 42, 24, .16), 0 0 36px rgba(255, 42, 24, .44);
+  }
+  50% {
+    outline-color: #ff7358;
+    box-shadow: 0 0 0 15px rgba(255, 42, 24, .30), 0 0 64px rgba(255, 42, 24, .72);
+  }
+}
+body.guide-active .guide-focus-red {
+  outline: 3px solid #d53627 !important;
+  outline-offset: 4px !important;
+  animation: guide-frame-breathe 1.7s ease-in-out infinite, guide-red-pulse 1.5s ease-in-out infinite !important;
+}
+
+.changelog-loading { padding: 18px 0; color: var(--muted); font-size: 11px; line-height: 1.8; }
