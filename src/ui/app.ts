@@ -693,7 +693,7 @@ export function showLevelIntro(): void {
   openOverlay(`
     <div class="modal intro-modal ${isBoss ? 'is-boss-intro' : ''}" role="dialog" aria-modal="true" aria-label="第 ${run.level} 关">
       <div class="intro-portrait">
-        <img src="${portraitArt(opponent.art)}" alt="${h(opponent.name)}">
+        <img src="${portraitArt(opponent.art)}" data-portrait-state="idle" alt="${h(opponent.name)}">
       </div>
       <div class="intro-body">
         <div class="intro-eyebrow"><i></i>${isBoss ? 'DEALER’S TABLE' : 'A CHALLENGER APPEARS'} · ${isBoss ? '庄家' : '小兵'}<i></i></div>
