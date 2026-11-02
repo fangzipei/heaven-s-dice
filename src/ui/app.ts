@@ -10,7 +10,8 @@ import * as Engine from '../core/engine.ts';
 import type { BossDef, Opponent } from '../core/types.ts';
 import { clamp, h, num } from '../core/util.ts';
 import { motion } from '../render/motion.ts';
-import { barrelCupArt, paperTableArt, portraitArt } from '../render/art.ts';
+import { barrelCupArt, paperTableArt } from '../render/art.ts';
+import { portraitFor } from '../render/portrait-assets.ts';
 import { sound } from '../platform/sound.ts';
 import {
   bindDiscovery, discoverLoadout,
@@ -641,8 +642,9 @@ export function setupLevelScene(force = false): void {
   opponentEl.dataset.paperArt = opponent.art;
   opponentEl.style.setProperty('--boss-accent', opponent.accent || '#c25b5b');
   const image = $<HTMLImageElement>('#opponent-image')!;
-  image.src = portraitArt(opponent.art);
-  image.alt = opponent.name;
+  image.src = portraitFor(opponent.art, 'idle');
+  image.dataset.portraitState = 'idle';
+  image.alt = opponent.name;;
   $('#opponent-name')!.textContent = opponent.name;
   $('#opponent-kicker')!.textContent = isBoss ? `第 ${app.run.level} 关 · 庄家` : opponent.title;
   $('#opponent-inline')!.textContent = `对手：${opponent.name}`;
@@ -693,7 +695,7 @@ export function showLevelIntro(): void {
   openOverlay(`
     <div class="modal intro-modal ${isBoss ? 'is-boss-intro' : ''}" role="dialog" aria-modal="true" aria-label="第 ${run.level} 关">
       <div class="intro-portrait">
-        <img src="${portraitArt(opponent.art)}" data-portrait-state="idle" alt="${h(opponent.name)}">
+        <img src="${portraitFor(opponent.art, 'idle')}" data-portrait-state="idle" alt="${h(opponent.name)}">
       </div>
       <div class="intro-body">
         <div class="intro-eyebrow"><i></i>${isBoss ? 'DEALER’S TABLE' : 'A CHALLENGER APPEARS'} · ${isBoss ? '庄家' : '小兵'}<i></i></div>

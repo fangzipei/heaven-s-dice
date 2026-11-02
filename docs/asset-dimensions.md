@@ -1,6 +1,6 @@
 # 资产尺寸清单
 
-统计范围：`assets/` 下 517 张 SVG/PNG 图片，总计约 2.4 MB。尺寸取文件自身宽度/高度，不是 CSS 显示尺寸。
+统计范围：`assets/` 下 525 张 SVG/PNG 图片，总计约 3.6 MB。尺寸取文件自身宽度/高度，不是 CSS 显示尺寸。
 
 ## 1. 骰子
 
@@ -87,6 +87,14 @@
 | 残血 | `critical.png` | 480×640（缩略 120×160） |
 
 每个角色至少四张；`<art>` 使用现有 Boss/小兵美术 ID。图片到位前 UI 继续使用当前单张 SVG 作为 fallback。
+
+### 已接入：灰爪 `minion-rat`
+
+| 文件 | 尺寸 | 数量 | 用途 |
+|---|---:|---:|---|
+| `states/minion-rat/{idle,attack,hit,critical}.png` | 480×640 | 4 | 四态详情图 |
+| `states/minion-rat/thumb-*.png` | 120×160 | 4 | 四态缩略图 |
+
 
 ## 9. 建议导出尺寸
 

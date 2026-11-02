@@ -30,6 +30,7 @@ import { $, setCss, uiZoom } from './dom.ts';
 import { renderOpponentPlate, renderRail, renderScorePanel, renderTopbar, showBustNotice } from './hud.ts';
 import type { CupTrace } from './state.ts';
 import { app } from './state.ts';
+import { setOpponentPose } from './opponent-pose.ts';
 import { showDefeat, showVictory } from './screens/result.ts';
 import { diceTable, renderDiceTray } from './tray.ts';
 
@@ -483,6 +484,7 @@ async function performCupRoll({ free = false, prepared = false, from = null }: {
 } = {}) {
   const run = app.run;
   if (!run) return;
+  setOpponentPose('attack', 1600);
   const previousPhase = run.phase;
   const isFreeThrow = free || run.phase === 'hot';
   // Which dice the cup actually swallows — captured before the engine
@@ -814,6 +816,8 @@ export function handleScore(action: ScoreAction): void {
   const combos = chosen.analysis.combos.map((combo) => combo.label);
   const result = applyScore(run, action);
   if (!result.ok) { showToast(result.error!, 'error'); return; }
+  if (run.score >= run.target) setOpponentPose('critical');
+  else if ((result.total || 0) > 0) setOpponentPose('hit', 900);
   guideEvent(action === 'continue' ? 'continue' : 'reroll', run);
   recordScore(run, {
     selectedValues,
