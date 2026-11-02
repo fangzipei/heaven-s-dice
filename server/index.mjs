@@ -2,6 +2,7 @@
 // Deployed next to the static release, proxied by Nginx at /heavens-dice/api/.
 import http from 'node:http';
 import crypto from 'node:crypto';
+import { readFileSync } from 'node:fs';
 import mysql from 'mysql2/promise';
 import { calculateLuckIndex } from './luck-index.mjs';
 
