@@ -6,6 +6,21 @@ export const SAVE_KEY = 'heavensDice.save.v2';
 export const HISTORY_KEY = 'heavensDice.history.v2';
 export const PENDING_KEY = 'heavensDice.pendingSync.v2';
 const MAX_HISTORY = 50;
+const MAX_PENDING = 20;
+const MAX_PENDING_BYTES = 2 * 1024 * 1024;
+
+/**
+ * Local history is a display ledger, not the upload payload. Keep the last
+ * level's loadout/target and summary, but drop hundreds of per-throw records
+ * so 50 runs cannot consume the whole localStorage quota.
+ */
+function compactRecord(record: RunRecord): RunRecord {
+  const last = record.levels[record.levels.length - 1];
+  return {
+    ...record,
+    levels: last ? [{ ...last, throws: [], shop: [] }] : [],
+  };
+}
 
 export interface SavedGame {
   version: 2;
@@ -68,8 +83,29 @@ export function readHistory(): RunRecord[] {
 export function saveHistory(record: RunRecord): void {
   try {
     const history = readHistory().filter((item) => item.clientRunId !== record.clientRunId);
-    history.unshift(record);
+    history.unshift(compactRecord(record));
     localStorage.setItem(HISTORY_KEY, JSON.stringify(history.slice(0, MAX_HISTORY)));
+  } catch { /* ignore */ }
+}
+
+function hasDetailedLevels(record: RunRecord): boolean {
+  return Boolean(record.levels?.some(
+    (level) => (level.throws?.length || 0) + (level.shop?.length || 0) > 0,
+  ));
+}
+
+/**
+ * One-time migration for old local histories: move full payloads to the
+ * pending queue before shrinking the display ledger.
+ */
+export function compactStoredHistory(): void {
+  try {
+    const history = readHistory();
+    if (!history.some(hasDetailedLevels)) return;
+    history.forEach((record) => {
+      if (hasDetailedLevels(record)) queuePending(record);
+    });
+    localStorage.setItem(HISTORY_KEY, JSON.stringify(history.map(compactRecord).slice(0, MAX_HISTORY)));
   } catch { /* ignore */ }
 }
 
@@ -83,9 +119,15 @@ export function readPending(): RunRecord[] {
 
 export function queuePending(record: RunRecord): void {
   try {
-    const list = readPending().filter((item) => item.clientRunId !== record.clientRunId);
+    let list = readPending().filter((item) => item.clientRunId !== record.clientRunId);
     list.push(record);
-    localStorage.setItem(PENDING_KEY, JSON.stringify(list.slice(-50)));
+    list = list.slice(-MAX_PENDING);
+    let serialized = JSON.stringify(list);
+    while (list.length > 1 && serialized.length > MAX_PENDING_BYTES) {
+      list.shift();
+      serialized = JSON.stringify(list);
+    }
+    localStorage.setItem(PENDING_KEY, serialized);
   } catch { /* ignore */ }
 }
 

@@ -2595,3 +2595,26 @@ body.rail-collapsed .cup-zone { right: 4.2% !important; }
   .replace-detail-art { flex-basis: 48px; }
   .replace-detail-art .art-die { width: 44px; height: 44px; }
 }
+
+/* History list cards open a lazy, server-backed full run detail. */
+.history-card[data-action] { cursor: pointer; transition: border-color .2s, transform .2s, box-shadow .2s; }
+.history-card[data-action]:hover { border-color: rgba(217,180,106,.5); transform: translateY(-2px); box-shadow: 0 14px 34px rgba(0,0,0,.28); }
+.history-detail-modal { width: min(860px, 100%); padding: 34px 38px 30px; }
+.history-detail-meta { display: flex; flex-wrap: wrap; gap: 9px 16px; align-items: center; margin: 12px 0 18px; color: var(--ink-dim); font-size: 10px; }
+.history-detail-levels { display: grid; gap: 10px; max-height: min(62vh, 620px); overflow: auto; padding-right: 3px; }
+.history-detail-level { padding: 11px 13px; border: 1px solid rgba(217,180,106,.16); background: rgba(255,255,255,.018); }
+.history-detail-level header { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.history-detail-level header b { color: var(--gold-bright); font-family: var(--serif); font-size: 15px; font-weight: 400; }
+.history-detail-level header span { color: var(--ink-dim); font-size: 9px; }
+.history-detail-level header em { margin-left: auto; color: #d7c39c; font-style: normal; font-size: 10px; }
+.history-detail-loadout { margin: 4px 0 8px; color: #8e7e66; font-size: 9px; }
+.history-throws { display: grid; gap: 4px; }
+.history-throw { display: grid; grid-template-columns: minmax(80px, 1fr) minmax(100px, 1.4fr) 64px 90px; gap: 8px; align-items: baseline; padding: 4px 0; border-top: 1px dashed rgba(217,180,106,.1); color: #a9977c; font-size: 9px; }
+.history-throw b { color: #d9c39a; font-weight: 400; }
+.history-throw em { color: var(--gold-bright); font-style: normal; text-align: right; }
+.history-throw small { color: #746755; text-align: right; }
+@media (max-width: 760px) {
+  .history-detail-modal { padding: 26px 17px 22px; }
+  .history-throw { grid-template-columns: minmax(62px, 1fr) minmax(80px, 1.2fr) 50px; }
+  .history-throw small { display: none; }
+}

@@ -335,6 +335,20 @@ async function history(req, res, url) {
   return json(res, 200, { runs });
 }
 
+async function historyDetail(req, res, clientRunId) {
+  const user = await accountFromRequest(req);
+  if (!user) return fail(res, 401, '登录已过期，请重新登录。');
+  const id = String(clientRunId || '').slice(0, 64);
+  if (!id) return fail(res, 400, '缺少对局编号。');
+  const [rows] = await pool.query(
+    `SELECT payload FROM hd_runs
+      WHERE user_id = ? AND client_run_id = ? LIMIT 1`,
+    [user.id, id],
+  );
+  if (!rows.length) return fail(res, 404, '找不到这局记录。');
+  return json(res, 200, { run: parseJson(rows[0].payload, {}) });
+}
+
 async function leaderboards(req, res, url) {
   const board = url.searchParams.get('board') === 'luck' ? 'luck' : 'time';
   const limit = Math.max(1, Math.min(Number(url.searchParams.get('limit')) || 20, 50));
@@ -512,6 +526,9 @@ const server = http.createServer(async (req, res) => {
     if (req.method === 'POST' && path === '/active-run') return await putActiveSave(req, res);
     if (req.method === 'DELETE' && path === '/active-run') return await deleteActiveSave(req, res);
     if (req.method === 'GET' && path === '/history') return await history(req, res, url);
+    if (req.method === 'GET' && path.startsWith('/history/')) {
+      return await historyDetail(req, res, decodeURIComponent(path.slice('/history/'.length)));
+    }
     if (req.method === 'GET' && path === '/leaderboards') return await leaderboards(req, res, url);
     if (req.method === 'GET' && path === '/stats/entities') return await entityStats(req, res, url);
     if (req.method === 'GET' && path === '/stats/summary') return await summary(req, res);

@@ -166,6 +166,14 @@ export async function fetchRunHistory(token: string, limit = 50): Promise<Histor
   return result.runs;
 }
 
+/** Load one full run payload; the list endpoint stays lightweight. */
+export async function fetchRunDetail(token: string, clientRunId: string): Promise<RunRecord> {
+  const result = await request<{ run: RunRecord }>(`history/${encodeURIComponent(clientRunId)}`, {
+    token, timeoutMs: 12000,
+  });
+  return result.run;
+}
+
 export async function fetchEntityStats(kind: 'die' | 'barrel' | 'item', limit = 50): Promise<EntityStat[]> {
   const result = await request<{ rows: EntityStat[] }>(`stats/entities?kind=${kind}&limit=${limit}`);
   return result.rows;

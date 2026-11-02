@@ -12,6 +12,10 @@ export function storeFinishedRun(record: RunRecord): void {
   // run ends instead of waiting for the player to set a password.
   if (profile?.token) {
     void syncRecords([record]);
+  } else {
+    // Keep the full payload out of the display history, but retain it for a
+    // later login. queuePending enforces the byte/count cap.
+    queuePending(record);
   }
 }
 
@@ -36,10 +40,14 @@ export async function syncRecords(records: RunRecord[]): Promise<{ synced: numbe
 }
 
 export async function syncEverything(): Promise<{ synced: number; failed: number }> {
-  const history = readHistory();
+  // Local history is compacted for display; only pending records (and legacy
+  // full history entries) contain the per-throw payload the server needs.
+  const legacy = readHistory().filter((record) => record.levels?.some(
+    (level) => (level.throws?.length || 0) + (level.shop?.length || 0) > 0,
+  ));
   const pending = readPending();
   const map = new Map<string, RunRecord>();
-  [...history, ...pending].forEach((record) => map.set(record.clientRunId, record));
+  [...legacy, ...pending].forEach((record) => map.set(record.clientRunId, record));
   const result = await syncRecords([...map.values()]);
   await restoreActiveGame();
   return result;

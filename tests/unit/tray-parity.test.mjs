@@ -323,7 +323,7 @@ describe('牌桌胶水只有一份实现', () => {
   test('app.js 从 ui/tray.ts 取用，且不反向持有骰桌', () => {
     const assembly = assemblySource();
     expect(assembly).toMatch(/from '\.\/tray\.ts'/);
-    expect(assembly).toMatch(/setTrayRepaint\(renderGame\)/);
+    expect(assembly).toMatch(/setTrayRepaint\(renderSelectionUi\)/);
     expect(tray, 'tray 不能 import 组装层').not.toMatch(/from '\.\.\/ui\/|from '\.\/app/);
   });
 });

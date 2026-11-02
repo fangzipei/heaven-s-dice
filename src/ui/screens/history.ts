@@ -1,11 +1,12 @@
 // ui/screens/history.ts — 首页历史骰局：本机记录 + 已同步账号的云端记录。
 import { BARREL_BY_ID, DICE_BY_ID, ITEM_BY_ID, STANDARD_DIE } from '../../content/index.ts';
 import { h, num } from '../../core/util.ts';
-import { API_ENABLED, fetchRunHistory, type HistoryEntry } from '../../platform/api.ts';
+import { API_ENABLED, fetchRunDetail, fetchRunHistory, type HistoryEntry } from '../../platform/api.ts';
 import { loadProfile } from '../../platform/profile.ts';
 import { readHistory } from '../../platform/save.ts';
 import type { RunRecord } from '../../platform/run-record.ts';
 import { closeOverlay, openOverlay } from '../components/overlay.ts';
+import { showToast } from '../components/toast.ts';
 import { $ } from '../dom.ts';
 
 function durationLabel(ms: number): string {
@@ -105,7 +106,7 @@ export async function openHistory(): Promise<void> {
   list.innerHTML = entries.map((entry) => {
     const result = resultLabel(entry.result);
     return `
-      <article class="history-card ${result.className}">
+      <article class="history-card ${result.className}" data-action="history-detail" data-run-id="${h(entry.clientRunId)}" tabindex="0" role="button">
         <header class="history-head">
           <span class="history-result">${result.label}</span>
           <span class="history-when">${h(dateLabel(entry.endedAt))}</span>
@@ -126,6 +127,58 @@ export async function openHistory(): Promise<void> {
         </div>
       </article>`;
   }).join('');
+}
+
+/** List cards are summaries; the full payload is fetched only after a click. */
+export async function openHistoryDetail(clientRunId: string): Promise<void> {
+  const profile = loadProfile();
+  if (!API_ENABLED || profile?.mode !== 'synced' || !profile.token) {
+    showToast('登录后可以查看这一局的完整记录。', 'error');
+    return;
+  }
+  openOverlay(`
+    <div class="modal history-detail-modal">
+      <button class="modal-close" data-action="close-overlay" aria-label="关闭"><svg><use href="#i-close"></use></svg></button>
+      <p class="modal-kicker">THE FULL LEDGER</p>
+      <h2>对局详情</h2>
+      <p class="result-sub" id="history-detail-status">正在从云端读取这一局…</p>
+    </div>
+  `, { dismissible: true });
+  try {
+    const run = await fetchRunDetail(profile.token, clientRunId);
+    renderHistoryDetail(run);
+  } catch (error) {
+    const status = $('#history-detail-status');
+    if (status) status.textContent = (error as Error).message || '读取失败。';
+  }
+}
+
+function renderHistoryDetail(run: RunRecord): void {
+  const status = $('#history-detail-status');
+  const result = resultLabel(run.result || 'abandoned');
+  const levels = Array.isArray(run.levels) ? run.levels : [];
+  const levelHtml = levels.map((level) => {
+    const throws = Array.isArray(level.throws) ? level.throws : [];
+    const throwHtml = throws.map((item) => `<div class="history-throw">
+      <span>${h((item.values || []).join(' · '))}</span>
+      <b>${h((item.combos || []).join(' / ') || '未计分')}</b>
+      <em>+${num(item.points || 0)}</em>
+      <small>${h(item.action || '—')}${item.bust ? ` · 掷空 -${num(item.bust)}` : ''}</small>
+    </div>`).join('');
+    return `<section class="history-detail-level">
+      <header><b>第 ${num(level.level)} 关</b><span>${h(level.opponent || '')} · ${h(level.table || '')}</span><em>${num(level.score)} / ${num(level.target)}</em></header>
+      <div class="history-detail-loadout">${groupedDice(level.loadout?.dice || [])} · ${h(BARREL_BY_ID[level.loadout?.barrel || 'oak']?.name || level.loadout?.barrel || '')}</div>
+      <div class="history-throws">${throwHtml || '<span class="history-empty">这一关没有投掷记录。</span>'}</div>
+    </section>`;
+  }).join('');
+  const target = document.querySelector<HTMLElement>('.history-detail-modal');
+  if (!target) return;
+  target.innerHTML = `
+    <button class="modal-close" data-action="close-overlay" aria-label="关闭"><svg><use href="#i-close"></use></svg></button>
+    <p class="modal-kicker">THE FULL LEDGER</p>
+    <h2>对局详情</h2>
+    <div class="history-detail-meta"><span class="history-result ${result.className}">${result.label}</span><span>${h(dateLabel(run.endedAt || run.startedAt))}</span><span>${durationLabel(run.durationMs)}</span><span>${num(run.finalScore)} 分</span><span>${num(run.coins)} 银币</span></div>
+    <div class="history-detail-levels">${levelHtml || '<div class="history-empty">这局没有关卡记录。</div>'}</div>`;
 }
 
 // Kept for the action dispatcher; history is read-only.

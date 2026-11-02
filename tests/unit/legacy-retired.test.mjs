@@ -32,6 +32,6 @@ describe('legacy 入口已退休', () => {
   test('ui/app.ts 是唯一挂 DOMContentLoaded 的入口', () => {
     const app = read('src/ui/app.ts');
     expect(app).toMatch(/document\.addEventListener\('DOMContentLoaded'/);
-    expect(app).toMatch(/setTrayRepaint\(renderGame\)/);
+    expect(app).toMatch(/setTrayRepaint\(renderSelectionUi\)/);
   });
 });

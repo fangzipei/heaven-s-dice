@@ -551,9 +551,10 @@ export class DiceTable implements MotionDiceTable {
     const key = `${skin.motif}|${family}|${value}|${emphasis}|${demon ? 'demon' : ''}`;
     const hit = this.textures.get(key);
     if (hit) return hit;
-    // Long runs would keep every face ever rolled alive; drop the oldest
-    // half once the cache gets fat. Re-painting one face is ~1ms.
-    if (this.textures.size > 96) {
+    // Keep enough faces for every owned skin/value/emphasis combination.
+    // Evicting a texture that is still bound to a die forces a repaint and a
+    // GPU upload on the next tap, which shows up as GC/upload hitching.
+    if (this.textures.size > 512) {
       const doomed = Array.from(this.textures.keys()).slice(0, 48);
       doomed.forEach((oldKey) => {
         this.textures.get(oldKey)?.dispose();
@@ -638,9 +639,9 @@ export class DiceTable implements MotionDiceTable {
       entry.mesh.visible = true;
       /* Gilded dice get a low warm emissive so the gold mark reads on the
          felt without turning the whole die into a lamp. */
-      const gold = new THREE.Color(die.gilded ? 0x6a410c : 0x000000);
+      const goldHex = die.gilded ? 0x6a410c : 0x000000;
       for (const material of entry.mesh.material as THREE.MeshStandardMaterial[]) {
-        material.emissive.copy(gold);
+        material.emissive.setHex(goldHex);
         material.emissiveIntensity = die.gilded ? 0.9 : 0;
       }
       this.entries.push(entry);

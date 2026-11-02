@@ -58,6 +58,16 @@ export function renderGame(): void {
   $('#cup')?.classList.toggle('is-breathing', canManuallyThrow);
 }
 
+/** Light repaint for die selection only: avoids rebuilding HUD, rail and boss. */
+export function renderSelectionUi(): void {
+  if (!app.run) return;
+  renderScorePanel();
+  renderDiceTray();
+  renderComboPreview();
+  renderActionDock();
+  renderDangerStrip();
+}
+
 /* ═══════════════════════════════════════════════════════════════════
    Roll / score interactions
    ═══════════════════════════════════════════════════════════════════ */

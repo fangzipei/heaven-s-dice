@@ -22,7 +22,7 @@ import {
   beginLevelRecord, beginRunRecord, endLevelRecord, getRunRecord, pauseRunRecord,
   recordShop, restoreRunRecord, resumeRunRecord, setRecordUser,
 } from '../platform/run-record.ts';
-import { clearGameSave, loadGame, saveGame } from '../platform/save.ts';
+import { clearGameSave, compactStoredHistory, loadGame, saveGame } from '../platform/save.ts';
 import { clearActiveGame, syncEverything, uploadActiveGame } from '../platform/sync.ts';
 import {
   identityBack, identityLogin, identityNext, logoutAccount, openAccount, openIdentity,
@@ -38,12 +38,12 @@ import { paperSwap } from './paper-transition.ts';
 import {
   advanceCurrentLevel, answerLoanOffer, answerSaltOffer, answerTwoFace, beginRoll, bindCupDrag, cancelGrant, cancelGrantReplace,
   chooseGrantDie, confirmGrantReplace, confirmUseItem, forfeitRun, handleScore, hintBestScore, pulseCup, renderGame,
-  requestUseItem, setSpeech, toggleTwoFace,
+  renderSelectionUi, requestUseItem, setSpeech, toggleTwoFace,
 } from './game.ts';
 import { renderTopbar } from './hud.ts';
 import { baseReward } from './reward.ts';
 import { openCompendium, switchCompendiumTab } from './screens/compendium.ts';
-import { openHistory } from './screens/history.ts';
+import { openHistory, openHistoryDetail } from './screens/history.ts';
 import { openGesture } from './screens/gesture.ts';
 import { answerDevilRetry, showDefeat, showVictory, useDevilReceipt } from './screens/result.ts';
 import {
@@ -72,12 +72,13 @@ document.addEventListener('DOMContentLoaded', () => {
   bindRailResize();
   bindTooltip();
   // 点骰子是 tray 里发生的事，但重画整张牌桌归组装层管。
-  setTrayRepaint(renderGame);
+  setTrayRepaint(renderSelectionUi);
   bindSceneParallax();
   renderStartDecor();
   refreshHomeChangelog();
   refreshAccountButton();
   refreshResumeButton();
+  compactStoredHistory();
   const profile = loadProfile();
   if (profile?.token) void syncEverything();
   window.addEventListener('beforeunload', () => { pauseRunRecord(); saveCheckpoint(); });
@@ -362,6 +363,9 @@ async function handleAction(action: string, target: HTMLElement, _event?: MouseE
       break;
     case 'open-rules':
       openRules();
+      break;
+    case 'history-detail':
+      void openHistoryDetail(target.dataset.runId!);
       break;
     case 'close-overlay':
       closeOverlay();

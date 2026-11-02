@@ -314,7 +314,7 @@ test('shop offers 2 dice, 1 barrel, 3 items and purchases deduct coins', () => {
   const dieIndex = state.shop.dice.findIndex((entry) => entry.id && !entry.sold);
   expect(dieIndex >= 0).toBeTruthy();
   const dieOffer = state.shop.dice[dieIndex];
-  state.coins += 100;
+  state.coins += 500;
   const beforeCoins = state.coins;
   const replacement = state.bag[0].uid;
   const result = buyDie(state, dieIndex, replacement);
