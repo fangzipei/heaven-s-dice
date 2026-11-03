@@ -170,6 +170,67 @@ function levelEV(bagIds, { level, trials = T } = {}) {
 
 // ── main ───────────────────────────────────────────────────────────────────
 const started = Date.now();
+
+// ── bag mode: evaluate an arbitrary bag, then exit ─────────────────────────
+if (BAG_ARG) {
+  const ids = BAG_ARG.split(',').map((s) => s.trim()).filter(Boolean);
+  // getDieSpec falls back to the standard die for unknown ids, so validate
+  // against the roster instead.
+  const known = new Set([...DICE.map((die) => die.id), 'standard']);
+  for (const id of ids) {
+    if (!known.has(id)) {
+      console.error(`未知骰子 id：${id}（可用 id 见 src/content/dice/）`);
+      process.exit(1);
+    }
+  }
+  while (ids.length < 6) ids.push('standard');
+  if (ids.length > 6) {
+    console.error(`最多 6 颗骰（收到 ${ids.length}）`);
+    process.exit(1);
+  }
+  const bagBase = new Map();
+  const bagEval = new Map();
+  for (const level of SNAPSHOT_LEVELS) {
+    bagBase.set(level, levelEV(STANDARD_BAG(), { level }));
+    bagEval.set(level, levelEV(ids, { level }));
+  }
+  if (JSON_OUT) {
+    console.log(JSON.stringify({
+      bag: ids,
+      levels: SNAPSHOT_LEVELS.map((level) => {
+        const base = bagBase.get(level);
+        const ev = bagEval.get(level);
+        return {
+          level, target: getLevelConfig(level).target,
+          baseScore: base.score, bagScore: ev.score,
+          baseWin: base.win, bagWin: ev.win,
+          baseCoins: base.coins, bagCoins: ev.coins,
+        };
+      }),
+    }, null, 2));
+  } else {
+    console.log('');
+    console.log(`════ 阵容评估：${ids.map((id) => getDieSpec(id).name).join(' + ')} ════`);
+    console.log([pad('关卡', 8), padL('目标', 9), padL('基准分', 9), padL('阵容分', 9), padL('Δ分', 8), padL('基准达标', 10), padL('阵容达标', 10), padL('金币Δ/关', 10)].join(' '));
+    for (const level of SNAPSHOT_LEVELS) {
+      const base = bagBase.get(level);
+      const ev = bagEval.get(level);
+      console.log([
+        pad(`L${level}`, 8),
+        padL(num(getLevelConfig(level).target), 9),
+        padL(num(base.score, 0), 9),
+        padL(num(ev.score, 0), 9),
+        padL(num(ev.score - base.score, 0), 8),
+        padL(`${num(base.win * 100, 0)}%`, 10),
+        padL(`${num(ev.win * 100, 0)}%`, 10),
+        padL(num(ev.coins - base.coins, 1), 10),
+      ].join(' '));
+    }
+  }
+  console.log(`\n用时 ${((Date.now() - started) / 1000).toFixed(1)} 秒`);
+  process.exit(0);
+}
+
 const ROSTER = DICE.filter((die) => (!DIE_FILTER || die.id === DIE_FILTER)
   && (!RARITY || die.rarity === RARITY));
 
@@ -392,4 +453,26 @@ if (!JSON_OUT) {
   console.log('\n── 告警 ──');
   if (warnings.length) for (const w of warnings) console.log(`  ⚠ ${w}`);
   else console.log('  无。');
+}
+
+// ── JSON output ────────────────────────────────────────────────────────────
+if (JSON_OUT) {
+  console.log(JSON.stringify({
+    snapshotLevels: SNAPSHOT_LEVELS,
+    refLevel: REF_LEVEL,
+    weights: WEIGHTS,
+    baseline: SNAPSHOT_LEVELS.map((level) => ({
+      level, ...baseByLevel.get(level), target: getLevelConfig(level).target,
+    })),
+    rows: rows.map((row) => ({
+      die: row.die.id, name: row.die.name, rarity: row.die.rarity,
+      setId: row.die.setId || null, price: row.die.price,
+      deltas: row.deltas, winRates: row.wins, coinDeltas: row.coinDeltas,
+      coinPerLevel: row.coinPerLevel,
+      payback: Number.isFinite(row.payback) ? row.payback : null,
+      netGain: row.netGain,
+      access: row.access, acquisitionCost: row.acquisitionCost,
+      composite: { ...row.axis, value: row.value, grade: row.grade },
+    })),
+  }, null, 2));
 }
