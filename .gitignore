@@ -7,6 +7,7 @@ tools/save-*.json
 *.log
 .DS_Store
 Thumbs.db
+__pycache__/
 
 .deploy/
 dist/
@@ -15,3 +16,6 @@ dist/
 balatro-reference/
 demo/
 tools/_shots/
+
+# Portrait staging: large raw renders kept out of the repo
+vibe_images/
