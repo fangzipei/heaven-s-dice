@@ -193,3 +193,44 @@ for (const level of SNAPSHOT_LEVELS) {
     );
   }
 }
+
+// ── roster sweep ───────────────────────────────────────────────────────────
+const rows = [];
+for (const die of ROSTER) {
+  const deltas = {};
+  const wins = {};
+  const coinDeltas = {};
+  const deadRates = {};
+  for (const level of SNAPSHOT_LEVELS) {
+    const ev = levelEV(bagSolo(die.id), { level });
+    const base = baseByLevel.get(level);
+    deltas[level] = ev.score - base.score;
+    wins[level] = ev.win;
+    coinDeltas[level] = ev.coins - base.coins;
+    deadRates[level] = ev.deadRate;
+  }
+  rows.push({ die, deltas, wins, coinDeltas, deadRates });
+  if (!JSON_OUT) process.stdout.write(`  · ${die.name}\n`);
+}
+
+// ── table A: strength ──────────────────────────────────────────────────────
+if (!JSON_OUT) {
+  console.log('\n── 表 A：强度 · 关卡分 Δ（bag = 该骰 + 5 标准 vs 6 标准） ──');
+  const head = ['骰子', '套组', '稀有', '价', ...SNAPSHOT_LEVELS.map((l) => `ΔL${l}`), `达标%@L${REF_LEVEL}`, `死掷%@L${REF_LEVEL}`];
+  console.log([
+    pad(head[0], 14), pad(head[1], 8), pad(head[2], 6), padL(head[3], 5),
+    ...head.slice(4, -2).map((h) => padL(h, 8)),
+    padL(head.at(-2), 11), padL(head.at(-1), 11),
+  ].join(' '));
+  for (const row of rows) {
+    console.log([
+      pad(row.die.name, 14),
+      pad(DICE_SETS[row.die.setId]?.name || '-', 8),
+      pad(row.die.rarity, 6),
+      padL(String(row.die.price), 5),
+      ...SNAPSHOT_LEVELS.map((l) => padL(num(row.deltas[l], 0), 8)),
+      padL(`${num(row.wins[REF_LEVEL] * 100, 0)}%`, 11),
+      padL(num(row.deadRates[REF_LEVEL] * 100, 1), 11),
+    ].join(' '));
+  }
+}
