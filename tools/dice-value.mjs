@@ -234,3 +234,30 @@ if (!JSON_OUT) {
     ].join(' '));
   }
 }
+
+// ── money axis ─────────────────────────────────────────────────────────────
+/** Each snapshot level stands for its ~5-level chapter of the run. */
+const CHAPTER_SPAN = 5;
+for (const row of rows) {
+  const refCoin = row.coinDeltas[REF_LEVEL];
+  row.coinPerLevel = refCoin;
+  row.payback = refCoin > 0 ? row.die.price / refCoin : Infinity;
+  row.netGain = SNAPSHOT_LEVELS
+    .filter((l) => l >= REF_LEVEL)
+    .reduce((sum, l) => sum + row.coinDeltas[l] * CHAPTER_SPAN, 0) - row.die.price;
+}
+
+if (!JSON_OUT) {
+  console.log('\n── 表 B：金钱 · 每关金币 EV Δ（含达标率、重投折算、超额奖励） ──');
+  console.log([pad('骰子', 14), padL('金币Δ/关', 10), padL('回本关数', 10), padL('剩余净收益', 12), padL('价格', 8)].join(' '));
+  for (const row of rows) {
+    console.log([
+      pad(row.die.name, 14),
+      padL(num(row.coinPerLevel, 1), 10),
+      padL(Number.isFinite(row.payback) ? num(row.payback, 1) : '∞', 10),
+      padL(num(row.netGain, 0), 12),
+      padL(String(row.die.price), 8),
+    ].join(' '));
+  }
+  console.log(`  （金币Δ = [骰+5标准] 金币 EV − 基准金币 EV @L${REF_LEVEL}；剩余净收益 = Σ(快照金币Δ × ${CHAPTER_SPAN}) − 价格）`);
+}
