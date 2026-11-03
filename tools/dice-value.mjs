@@ -320,3 +320,76 @@ if (!JSON_OUT) {
   }
   console.log('  （期望成本 = 价格 + 20 × (期望店数 − 1)，假设每店最多多刷一次基价货架）');
 }
+
+// ── composite rating ───────────────────────────────────────────────────────
+const norm = (v, min, max) => (max > min ? (v - min) / (max - min) : 0.5);
+const median = (list) => {
+  if (!list.length) return 0;
+  const sorted = [...list].sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
+  return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+};
+const mean = (list) => (list.length ? list.reduce((a, b) => a + b, 0) / list.length : 0);
+
+for (const row of rows) {
+  row.strengthScore = mean(SNAPSHOT_LEVELS.map((l) => row.deltas[l]));
+}
+const strengthRange = rows.length > 1
+  ? [Math.min(...rows.map((r) => r.strengthScore)), Math.max(...rows.map((r) => r.strengthScore))]
+  : [0, 1];
+const moneyRange = rows.length > 1
+  ? [Math.min(...rows.map((r) => r.netGain)), Math.max(...rows.map((r) => r.netGain))]
+  : [0, 1];
+const costRange = rows.length > 1
+  ? [Math.min(...rows.map((r) => r.acquisitionCost)), Math.max(...rows.map((r) => r.acquisitionCost))]
+  : [0, 1];
+for (const row of rows) {
+  const s = norm(row.strengthScore, strengthRange[0], strengthRange[1]);
+  const m = norm(row.netGain, moneyRange[0], moneyRange[1]);
+  // Cheaper to acquire scores higher, so the axis is inverted.
+  const a = 1 - norm(row.acquisitionCost, costRange[0], costRange[1]);
+  row.axis = { strength: s, money: m, access: a };
+  row.value = (WEIGHTS[0] * s + WEIGHTS[1] * m + WEIGHTS[2] * a)
+    / WEIGHTS.reduce((x, y) => x + y, 0);
+  row.grade = row.value >= 0.75 ? 'S' : row.value >= 0.55 ? 'A' : row.value >= 0.35 ? 'B' : 'C';
+}
+
+if (!JSON_OUT) {
+  console.log(`\n── 表 D：综合评级（强度 ${WEIGHTS[0]} / 金钱 ${WEIGHTS[1]} / 获取 ${WEIGHTS[2]}） ──`);
+  console.log([pad('骰子', 14), pad('稀有', 6), padL('强度轴', 8), padL('金钱轴', 8), padL('获取轴', 8), padL('综合分', 8), padL('评级', 6)].join(' '));
+  for (const row of [...rows].sort((x, y) => y.value - x.value)) {
+    console.log([
+      pad(row.die.name, 14),
+      pad(row.die.rarity, 6),
+      padL(num(row.axis.strength, 2), 8),
+      padL(num(row.axis.money, 2), 8),
+      padL(num(row.axis.access, 2), 8),
+      padL(num(row.value, 2), 8),
+      padL(row.grade, 6),
+    ].join(' '));
+  }
+
+  const warnings = [];
+  for (const row of rows) {
+    if (row.coinPerLevel <= 0 && row.die.price >= 130) {
+      warnings.push(`${row.die.name}（${row.die.rarity}）：金币Δ/关 ${num(row.coinPerLevel, 1)} ≤ 0，价格 ${row.die.price}。`);
+    }
+    if (Number.isFinite(row.payback) && row.payback > LEVEL_COUNT - REF_LEVEL) {
+      warnings.push(`${row.die.name}：回本需 ${num(row.payback, 1)} 关，超过 L${REF_LEVEL} 后剩余关卡（剩 ${LEVEL_COUNT - REF_LEVEL} 关）。`);
+    }
+  }
+  const bands = ['common', 'rare', 'epic', 'legendary'];
+  const bandMedian = new Map(bands.map((rarity) => [rarity, median(
+    rows.filter((r) => r.die.rarity === rarity).map((r) => r.value),
+  )]));
+  for (let i = 1; i < bands.length; i += 1) {
+    const prev = bandMedian.get(bands[i - 1]);
+    const cur = bandMedian.get(bands[i]);
+    if (prev && cur && cur < prev) {
+      warnings.push(`稀有度倒挂：${bands[i]} 综合分中位 ${num(cur, 2)} 低于 ${bands[i - 1]} 的 ${num(prev, 2)}。`);
+    }
+  }
+  console.log('\n── 告警 ──');
+  if (warnings.length) for (const w of warnings) console.log(`  ⚠ ${w}`);
+  else console.log('  无。');
+}
