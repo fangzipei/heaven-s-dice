@@ -476,3 +476,29 @@ if (JSON_OUT) {
     })),
   }, null, 2));
 }
+
+// ── self-checks ────────────────────────────────────────────────────────────
+if (!JSON_OUT && !BAG_ARG) {
+  const issues = [];
+  const probeLevel = SNAPSHOT_LEVELS[0];
+  const a = levelEV(STANDARD_BAG(), { level: probeLevel, trials: 60 });
+  const b = levelEV(STANDARD_BAG(), { level: probeLevel, trials: 60 });
+  if (a.score !== b.score || a.coins !== b.coins) {
+    issues.push('基准重复运行结果不一致——配对 RNG 失效。');
+  }
+  const expectedFill = 2 * SHOP_TRIALS * SNAPSHOT_LEVELS.length;
+  if (Math.abs(mc.shelfFill - expectedFill) > 0.01 * expectedFill) {
+    issues.push(`货架填充 ${mc.shelfFill} ≠ 期望 ${expectedFill}——商店模拟异常。`);
+  }
+  const legendaryAtFirst = DICE
+    .filter((die) => die.rarity === 'legendary')
+    .map((die) => (mc.perLevel.get(probeLevel).get(die.id) || 0) / SHOP_TRIALS);
+  if (Math.max(...legendaryAtFirst, 0) > 0.06) {
+    issues.push('传说骰在首个快照关出现率 > 6%——权重带没生效。');
+  }
+  console.log('\n── 自检 ──');
+  if (issues.length) for (const issue of issues) console.log(`  ✗ ${issue}`);
+  else console.log('  通过：基准可复现 · 货架填满 · 权重带生效。');
+}
+
+if (!JSON_OUT) console.log(`\n用时 ${((Date.now() - started) / 1000).toFixed(1)} 秒`);
