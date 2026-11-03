@@ -445,21 +445,24 @@ export class DiceTable implements MotionDiceTable {
 
   constructor(canvas: HTMLCanvasElement, options: DiceTableOptions = {}) {
     this.canvas = canvas;
+    const safari = document.documentElement.classList.contains('is-safari');
+    const ios = /iPad|iPhone|iPod/.test(navigator.userAgent)
+      || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
     this.onPick = options.onPick || (() => {});
     this.onHover = options.onHover || (() => {});
     this.entries = [];
     this.textures = new Map();
     this.renderer = new THREE.WebGLRenderer({
-      canvas, antialias: true, alpha: true, powerPreference: 'high-performance',
+      canvas, antialias: !safari, alpha: true, powerPreference: 'high-performance',
     });
     const compact = window.matchMedia('(max-width: 760px)').matches;
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, compact ? 1.5 : 2));
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, ios ? 1 : safari ? 1.25 : compact ? 1.5 : 2));
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
     // ACES compresses hard; lift the midtones so bone stays bone instead of
     // sliding into walnut brown under the candle light.
     this.renderer.toneMappingExposure = 1.32;
-    this.renderer.shadowMap.enabled = !compact;
+    this.renderer.shadowMap.enabled = !compact && !safari;
     this.renderer.shadowMap.type = THREE.PCFShadowMap;
 
     this.scene = new THREE.Scene();

@@ -1,0 +1,120 @@
+/* Safari performance layer.
+ *
+ * Safari composites `filter: drop-shadow()` and `backdrop-filter` on the CPU
+ * for large layers, and re-rasterises them whenever the layer animates. The
+ * opponent portrait is a 480x640 PNG with a drop shadow, a mask and an
+ * infinite float — that single element was the heaviest thing on the table.
+ *
+ * This file only applies under `html.is-safari` (set by a tiny inline script in
+ * index.html before first paint), so Chrome/Edge keep the richer look.
+ */
+
+/* 1. Opponent portrait: drop the shadow filter, the mask and the idle float.
+      A static radial shadow already exists in .opponent-shadow. */
+html.is-safari .opponent-image-wrap img {
+  filter: none !important;
+  animation: none !important;
+  -webkit-mask-image: none !important;
+  mask-image: none !important;
+  transform: none !important;
+}
+html.is-safari .opponent.has-state .opponent-image-wrap img {
+  filter: none !important;
+}
+html.is-safari .opponent-image-wrap {
+  animation: none !important;
+  contain: paint;
+}
+html.is-safari .opponent-aura,
+html.is-safari .opponent-shadow {
+  filter: none !important;
+}
+html.is-safari .opponent-aura {
+  opacity: .7;
+}
+
+/* 2. Frosted panels: replace live blur with an opaque paper tone. */
+html.is-safari .rail,
+html.is-safari .floating-tooltip,
+html.is-safari .danger-strip,
+html.is-safari .home-account,
+html.is-safari .home-option,
+html.is-safari .toast,
+html.is-safari .modal,
+html.is-safari .overlay,
+html.is-safari .rail-card {
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+html.is-safari .rail {
+  background: rgba(9, 7, 4, .985) !important;
+}
+html.is-safari .floating-tooltip {
+  background: rgba(12, 9, 6, .99) !important;
+}
+html.is-safari .danger-strip {
+  background: rgba(37, 12, 10, .95) !important;
+}
+html.is-safari .home-account,
+html.is-safari .home-option {
+  background: rgba(7, 6, 4, .78) !important;
+}
+html.is-safari .overlay {
+  background: rgba(60, 46, 30, .34) !important;
+}
+
+/* 3. Ambient glows that repaint every frame. */
+html.is-safari .cup-drag.is-breathing::before,
+html.is-safari .cup-trace-guide,
+html.is-safari .cup-trace-drawn {
+  filter: none !important;
+}
+html.is-safari .cup-drag.is-breathing::before {
+  animation: none !important;
+  opacity: .45;
+}
+
+/* 4. Keep the table canvas from being re-promoted on every hover. */
+html.is-safari .dice-zone,
+html.is-safari #dice-canvas {
+  contain: paint;
+}
+
+/* 5. Fixed full-page paper texture: Safari repaints it on every scroll. */
+html.is-safari body {
+  background-attachment: scroll !important;
+}
+
+/* 6. Full-screen blend layers, including a tiled feTurbulence noise sheet.
+      These are the most expensive paints on the start screen. */
+html.is-safari .start-grain {
+  display: none !important;
+}
+html.is-safari .scene::before,
+html.is-safari .scene::after,
+html.is-safari .table-surface::before,
+html.is-safari .heaven-rays,
+html.is-safari .scene-vignette {
+  mix-blend-mode: normal !important;
+}
+html.is-safari .scene::before,
+html.is-safari .scene::after {
+  opacity: .55 !important;
+}
+html.is-safari .heaven-rays {
+  opacity: .35 !important;
+}
+html.is-safari .shop-screen::before {
+  mix-blend-mode: normal !important;
+  opacity: .08 !important;
+  filter: none !important;
+}
+
+/* 7. Large blurred set pieces: rasterise once, or skip the blur entirely. */
+html.is-safari .room-glow {
+  filter: none !important;
+  opacity: .34 !important;
+}
+html.is-safari .opponent-shadow {
+  background: radial-gradient(ellipse, rgba(0, 0, 0, .45), transparent 70%) !important;
+}

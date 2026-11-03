@@ -11,7 +11,7 @@ import type { BossDef, Opponent } from '../core/types.ts';
 import { clamp, h, num } from '../core/util.ts';
 import { motion } from '../render/motion.ts';
 import { barrelCupArt, paperTableArt } from '../render/art.ts';
-import { hasPortraitStates, portraitFor } from '../render/portrait-assets.ts';
+import { hasPortraitStates, portraitFor, preloadPortraitStates } from '../render/portrait-assets.ts';
 import { sound } from '../platform/sound.ts';
 import {
   bindDiscovery, discoverLoadout,
@@ -647,6 +647,8 @@ export function setupLevelScene(force = false): void {
   image.src = portraitFor(opponent.id, opponent.art, 'idle');
   image.dataset.portraitState = 'idle';
   image.alt = opponent.name;
+  image.decoding = 'async';
+  preloadPortraitStates(opponent.id);
   $('#opponent-name')!.textContent = opponent.name;
   $('#opponent-kicker')!.textContent = isBoss ? `第 ${app.run.level} 关 · 庄家` : opponent.title;
   $('#opponent-inline')!.textContent = `对手：${opponent.name}`;
