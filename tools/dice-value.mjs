@@ -261,3 +261,62 @@ if (!JSON_OUT) {
   }
   console.log(`  （金币Δ = [骰+5标准] 金币 EV − 基准金币 EV @L${REF_LEVEL}；剩余净收益 = Σ(快照金币Δ × ${CHAPTER_SPAN}) − 价格）`);
 }
+
+// ── access axis ────────────────────────────────────────────────────────────
+/** Appearance rate per shop visit, from the real shop generator so rarity
+    bands, the demon ×0.5 penalty, owned-set ×1.5 nudge and unique filtering
+    are all in the measurement. Bag = [die]+5 standard: the die itself is
+    not owned yet, and set nudge is off (no set member in the baseline bag). */
+function appearanceCounts(bagIds) {
+  const shopState = createRun({ rng: makeRng(0x2545f491) });
+  shopState.bag = bagIds.map((id, index) => ({ uid: `shop-${index}`, dieId: id }));
+  shopState.activeItems = [];
+  shopState.passiveItems = [];
+  shopState.acquiredItemIds = [];
+  const perLevel = new Map();
+  let shelfFill = 0;
+  for (const level of SNAPSHOT_LEVELS) {
+    const hits = new Map();
+    for (let t = 0; t < SHOP_TRIALS; t += 1) {
+      shopState.level = level;
+      const shop = createShop(shopState, { rng: makeRng((0x1b873593 + t * 97 + level * 7919) >>> 0) });
+      for (const offer of shop.dice) {
+        if (!offer.id) continue;
+        shelfFill += 1;
+        hits.set(offer.id, (hits.get(offer.id) || 0) + 1);
+      }
+    }
+    perLevel.set(level, hits);
+  }
+  return { perLevel, shelfFill };
+}
+
+const mc = appearanceCounts(STANDARD_BAG());
+for (const row of rows) {
+  row.access = {};
+  for (const level of SNAPSHOT_LEVELS) {
+    row.access[level] = (mc.perLevel.get(level).get(row.die.id) || 0) / SHOP_TRIALS;
+  }
+  const p = row.access[REF_LEVEL] || 0;
+  row.visitP = p;
+  row.expectedShops = p > 0 ? 1 / p : Infinity;
+  // Assume the player waits one free shelf per level and buys one extra
+  // base-priced refresh (20 coins) per additional shop needed.
+  row.acquisitionCost = row.die.price + 20 * Math.max(0, row.expectedShops - 1);
+}
+
+if (!JSON_OUT) {
+  console.log('\n── 表 C：获取 · 每店出现率（真实商店蒙特卡洛） ──');
+  const cols = SNAPSHOT_LEVELS.map((l) => `P@L${l}`);
+  console.log([pad('骰子', 14), pad('稀有', 6), ...cols.map((c) => padL(c, 8)), padL('期望店数', 10), padL('期望成本', 10)].join(' '));
+  for (const row of rows) {
+    console.log([
+      pad(row.die.name, 14),
+      pad(row.die.rarity, 6),
+      ...SNAPSHOT_LEVELS.map((l) => padL(`${num((row.access[l] || 0) * 100, 2)}%`, 8)),
+      padL(Number.isFinite(row.expectedShops) ? num(row.expectedShops, 1) : '∞', 10),
+      padL(num(row.acquisitionCost, 0), 10),
+    ].join(' '));
+  }
+  console.log('  （期望成本 = 价格 + 20 × (期望店数 − 1)，假设每店最多多刷一次基价货架）');
+}
