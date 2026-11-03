@@ -66,7 +66,7 @@ describe('结算弹窗搬到 ui/screens/result.ts 之后仍然写同样的文案
     expect(html).toContain('boss-drop');
     expect(html).toContain('assets/art/items/judge_relic-cut.svg');
     expect(html).toContain('停审令牌');
-    expect(html).toContain('每次「计分并重投」有 25% 概率不消耗重投；每关最多触发一次。');
+    expect(html).toContain('每次「计分并重投」有 10% 概率不消耗重投；每关最多触发一次。');
     expect(html).toContain('data-action="go-shop">确定');
     expect(html).not.toContain('庄家掉落 <b>');
   });

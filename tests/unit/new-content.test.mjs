@@ -247,7 +247,7 @@ describe('停审令牌', () => {
 
   test('触发时豁免这一次重投，并把 pardon 交给界面', () => {
     const state = pardonState();
-    const result = rollDice(state, { rng: () => 0.1 });
+    const result = rollDice(state, { rng: () => 0.05 });
     expect(result.ok).toBe(true);
     expect(result.pardon).toBe(true);
     expect(state.rerolls).toBe(3);

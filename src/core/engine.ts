@@ -1536,7 +1536,7 @@ export function rollDice(state: RunState, { free = false, rng = getRng(state), f
     pardon = Boolean(state.flags.rerollAll
       && state.passiveItems.includes('judge_relic')
       && !state.flags.judgeRelicUsed
-      && rng() < 0.25);
+      && rng() < 0.10);
     if (starPardon) {
       state.flags.stargazerRerollUsed = true;
       pushLog(state, '星轨 4 件：本关第一次重投免费。', 'good');
