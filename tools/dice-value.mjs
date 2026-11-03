@@ -28,7 +28,10 @@
      --rarity=...    restrict the roster to one rarity
      --quick         quarter the sample counts
      --json          machine-readable output
+     --out=path      write the JSON snapshot (used by build-codex.mjs)
    ============================================================ */
+
+import { writeFileSync } from 'node:fs';
 
 import { DICE, DICE_SETS, LEVEL_COUNT, getLevelConfig } from '../src/content/index.ts';
 import {
@@ -59,6 +62,8 @@ const WEIGHTS = argStr('w', '50,30,20').split(',').map(Number);
 const BAG_ARG = argStr('bag', '');
 const DIE_FILTER = argStr('die', '');
 const RARITY = argStr('rarity', '');
+const OUT_ARG = argStr('out', '');
+const QUIET = JSON_OUT || Boolean(OUT_ARG);
 const T = QUICK ? Math.max(60, Math.round(TRIALS / 4)) : TRIALS;
 if (WEIGHTS.length !== 3 || WEIGHTS.some((v) => !Number.isFinite(v))) {
   console.error('--w 需要三个数字，如 --w=50,30,20');
@@ -194,21 +199,27 @@ if (BAG_ARG) {
     bagBase.set(level, levelEV(STANDARD_BAG(), { level }));
     bagEval.set(level, levelEV(ids, { level }));
   }
-  if (JSON_OUT) {
-    console.log(JSON.stringify({
-      bag: ids,
-      levels: SNAPSHOT_LEVELS.map((level) => {
-        const base = bagBase.get(level);
-        const ev = bagEval.get(level);
-        return {
-          level, target: getLevelConfig(level).target,
-          baseScore: base.score, bagScore: ev.score,
-          baseWin: base.win, bagWin: ev.win,
-          baseCoins: base.coins, bagCoins: ev.coins,
-        };
-      }),
-    }, null, 2));
-  } else {
+  const bagPayload = {
+    generatedAt: new Date().toISOString(),
+    trials: T,
+    bag: ids,
+    levels: SNAPSHOT_LEVELS.map((level) => {
+      const base = bagBase.get(level);
+      const ev = bagEval.get(level);
+      return {
+        level, target: getLevelConfig(level).target,
+        baseScore: base.score, bagScore: ev.score,
+        baseWin: base.win, bagWin: ev.win,
+        baseCoins: base.coins, bagCoins: ev.coins,
+      };
+    }),
+  };
+  if (JSON_OUT) console.log(JSON.stringify(bagPayload, null, 2));
+  if (OUT_ARG) {
+    writeFileSync(OUT_ARG, JSON.stringify(bagPayload, null, 2));
+    console.log(`已写入 ${OUT_ARG}`);
+  }
+  if (!QUIET) {
     console.log('');
     console.log(`════ 阵容评估：${ids.map((id) => getDieSpec(id).name).join(' + ')} ════`);
     console.log([pad('关卡', 8), padL('目标', 9), padL('基准分', 9), padL('阵容分', 9), padL('Δ分', 8), padL('基准达标', 10), padL('阵容达标', 10), padL('金币Δ/关', 10)].join(' '));
@@ -234,7 +245,7 @@ if (BAG_ARG) {
 const ROSTER = DICE.filter((die) => (!DIE_FILTER || die.id === DIE_FILTER)
   && (!RARITY || die.rarity === RARITY));
 
-if (!JSON_OUT) {
+if (!QUIET) {
   console.log('');
   console.log('════ 骰子综合价值评估 ════');
   console.log(`快照关卡：${SNAPSHOT_LEVELS.join(' / ')} · 参考关 L${REF_LEVEL} · 重投 ${BASE_REROLLS} 次 · 无道具 · 骰桶橡木`);
@@ -246,7 +257,7 @@ const baseByLevel = new Map();
 for (const level of SNAPSHOT_LEVELS) {
   baseByLevel.set(level, levelEV(STANDARD_BAG(), { level }));
   const base = baseByLevel.get(level);
-  if (!JSON_OUT) {
+  if (!QUIET) {
     const cfg = getLevelConfig(level);
     console.log(
       `  L${padL(level, 2)}（目标 ${num(cfg.target)} · 赏金 ${num(cfg.reward)}）：`
@@ -271,11 +282,11 @@ for (const die of ROSTER) {
     deadRates[level] = ev.deadRate;
   }
   rows.push({ die, deltas, wins, coinDeltas, deadRates });
-  if (!JSON_OUT) process.stdout.write(`  · ${die.name}\n`);
+  if (!QUIET) process.stdout.write(`  · ${die.name}\n`);
 }
 
 // ── table A: strength ──────────────────────────────────────────────────────
-if (!JSON_OUT) {
+if (!QUIET) {
   console.log('\n── 表 A：强度 · 关卡分 Δ（bag = 该骰 + 5 标准 vs 6 标准） ──');
   const head = ['骰子', '套组', '稀有', '价', ...SNAPSHOT_LEVELS.map((l) => `ΔL${l}`), `达标%@L${REF_LEVEL}`, `死掷%@L${REF_LEVEL}`];
   console.log([
@@ -308,7 +319,7 @@ for (const row of rows) {
     .reduce((sum, l) => sum + row.coinDeltas[l] * CHAPTER_SPAN, 0) - row.die.price;
 }
 
-if (!JSON_OUT) {
+if (!QUIET) {
   console.log('\n── 表 B：金钱 · 每关金币 EV Δ（含达标率、重投折算、超额奖励） ──');
   console.log([pad('骰子', 14), padL('金币Δ/关', 10), padL('回本关数', 10), padL('剩余净收益', 12), padL('价格', 8)].join(' '));
   for (const row of rows) {
@@ -366,7 +377,7 @@ for (const row of rows) {
   row.acquisitionCost = row.die.price + 20 * Math.max(0, row.expectedShops - 1);
 }
 
-if (!JSON_OUT) {
+if (!QUIET) {
   console.log('\n── 表 C：获取 · 每店出现率（真实商店蒙特卡洛） ──');
   const cols = SNAPSHOT_LEVELS.map((l) => `P@L${l}`);
   console.log([pad('骰子', 14), pad('稀有', 6), ...cols.map((c) => padL(c, 8)), padL('期望店数', 10), padL('期望成本', 10)].join(' '));
@@ -415,7 +426,7 @@ for (const row of rows) {
   row.grade = row.value >= 0.75 ? 'S' : row.value >= 0.55 ? 'A' : row.value >= 0.35 ? 'B' : 'C';
 }
 
-if (!JSON_OUT) {
+if (!QUIET) {
   console.log(`\n── 表 D：综合评级（强度 ${WEIGHTS[0]} / 金钱 ${WEIGHTS[1]} / 获取 ${WEIGHTS[2]}） ──`);
   console.log([pad('骰子', 14), pad('稀有', 6), padL('强度轴', 8), padL('金钱轴', 8), padL('获取轴', 8), padL('综合分', 8), padL('评级', 6)].join(' '));
   for (const row of [...rows].sort((x, y) => y.value - x.value)) {
@@ -456,29 +467,36 @@ if (!JSON_OUT) {
 }
 
 // ── JSON output ────────────────────────────────────────────────────────────
-if (JSON_OUT) {
-  console.log(JSON.stringify({
-    snapshotLevels: SNAPSHOT_LEVELS,
-    refLevel: REF_LEVEL,
-    weights: WEIGHTS,
-    baseline: SNAPSHOT_LEVELS.map((level) => ({
-      level, ...baseByLevel.get(level), target: getLevelConfig(level).target,
-    })),
-    rows: rows.map((row) => ({
-      die: row.die.id, name: row.die.name, rarity: row.die.rarity,
-      setId: row.die.setId || null, price: row.die.price,
-      deltas: row.deltas, winRates: row.wins, coinDeltas: row.coinDeltas,
-      coinPerLevel: row.coinPerLevel,
-      payback: Number.isFinite(row.payback) ? row.payback : null,
-      netGain: row.netGain,
-      access: row.access, acquisitionCost: row.acquisitionCost,
-      composite: { ...row.axis, value: row.value, grade: row.grade },
-    })),
-  }, null, 2));
+const jsonPayload = {
+  generatedAt: new Date().toISOString(),
+  trials: T,
+  shopTrials: SHOP_TRIALS,
+  snapshotLevels: SNAPSHOT_LEVELS,
+  refLevel: REF_LEVEL,
+  weights: WEIGHTS,
+  baseline: SNAPSHOT_LEVELS.map((level) => ({
+    level, ...baseByLevel.get(level), target: getLevelConfig(level).target,
+  })),
+  rows: rows.map((row) => ({
+    die: row.die.id, name: row.die.name, rarity: row.die.rarity,
+    setId: row.die.setId || null, price: row.die.price,
+    deltas: row.deltas, winRates: row.wins, coinDeltas: row.coinDeltas,
+    coinPerLevel: row.coinPerLevel,
+    payback: Number.isFinite(row.payback) ? row.payback : null,
+    netGain: row.netGain,
+    access: row.access, acquisitionCost: row.acquisitionCost,
+    composite: { ...row.axis, value: row.value, grade: row.grade },
+  })),
+};
+if (JSON_OUT) console.log(JSON.stringify(jsonPayload, null, 2));
+if (OUT_ARG) {
+  writeFileSync(OUT_ARG, JSON.stringify(jsonPayload, null, 2));
+  console.log(`已写入 ${OUT_ARG}`);
+  console.log(`  骰子 ${rows.length} 颗 · 样本 ${T} 局/配置 · 商店 ${SHOP_TRIALS} 次/快照 · 生成于 ${jsonPayload.generatedAt}`);
 }
 
 // ── self-checks ────────────────────────────────────────────────────────────
-if (!JSON_OUT && !BAG_ARG) {
+if (!QUIET && !BAG_ARG) {
   const issues = [];
   const probeLevel = SNAPSHOT_LEVELS[0];
   const a = levelEV(STANDARD_BAG(), { level: probeLevel, trials: 60 });
@@ -501,4 +519,4 @@ if (!JSON_OUT && !BAG_ARG) {
   else console.log('  通过：基准可复现 · 货架填满 · 权重带生效。');
 }
 
-if (!JSON_OUT) console.log(`\n用时 ${((Date.now() - started) / 1000).toFixed(1)} 秒`);
+if (!QUIET) console.log(`\n用时 ${((Date.now() - started) / 1000).toFixed(1)} 秒`);

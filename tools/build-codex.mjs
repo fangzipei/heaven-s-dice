@@ -25,6 +25,17 @@ import { effectiveProbs } from '../src/core/engine.ts';
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const OUT = join(ROOT, 'docs', 'codex.html');
 
+/* Dice value snapshot: produced by `npm run dice:value` (a Monte Carlo tool,
+   too slow to run on every codex build). Optional — the page degrades to a
+   "run the tool" note when the file is absent. */
+let valueSnapshot = null;
+try {
+  valueSnapshot = JSON.parse(readFileSync(join(ROOT, 'tools', 'dice-value.json'), 'utf8'));
+} catch {
+  valueSnapshot = null;
+}
+const valueById = new Map((valueSnapshot?.rows || []).map((row) => [row.die, row]));
+
 /* ── small helpers ────────────────────────────────────────────────────── */
 
 const esc = (value) => String(value ?? '')
@@ -91,6 +102,11 @@ function dieCard(spec, index) {
     ? `<span class="effect"><b>${esc(spec.bonus.label.split('：')[0])}</b> · ${esc(spec.bonus.label.split('：').slice(1).join('：'))}</span>`
     : '<span class="effect none">无额外特性 · 只改变点数概率</span>';
 
+  const value = valueById.get(spec.id);
+  const gradeChip = value
+    ? `<span class="grade-chip grade-${value.composite.grade}" title="综合 ${value.composite.value.toFixed(2)} · 强度 ${value.composite.strength.toFixed(2)} / 金钱 ${value.composite.money.toFixed(2)} / 获取 ${value.composite.access.toFixed(2)}">${value.composite.grade} ${value.composite.value.toFixed(2)}</span>`
+    : '';
+
   return `<article class="card die-card" data-die-id="${spec.id}" data-set="${spec.setId || 'none'}" data-rarity="${spec.rarity}" data-name="${esc(spec.name)}" data-order="${index}" style="--rarity:${rarity.color};--glow:${rarity.glow}">
     <div class="top"><span class="rarity">${rarity.name}</span><span class="price">${spec.price ? `${spec.price} 银币` : '初始骰'}</span></div>
     <div class="art-row">
@@ -100,7 +116,7 @@ function dieCard(spec, index) {
       </div>
       <div class="faces" aria-label="六面概率">${faces}</div>
     </div>
-    <h4>${esc(spec.name)}${set ? `<span class="set-chip" style="--set:${set.color}">${esc(set.name)}</span>` : '<span class="set-chip" style="--set:#8a7c66">无套组</span>'}</h4>
+    <h4>${esc(spec.name)}${set ? `<span class="set-chip" style="--set:${set.color}">${esc(set.name)}</span>` : '<span class="set-chip" style="--set:#8a7c66">无套组</span>'}${gradeChip}</h4>
     <p class="desc">${esc(spec.desc)}${isDemon(spec) && !spec.desc.includes('赖子') ? ` <b class="wild-note">掷出 1 即为恶魔赖子 ${pct(probs[0])}。</b>` : ''}</p>
     <div class="probs" aria-label="六面概率">${probs.map((p, i) => `
       <div class="pb${i + 1 === peak ? ' is-peak' : ''}" title="${i + 1} 点 ${pct(p)}">
@@ -325,6 +341,103 @@ const levelTable = LEVELS.map((l) => {
   return `<tr${boss ? ' class="is-boss"' : ''}><td>${l.level}</td><td>${l.curve.target}</td><td>${l.target}</td><td>${l.reward}</td><td>${kind}</td></tr>`;
 }).join('');
 
+/* ── dice value section (snapshot from tools/dice-value.json) ──────────── */
+const valueRows = valueSnapshot
+  ? [...valueSnapshot.rows].sort((a, b) => b.composite.value - a.composite.value)
+  : [];
+const gradeCount = valueRows.reduce((acc, row) => {
+  acc[row.composite.grade] = (acc[row.composite.grade] || 0) + 1;
+  return acc;
+}, {});
+const valueMedian = (list) => {
+  if (!list.length) return 0;
+  const sorted = [...list].sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
+  return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+};
+const valueWarnings = [];
+if (valueSnapshot) {
+  const remaining = LEVELS.length - valueSnapshot.refLevel;
+  for (const row of valueRows) {
+    if (row.coinPerLevel <= 0 && row.price >= 130) {
+      valueWarnings.push(`${row.name}：金币Δ/关 ${row.coinPerLevel.toFixed(1)} ≤ 0，价格 ${row.price} 银币。`);
+    }
+    if (row.payback != null && row.payback > remaining) {
+      valueWarnings.push(`${row.name}：回本需 ${row.payback.toFixed(1)} 关，超过剩余 ${remaining} 关。`);
+    }
+  }
+  const bands = ['common', 'rare', 'epic', 'legendary'];
+  const medians = bands.map((rarity) => valueMedian(
+    valueRows.filter((row) => row.rarity === rarity).map((row) => row.composite.value),
+  ));
+  for (let i = 1; i < bands.length; i += 1) {
+    if (medians[i] && medians[i - 1] && medians[i] < medians[i - 1]) {
+      valueWarnings.push(`稀有度倒挂：${RARITIES[bands[i]].name} 综合中位 ${medians[i].toFixed(2)} 低于 ${RARITIES[bands[i - 1]].name} 的 ${medians[i - 1].toFixed(2)}。`);
+    }
+  }
+}
+
+const valueTableRows = valueSnapshot ? valueRows.map((row) => {
+  const rarity = RARITIES[row.rarity] || RARITIES.common;
+  const delta = row.deltas[valueSnapshot.refLevel] ?? 0;
+  const access = row.access[valueSnapshot.refLevel] ?? 0;
+  return `<tr>
+    <td>${esc(row.name)}</td>
+    <td><span class="ov-r" style="--c:${rarity.color}">${rarity.name}</span></td>
+    <td>${row.price} 银币</td>
+    <td>${delta.toFixed(0)}</td>
+    <td>${row.coinPerLevel.toFixed(1)}</td>
+    <td>${row.payback == null ? '∞' : row.payback.toFixed(1)}</td>
+    <td>${pctText(access * 100)}</td>
+    <td>${row.acquisitionCost.toFixed(0)}</td>
+    <td><b>${row.composite.value.toFixed(2)}</b></td>
+    <td><span class="grade-chip grade-${row.composite.grade}">${row.composite.grade}</span></td>
+  </tr>`;
+}).join('') : '';
+
+const topEarners = [...valueRows].sort((a, b) => b.netGain - a.netGain).slice(0, 5);
+const valueStamp = valueSnapshot
+  ? valueSnapshot.generatedAt.replace('T', ' ').slice(0, 16)
+  : '';
+const valueSection = !valueSnapshot
+  ? `<section id="value">
+  <div class="sec-head"><span class="sec-no">SIM</span><h2>骰子收益评估</h2><span class="count">尚未生成</span></div>
+  <p class="sec-intro">这一节由 <code>tools/dice-value.mjs</code> 的模拟快照驱动。先运行 <code>npm run dice:value</code> 生成 <code>tools/dice-value.json</code>，再运行 <code>npm run codex</code>，即可在这里看到每颗骰的强度 / 金钱 / 获取三轴指标与综合评级。</p>
+</section>`
+  : `<section id="value">
+  <div class="sec-head"><span class="sec-no">SIM</span><h2>骰子收益评估</h2><span class="count">${valueSnapshot.trials} 局/配置 · ${valueSnapshot.shopTrials} 次商店/快照 · 生成于 ${valueStamp}</span></div>
+  <p class="sec-intro">本节数值来自 <code>tools/dice-value.mjs</code> 的贪心策略模拟：每颗骰替换 6 枚标准骰中的 1 枚，与全标准骰基准在相同随机种子下配对比较。<b>强度</b>取 L${valueSnapshot.snapshotLevels.join(' / ')} 的关卡分差均值；<b>金币</b>直接读取引擎 <code>awardLevel</code> 的实账（达标率 × 赏金 + 未用重投折算 + 超额奖励）；<b>获取</b>用真实商店生成器做蒙特卡洛，含稀有度带权重、恶魔 ×0.5、已持有套装 ×1.5 与 unique 过滤。三轴 min–max 归一后按 ${valueSnapshot.weights.join(' / ')} 加权得出综合分与 S/A/B/C 评级——评级用于横向比较，不是胜率。</p>
+  <div class="market value-summary">
+    <div class="market-card">
+      <h4>综合评级分布</h4>
+      ${['S', 'A', 'B', 'C'].map((grade) => `<div class="m-line"><span><span class="grade-chip grade-${grade}">${grade}</span> 级</span><b>${gradeCount[grade] || 0} 颗</b></div>`).join('')}
+      <div class="m-line"><span>快照骰子</span><b>${valueRows.length} 颗</b></div>
+      <div class="m-line"><span>参考关</span><b>L${valueSnapshot.refLevel}</b></div>
+      <div class="m-line"><span>综合权重</span><b>强度 ${valueSnapshot.weights[0]} / 金钱 ${valueSnapshot.weights[1]} / 获取 ${valueSnapshot.weights[2]}</b></div>
+    </div>
+    <div class="market-card">
+      <h4>剩余净收益前五</h4>
+      ${topEarners.map((row) => `<div class="m-line"><span>${esc(row.name)}</span><b>${row.netGain >= 0 ? '+' : ''}${row.netGain.toFixed(0)} 银币</b></div>`).join('')}
+      <p style="color:#8d7e66;font-size:10px;line-height:1.7;margin-top:8px">净收益 = Σ(快照金币Δ × 5) − 价格。负数表示仅靠自身产出买不回票价，价值在强度而非经济。</p>
+    </div>
+    <div class="market-card">
+      <h4>平衡告警 · ${valueWarnings.length} 条</h4>
+      ${valueWarnings.length
+        ? `<ul class="value-warn">${valueWarnings.slice(0, 8).map((w) => `<li>${esc(w)}</li>`).join('')}</ul>`
+        : '<p style="color:#8d7e66;font-size:10.5px">无：各稀有度带无倒挂，也没有高价低产出骰。</p>'}
+      ${valueWarnings.length > 8 ? `<p style="color:#8d7e66;font-size:10px;margin-top:6px">另有 ${valueWarnings.length - 8} 条未展示。</p>` : ''}
+    </div>
+  </div>
+  <div class="ov-wrap"><table class="ov-table value-table"><thead><tr><th>名称</th><th>稀有度</th><th>价格</th><th>强度Δ@L${valueSnapshot.refLevel}</th><th>金币Δ/关</th><th>回本关数</th><th>每店出现率</th><th>期望购置成本</th><th>综合分</th><th>评级</th></tr></thead><tbody>${valueTableRows}</tbody></table></div>
+  <ul class="notes">
+    <li><b>强度Δ</b>：该骰 + 5 标准骰 vs 6 标准骰的关卡分差，贪心策略 + 共随机数，样本 ${valueSnapshot.trials} 局/配置。</li>
+    <li><b>回本关数</b>：价格 ÷ 参考关每关金币Δ；∞ 表示该骰不提高金币收入。</li>
+    <li><b>期望购置成本</b>：价格 + 20 × (期望店数 − 1)，假设每店最多多刷一次基价货架。</li>
+    <li>模拟使用橡木桶、无道具、3 次重投；换装重铸桶或道具后的协同不在本表内。</li>
+    <li>重新生成：<b>npm run dice:value</b> → <b>npm run codex</b>。单骰分布体检仍用 <b>npm run dice:ev</b>。</li>
+  </ul>
+</section>`;
+
 const now = new Date();
 const pad = (n) => String(n).padStart(2, '0');
 const stamp = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}`;
@@ -400,6 +513,16 @@ h2{font-family:var(--serif);font-weight:400;font-size:28px;letter-spacing:.07em;
 .ov-table td:nth-child(7) b{color:#ffe0a0;font-weight:400}
 .ov-effect{max-width:520px;line-height:1.55}
 .ov-r{display:inline-block;padding:1px 6px;border:1px solid color-mix(in srgb,var(--c) 50%,transparent);color:var(--c);font-size:9px;letter-spacing:.08em}
+.grade-chip{display:inline-block;padding:0 6px;border:1px solid currentColor;font-size:9px;letter-spacing:.08em;line-height:1.7;color:#8a7c66;background:rgba(255,255,255,.03)}
+.grade-chip.grade-S{color:#ffe5a2;border-color:rgba(255,229,162,.5);text-shadow:0 0 10px rgba(255,229,162,.25)}
+.grade-chip.grade-A{color:#d9b46a;border-color:rgba(217,180,106,.45)}
+.grade-chip.grade-B{color:#a08c6f}
+.grade-chip.grade-C{color:#7a6a55}
+.value-table td:nth-child(n+3){white-space:nowrap;font-variant-numeric:tabular-nums}
+.value-table td:nth-child(9) b{color:#ffe0a0;font-weight:400}
+.value-warn{list-style:none;margin:4px 0 0;padding:0;display:grid;gap:5px}
+.value-warn li{color:#b7a58a;font-size:10.5px;line-height:1.6;padding-left:12px;position:relative}
+.value-warn li::before{content:"⚠";position:absolute;left:0;color:#c98a5a;font-size:9px}
 .ov-sub{display:flex;align-items:baseline;gap:10px;margin:24px 0 8px;font-family:var(--serif);font-size:17px;color:#dfc89f}
 .ov-sub span{font-family:var(--sans);font-size:10px;color:#7f705b}
 
@@ -616,6 +739,7 @@ footer code{color:#93836b;font-family:Consolas,monospace;font-size:9.5px}
     <a href="#overview"><b>00</b> 强度总览</a>
     <a href="#sets"><b>01</b> 骰组</a>
     <a href="#dice"><b>02</b> 骰子 ${diceList.length}</a>
+    <a href="#value"><b>△</b> 收益评估</a>
     <a href="#lab"><b>▶</b> 试掷台</a>
     <a href="#barrels"><b>03</b> 骰桶 ${BARRELS.length}</a>
     <a href="#items"><b>04</b> 物品 ${ITEMS.length}</a>
@@ -673,6 +797,8 @@ footer code{color:#93836b;font-family:Consolas,monospace;font-size:9.5px}
     </div>
   </div>
 </section>
+
+${valueSection}
 
 <section id="lab">
   <div class="sec-head"><span class="sec-no">LIVE</span><h2>试掷台</h2><span class="count">真实权重 × 骰桶修正 · 只在浏览器里跑</span></div>
@@ -780,7 +906,7 @@ footer code{color:#93836b;font-family:Consolas,monospace;font-size:9.5px}
     <li>每关基础 <b>3 次重投</b>，击败庄家不再累积上限；烈酒 / 时间沙漏 / 加注契约 / 旋涡桶仪式可以临时 +1。最终庄家撒旦开局额外给 <b>+2 重投</b>。</li>
     <li><b>全骰连击</b>：本关每触发一次全骰，那一次计分就多乘一层 ×1.2（第 1 次 ×1.2、第 2 次 ×1.44……）；左上角「全骰 ×N」记录本关次数。</li>
     <li><b>悬秤人</b>（传说池）把整桌分数变成漂浮分：计分与重投都不会真正入账，掷出无法计分的骰型就整桌清零；只有落秤（过关）时分数与赏金才一起兑现。</li>
-    <li>骰子期望分数可用 <b>npm run dice:ev</b> 重新评估。</li>
+    <li>骰子期望分数可用 <b>npm run dice:ev</b> 重新评估；综合收益（强度 / 金钱 / 获取）用 <b>npm run dice:value</b> 生成快照，再运行 <b>npm run codex</b> 刷新本页评级。</li>
   </ul>
 </section>
 
