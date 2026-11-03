@@ -387,6 +387,11 @@ function mostUsedHandType(state: RunState): HandType | null {
   return best;
 }
 
+/** Exposed for the headless playtest bot so its solver uses the live rules. */
+export function currentScoringOptions(state: RunState): ScoringOptions {
+  return scoringOptions(state);
+}
+
 function scoringOptions(state: RunState): ScoringOptions {
   const relicTwins = state.passiveItems.includes('twinsix_relic');
   const bossTwins = bossEffectKey(state) === 'singlesTwoSix';
