@@ -10,8 +10,14 @@ export const barrelArt = (art: string): string => `${ART}/barrels/${art}-cut.svg
 export const barrelCupArt = (art: string): string => `${ART}/barrels/${art}-cup.svg`;
 export const itemArt = (id: string): string => `${ART}/items/${id}-cut.svg`;
 export const tableArt = (art: string): string => `${ART}/tables/${art}.svg`;
-/** White crumpled sheet with the tabletop drawn in coloured pencil. */
-export const paperTableArt = (art: string): string => `${PAPER}/tables/${art}.svg?v=20261028-mat03`;
+/** White crumpled sheet with the tabletop drawn in coloured pencil.
+ *
+ * The hall plates are painted scenes (1600x1000); they ship as WebP because a
+ * PNG of that size costs ~2.5 MB a sheet and the plates are flat washes with
+ * thin ink lines, which WebP holds at a fraction of the bytes. The older
+ * tables are still hand-drawn vector sheets. */
+export const paperTableArt = (art: string): string =>
+  `${PAPER}/tables/${art}.${art.startsWith('hall-') ? 'webp' : 'svg'}?v=20261104-webp`;
 export const portraitArt = (art: string): string => `assets/portraits/paper/${art}.svg`;
 
 

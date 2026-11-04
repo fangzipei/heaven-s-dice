@@ -36,6 +36,6 @@ test('a quiet run can simply enter heaven', () => {
 test('boss tooltip exposes the full boss effect', () => {
   const html = bossTooltip('satan');
   expect(html).toContain('撒旦');
-  expect(html).toContain('撒旦的恩赐');
+  expect(html).toContain('撒旦的优待');
   expect(html).toContain('100000');
 });

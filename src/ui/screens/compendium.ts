@@ -9,6 +9,7 @@ import { h } from '../../core/util.ts';
 import type { DiscoveryKind } from '../../platform/storage.ts';
 import { discoverLoadout, discoverShop, isDiscovered } from '../../platform/storage.ts';
 import { artDieImageHtml } from '../../render/dice-dom.ts';
+import { paperTableArt } from '../../render/art.ts';
 import { probabilityBars } from '../components/cards.ts';
 import { openOverlay } from '../components/overlay.ts';
 import { barrelTypeLabel, hideTooltip } from '../components/tooltip.ts';
@@ -111,7 +112,7 @@ function compendiumBody(tab: string): string {
     return `<p class="compendium-intro">五张赌桌，五种材质。关卡越深，桌面越昂贵，坐在对面的东西也越不像人。前四幕各 6 关、终幕 4 关，每幕有两位庄家看守，庄家之间的小兵越排越长。</p>
       <div class="compendium-grid tables-grid">
         ${TABLES.map((table) => `<article class="compendium-card table-comp-card" style="--rarity:${table.accent};--glow:${table.glow};min-height:280px;overflow:hidden">
-          <div class="comp-table-bg" style="background-image:url('assets/paper/tables/${table.art}.svg')"></div>
+          <div class="comp-table-bg" style="background-image:url('${paperTableArt(table.art)}')"></div>
           <div class="comp-table-content">
             <div class="comp-sub">第 ${chapterLevelSpan(table.group)[0]}–${chapterLevelSpan(table.group)[1]} 关 · ${h(table.material)}</div>
             <h4>${h(table.name)}</h4>

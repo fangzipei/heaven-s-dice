@@ -5,6 +5,6 @@ import type { DiceDef } from '../../core/types.ts';
 export default {
   id: 'wolf_whelp', name: '乳狼骰', setId: 'wolf', rarity: 'common',
   probs: [0.16, 0.08, 0.50, 0.06, 0.14, 0.06],
-  flavor: '森林里第一颗掉落的乳牙，只认一个数字。',
+  flavor: '狼群里最小的那只，牙还没长齐，只认一个数字。',
   desc: '3 点概率 50%，其余点数薄。', bonus: null,
 } satisfies DiceDef;

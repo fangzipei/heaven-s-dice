@@ -6,5 +6,5 @@ export default {
   id: 'lucky_coin', name: '幸运币', type: 'active', icon: 'coin',
   rarity: 'common', price: 35, charges: 1, consumable: true,
   desc: '立即获得 250 分。一次性消耗。',
-  flavor: '正面是国王，反面也是国王。这枚硬币从来不做选择。',
+  flavor: '正面是国王，反面也是国王，这枚硬币从来不做选择。往生坊发给新来排号的人，数目不多，够买一碗热汤。',
 } satisfies ItemDef;

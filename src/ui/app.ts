@@ -611,7 +611,7 @@ function requestHome(): void {
     <div class="modal result-modal" style="width:min(480px,100%);padding:38px">
       <p class="modal-kicker">LEAVE THE TABLE</p>
       <h2 style="font-size:27px;margin-top:6px">要离开这张赌桌吗？</h2>
-      <p class="result-sub">当前这一局的骰子、银币与契约都会消失。</p>
+      <p class="result-sub">当前这一局的骰子、银币与约定都会消失。</p>
       <div class="modal-actions" style="margin-top:24px">
         <button class="secondary-button" data-action="close-overlay">继续赌</button>
         <button class="primary-button" data-action="confirm-home">离开并重来</button>
@@ -632,6 +632,7 @@ export function setupLevelScene(force = false): void {
   const sceneArt = $('#scene-art')!;
   const scene = $('#scene')!;
   scene.dataset.table = table.id;
+  scene.dataset.art = table.art;
   setCss(scene, '--table-accent', table.accent);
   $('#room-back')!.style.backgroundImage = `url("${paperTableArt(table.art)}")`;
   setCss(scene, '--table-art', `url("${paperTableArt(table.art)}")`);
@@ -729,7 +730,7 @@ function goToShop(): void {
   if (!app.run) return;
   if (app.run.phase !== 'won') return;
   const shop = Engine.openShop(app.run);
-  if (!shop) { showToast('市集没有开门。', 'error'); return; }
+  if (!shop) { showToast('市集今天没开摊。', 'error'); return; }
   paperSwap(() => {
     closeOverlay();
     openShopScreen();

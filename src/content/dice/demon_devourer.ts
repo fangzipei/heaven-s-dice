@@ -4,7 +4,7 @@ import type { DiceDef } from '../../core/types.ts';
 export default {
   id: 'demon_devourer', name: '噬名者', setId: 'demon', rarity: 'legendary',
   probs: [0.20, 0.14, 0.15, 0.13, 0.18, 0.20],
-  flavor: '它不吞骰子，它只把骰子的名字吃掉，留下一个空壳。',
+  flavor: '它把骰子的名字吃掉，只留下一个空壳。据说空壳里偶尔还会有人叫你的名字。',
   desc: '恶魔赖子 20%；此骰作为赖子计分时，本手分数 +50%。',
   bonus: { type: 'scorePercent', percent: 50, when: { kind: 'wild' }, label: '噬名：此骰作为恶魔赖子计分时 +50%' },
 } satisfies DiceDef;

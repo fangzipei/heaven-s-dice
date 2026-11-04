@@ -10,7 +10,7 @@ export default {
   name: '石心审判官', title: '无言法庭', accent: '#9ab9c4',
   effectName: '少一次机会', effectKey: 'rerollMinus',
   effectDesc: '本关重投次数减少 1 次。',
-  intro: '骰子不会说谎。但你会。现在，让我们开始取证。',
+  intro: '骰子不会说谎。但你会。核对流程很简单——先扣掉一次机会，剩下的慢慢问。',
   taunts: [
     '先扣掉一次机会。证词要慢慢问。',
     '少一次重投，够不够你想清楚？',

@@ -2543,7 +2543,7 @@ body.rail-collapsed .cup-zone { right: 4.2% !important; }
   .retry-total b { font-size: 24px; }
 }
 
-.hint-score-button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 38px; padding: 0 12px; border: 1px solid rgba(217,180,106,.35); background: rgba(7,6,4,.55); color: #d8bd86; font-family: var(--serif); font-size: 11px; letter-spacing: .06em; cursor: pointer; }
+.hint-score-button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 38px; padding: 0 12px; border: 1px solid rgba(226,190,118,.72); background: rgba(9,7,5,.72); color: #d8bd86; font-family: var(--serif); font-size: 11px; letter-spacing: .06em; cursor: pointer; box-shadow: 0 0 0 1px rgba(255,246,226,.16), 0 2px 8px rgba(0,0,0,.4); }
 .hint-score-button:hover { color: #ffe0a0; border-color: rgba(255,220,150,.7); }
 .hint-score-button svg { width: 14px; height: 14px; }
 @media (max-width: 760px) { .hint-score-button { font-size: 10px; min-height: 34px; padding: 0 9px; } }

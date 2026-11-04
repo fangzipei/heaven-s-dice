@@ -11,11 +11,11 @@ export default {
   name: '腐牙伯爵', title: '鼠群之主', accent: '#c25b5b',
   effectName: '鼠群噬点', effectKey: 'blankNinth',
   effectDesc: '每投出 8 颗骰子，接下来 1 颗会被啃成白骰：没有点数，不能计分。',
-  intro: '小赌徒，坐吧。我的孩子们已经饿了一整个冬天。',
+  intro: '坐吧，坐吧。我的孩子们数到八就开饭，你慢点。',
   taunts: [
     '它们不挑食。点数、运气，连骰子的脸都啃。',
     '数到八了吗？第九颗归我的孩子们。',
     '白骰也是骰。只是它什么也说不出来。',
   ],
-  win: '不可能……我的孩子们明明已经闻到血腥味了。',
+  win: '不可能……我的孩子们明明已经闻到点数味了。',
 } satisfies BossContentDef;

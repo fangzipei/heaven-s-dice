@@ -1,0 +1,140 @@
+/* ── room art framing, per table ────────────────────────────────────────
+ *
+ * The room plate is painted once and then cropped by the scene box, so the
+ * tabletop's far edge only lands where the dealer's portrait ends if the
+ * crop matches the plate. Each table gets its own crop rule here; tables
+ * that still use their old artwork keep the legacy rules untouched.
+ *
+ * The plate for a table lives in assets/paper/tables/<art>.png and is
+ * authored so that, inside the visible window, the far edge of the desk runs
+ * exactly where the dealer is cut off — the dealer sits behind that edge.
+ *
+ * Rules are scoped to `.scene[data-art^="hall-"]`, the plates painted for
+ * the paper style; the older vector tables are left alone.
+ */
+
+/* Desktop: the plate is cropped by height, not by width.
+ *
+ * `background-size: auto 180%` makes the visible band a fixed slice of the
+ * plate whatever the frame's aspect ratio: rows 333..889, with the desk edge
+ * (plate row 600) landing at 48% down the frame. A width-based crop would
+ * slide the edge up and down as the window changes shape, and the dealer's
+ * bust has to stay welded to that edge.
+ *
+ * The rules live here (not in readability.css) so the hall plates keep their
+ * framing even if the legacy table rules are reordered. */
+@media (min-width: 761px) {
+  .scene[data-art^="hall-"] .room-wall.back {
+    background-size: auto 180% !important;
+    background-position: center 75% !important;
+  }
+
+  /* The dealer sits on the far side of the desk instead of standing on it.
+   *
+   * The portrait is a full-body cut-out, but a full body standing on the
+   * tabletop reads as "standing on the table", not "sitting across it". So the
+   * cut-out is cropped to a bust — head, shoulders, chest — and the crop's
+   * lower edge is pinned to the desk's far edge. The body then simply stops
+   * where the desk begins, which is exactly what a person behind a table
+   * looks like.
+   *
+   * 52% from the bottom is the desk edge expressed that way: the crop shows
+   * plate rows 333..889 and the edge sits at row 600, so it lands at
+   * (600 - 333) / (889 - 333) = 48% from the top.
+   */
+  .scene[data-art^="hall-"] .opponent {
+    top: auto !important;
+    bottom: 52% !important;
+    left: 50% !important;
+    width: clamp(270px, 20.5vw, 350px) !important;
+    height: auto !important;
+    aspect-ratio: 330 / 258 !important;
+    transform: translateX(-50%) translateY(var(--shift-y, 0px)) !important;
+    filter: drop-shadow(2px 6px 0 rgba(0, 0, 0, .3)) !important;
+  }
+  .scene[data-art^="hall-"] .opponent.is-boss {
+    width: clamp(290px, 21.5vw, 370px) !important;
+    aspect-ratio: 330 / 262 !important;
+    filter: drop-shadow(2px 6px 0 rgba(0, 0, 0, .34)) drop-shadow(0 0 28px var(--boss-accent, #c25b5b)) !important;
+  }
+
+  /* The crop window: transparent, borderless, and clipped hard at the bottom. */
+  .scene[data-art^="hall-"] .opponent-image-wrap,
+  .scene[data-art^="hall-"] .opponent.has-state .opponent-image-wrap {
+    overflow: hidden !important;
+    padding: 0 !important;
+    background: transparent !important;
+    border: 0 !important;
+    clip-path: none !important;
+    box-shadow: none !important;
+  }
+  .scene[data-art^="hall-"] .opponent-image-wrap::before,
+  .scene[data-art^="hall-"] .opponent-image-wrap::after {
+    display: none !important;
+  }
+  /* Portrait sheets are 480x640 with the figure bottom-aligned. `cover` plus a
+     top anchor scales the sheet to the window's width and crops the legs off
+     at the bottom; the window itself is the desk edge, so the body stops
+     exactly where the table begins. */
+  .scene[data-art^="hall-"] .opponent-image-wrap img {
+    width: 100% !important;
+    height: 100% !important;
+    max-width: none !important;
+    max-height: none !important;
+    object-fit: cover !important;
+    object-position: center top !important;
+    filter: none !important;
+    transform: none !important;
+    animation: none !important;
+  }
+}
+
+/* A short window cannot show a plate that is 180% of the frame height without
+   leaving the sides uncovered; the room art repeats horizontally by default,
+   and the desk edge is a straight line, so the seam carries it across. */
+@media (min-width: 761px) and (max-height: 720px) {
+  .scene[data-art^="hall-"] .room-wall.back {
+    background-size: auto 220% !important;
+  }
+  .scene[data-art^="hall-"] .opponent {
+    bottom: 58% !important;
+  }
+}
+
+/* On a phone the scene box is tall and narrow. `cover` would expose the
+ * whole plate and drop the desk edge far below the dealer, so the hall
+ * plates are cropped to the same window the desktop uses. */
+@media (max-width: 760px) {
+  .scene[data-art^="hall-"] .room-wall.back {
+    background-size: auto 200% !important;
+    background-position: 50% 97% !important;
+  }
+
+  /* The portrait stands on the far side of the desk instead of hovering
+     above it: it drops to the desk line and its name tag hangs off the
+     left edge, exactly like the desktop layout. */
+  .scene[data-art^="hall-"] .opponent {
+    top: 51px !important;
+  }
+  .scene[data-art^="hall-"] .opponent-plate {
+    left: auto !important;
+    right: calc(100% + 6px) !important;
+    top: 2px !important;
+    bottom: auto !important;
+    width: auto !important;
+    min-width: 0 !important;
+    flex-direction: row-reverse !important;
+    gap: 4px;
+    padding: 5px 6px !important;
+  }
+  .scene[data-art^="hall-"] .opponent-plate strong {
+    writing-mode: vertical-rl;
+    font-size: 14px !important;
+    letter-spacing: .14em;
+  }
+  .scene[data-art^="hall-"] .opponent-kicker {
+    writing-mode: vertical-rl;
+    font-size: 7px !important;
+    letter-spacing: .2em;
+  }
+}

@@ -5,7 +5,7 @@
    assigned by position). So the whole surface is compared against a frozen
    snapshot of the pre-refactor tables, and every file on disk has to show up
    in its registry. */
-import { readdirSync, readFileSync } from 'node:fs';
+import { readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { describe, expect, test } from 'vitest';
 
 import * as Content from '../../src/content/index.ts';
@@ -14,9 +14,8 @@ import { BOSS_DEFS } from '../../src/content/bosses/index.ts';
 import { rarityShopWeight } from '../../src/content/meta.ts';
 
 const CONTENT_DIR = new URL('../../src/content/', import.meta.url);
-const SNAPSHOT = JSON.parse(
-  readFileSync(new URL('../fixtures/content-snapshot.json', import.meta.url), 'utf8'),
-);
+const SNAPSHOT_PATH = new URL('../fixtures/content-snapshot.json', import.meta.url);
+const SNAPSHOT = JSON.parse(readFileSync(SNAPSHOT_PATH, 'utf8'));
 
 /** The tables that used to live in src/legacy/data.js, in their frozen form. */
 const FROZEN_KEYS = [
@@ -24,6 +23,18 @@ const FROZEN_KEYS = [
   'MINIONS', 'BOSSES', 'MINION_GAPS', 'SHOP_RARITY_WEIGHTS', 'LEVEL_CURVE',
   'LEVELS', 'LEVEL_COUNT', 'REROLL_BONUS_RATE', 'OVERSHOOT_RATIO', 'OVERSHOOT_BONUS_RATE',
 ];
+
+// Re-freezing the snapshot is an explicit, manual act: after an intentional
+// copy or data change, run
+//   UPDATE_SNAPSHOT=1 npx vitest run tests/unit/content-registry.test.mjs
+// and commit the rewritten fixture. Without the flag the snapshot stays
+// frozen and any drift still fails the gate.
+if (process.env.UPDATE_SNAPSHOT === '1') {
+  const next = { ...SNAPSHOT };
+  for (const key of FROZEN_KEYS) next[key] = Content[key];
+  writeFileSync(SNAPSHOT_PATH, `${JSON.stringify(next, null, 2)}\n`, 'utf8');
+  console.log(`[content-registry] snapshot refreshed: ${FROZEN_KEYS.join(', ')}`);
+}
 
 describe('content registry equals the frozen pre-refactor tables', () => {
   for (const key of FROZEN_KEYS) {

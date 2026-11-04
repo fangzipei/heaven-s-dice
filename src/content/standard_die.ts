@@ -6,6 +6,6 @@ import type { DiceDef } from '../core/types.ts';
 export const STANDARD_DIE: DiceDef = {
   id: 'standard', name: '标准骰', setId: null, rarity: 'common',
   probs: [1 / 6, 1 / 6, 1 / 6, 1 / 6, 1 / 6, 1 / 6],
-  flavor: '客栈里最普通、也最诚实的骨头骰。',
+  flavor: '客栈里最普通、也最诚实的一颗骰。',
   desc: '每个点数概率相同。', bonus: null, isStandard: true,
 };
