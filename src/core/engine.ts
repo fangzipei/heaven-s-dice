@@ -292,6 +292,7 @@ function resetLevelFlags(state: RunState) {
     ratCrownProc: false,
     judgeRelicUsed: false,
     chainNoteGrown: false,
+    aftershockGrown: false,
     ashTypes: [],
     suspensorRelicUsed: false,
     luciferRelicUsed: false,
@@ -1818,10 +1819,13 @@ export function applyScore(state: RunState, action: ScoreAction): ApplyScoreResu
     for (const die of scoringDice) {
       const bonus = getDieSpec(die.dieId).bonus;
       if (bonus?.type !== 'afterScoreFlat') continue;
-      // 连记骰：每关只成长一次，同关多颗只算第一颗；余响骰仍然每次叠加。
+      // 连记 / 余响：每关只成长一次，同关多颗只算第一颗。
       if (die.dieId === 'chain_note') {
         if (state.flags.chainNoteGrown) continue;
         state.flags.chainNoteGrown = true;
+      } else if (die.dieId === 'aftershock') {
+        if (state.flags.aftershockGrown) continue;
+        state.flags.aftershockGrown = true;
       }
       state.dieStacks[die.bagUid] = (state.dieStacks[die.bagUid] || 0) + 1;
     }

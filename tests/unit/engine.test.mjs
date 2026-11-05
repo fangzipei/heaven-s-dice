@@ -1516,6 +1516,33 @@ test('chain-note grows once per level and only the first copy counts', () => {
   expect(state.dieStacks[firstUid]).toBe(2);
 });
 
+test('aftershock grows once per level and only the first copy counts', () => {
+  const state = fresh();
+  state.bag[0].dieId = 'aftershock';
+  state.bag[1].dieId = 'aftershock';
+  syncBag(state);
+  initLevel(state);
+
+  forceRoll(state, [5, 5, 2, 4, 6, 6]);
+  state.selected = [state.dice[0].uid, state.dice[1].uid];
+  expect(applyScore(state, 'continue').ok).toBe(true);
+  const firstUid = state.dice[0].bagUid;
+  const secondUid = state.dice[1].bagUid;
+  expect(state.dieStacks[firstUid]).toBe(1);
+  expect(state.dieStacks[secondUid] || 0).toBe(0);
+
+  forceRoll(state, [5, 2, 4, 6, 2, 4]);
+  state.selected = [state.dice[0].uid];
+  expect(applyScore(state, 'continue').ok).toBe(true);
+  expect(state.dieStacks[firstUid]).toBe(1);
+
+  initLevel(state);
+  forceRoll(state, [5, 2, 4, 6, 2, 4]);
+  state.selected = [state.dice[0].uid];
+  expect(applyScore(state, 'continue').ok).toBe(true);
+  expect(state.dieStacks[firstUid]).toBe(2);
+});
+
 test('satan is the fixed final boss with 100000 target and +2 rerolls', () => {
   const state = fresh();
   state.level = 25;
