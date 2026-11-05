@@ -1487,6 +1487,35 @@ test('chain-note die adds +60 after the first successful score', () => {
   expect(buildScore(state, 'reroll').total).toBe(170);
 });
 
+test('chain-note grows once per level and only the first copy counts', () => {
+  const state = fresh();
+  state.bag[0].dieId = 'chain_note';
+  state.bag[1].dieId = 'chain_note';
+  syncBag(state);
+  initLevel(state);
+
+  forceRoll(state, [1, 1, 2, 4, 6, 6]);
+  state.selected = [state.dice[0].uid, state.dice[1].uid];
+  expect(applyScore(state, 'continue').ok).toBe(true);
+  const firstUid = state.dice[0].bagUid;
+  const secondUid = state.dice[1].bagUid;
+  expect(state.dieStacks[firstUid]).toBe(1);
+  expect(state.dieStacks[secondUid] || 0).toBe(0);
+
+  // A second scoring hand in the same level must not grow it again.
+  forceRoll(state, [5, 2, 4, 6, 2, 4]);
+  state.selected = [state.dice[0].uid];
+  expect(applyScore(state, 'continue').ok).toBe(true);
+  expect(state.dieStacks[firstUid]).toBe(1);
+
+  // The next level unlocks one more growth.
+  initLevel(state);
+  forceRoll(state, [5, 2, 4, 6, 2, 4]);
+  state.selected = [state.dice[0].uid];
+  expect(applyScore(state, 'continue').ok).toBe(true);
+  expect(state.dieStacks[firstUid]).toBe(2);
+});
+
 test('satan is the fixed final boss with 100000 target and +2 rerolls', () => {
   const state = fresh();
   state.level = 25;

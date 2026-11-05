@@ -362,6 +362,8 @@ export interface RunFlags {
   bossBannedType?: HandType | null;
   ratCrownProc?: boolean;
   judgeRelicUsed?: boolean;
+  /** 连记骰：本关已经成长过一次（同关多颗只算第一颗）。 */
+  chainNoteGrown?: boolean;
   ashTypes?: string[];
   suspensorRelicUsed?: boolean;
   luciferRelicUsed?: boolean;
