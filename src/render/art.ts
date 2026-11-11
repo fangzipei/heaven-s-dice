@@ -4,8 +4,8 @@
 const ART = 'assets/art';
 const PAPER = 'assets/paper';
 
-export const dieArt = (id: string): string => `${ART}/dice/${id}-full-cut.svg`;
-export const dieFacesArt = (id: string): string => `${ART}/dice/${id}-faces-cut.svg`;
+export const dieArt = (id: string): string => `${ART}/dice/${id}-full-cut.webp?v=20261111-dice`;
+export const dieFacesArt = (id: string): string => `${ART}/dice/${id}-faces-cut.webp?v=20261111-dice`;
 export const barrelArt = (art: string): string => `${ART}/barrels/${art}-cut.svg`;
 export const barrelCupArt = (art: string): string => `${ART}/barrels/${art}-cup.svg`;
 export const itemArt = (id: string): string => `${ART}/items/${id}-cut.svg`;
