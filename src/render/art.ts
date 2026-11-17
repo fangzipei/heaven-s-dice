@@ -4,8 +4,11 @@
 const ART = 'assets/art';
 const PAPER = 'assets/paper';
 
-export const dieArt = (id: string): string => `${ART}/dice/${id}-full-cut.webp?v=20261111-dice`;
-export const dieFacesArt = (id: string): string => `${ART}/dice/${id}-faces-cut.webp?v=20261111-dice`;
+/* 骰子皮肤层与点数层分离：图里一个点都没有，点由 tools/_dice_compose.py 按
+   PIP_CELLS 画进精灵图，版本号跟着资产内容一起涨。
+   20261117-portrait：立绘与骰面改用同一张肖像版皮肤（画风更满、徽记更清楚）。 */
+export const dieArt = (id: string): string => `${ART}/dice/${id}-full-cut.webp?v=20261117-portrait`;
+export const dieFacesArt = (id: string): string => `${ART}/dice/${id}-faces-cut.webp?v=20261117-portrait`;
 export const barrelArt = (art: string): string => `${ART}/barrels/${art}-cut.svg`;
 export const barrelCupArt = (art: string): string => `${ART}/barrels/${art}-cup.svg`;
 export const itemArt = (id: string): string => `${ART}/items/${id}-cut.svg`;
